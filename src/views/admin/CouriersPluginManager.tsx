@@ -182,8 +182,8 @@ export default function CouriersPluginManager() {
   const shipmentsQuery = useOrderShipments(activeStoreId);
   const saveConnection = useSaveCourierConnection(activeStoreId);
   const updateConnection = useUpdateCourierConnection(activeStoreId);
-  const connections = connectionsQuery.data ?? [];
-  const shipments = shipmentsQuery.data ?? [];
+  const connections = useMemo(() => connectionsQuery.data ?? [], [connectionsQuery.data]);
+  const shipments = useMemo(() => shipmentsQuery.data ?? [], [shipmentsQuery.data]);
 
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ConnectionDraft>(emptyDraft);

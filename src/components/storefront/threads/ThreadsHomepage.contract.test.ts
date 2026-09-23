@@ -24,7 +24,8 @@ describe("Threads homepage behavior contracts", () => {
 
 
   it("keeps reference presentation tied to canonical catalog taxonomy", () => {
-    expect(rendererSource).toContain("sourceItems\n          .slice(0, 5)");
+    const normalizedRenderer = rendererSource.replace(/\r\n/g, "\n");
+    expect(normalizedRenderer).toContain("sourceItems\n          .slice(0, 5)");
     expect(rendererSource).not.toContain("const referenceLabels");
     expect(headerSource).toContain("useProductCategories(store?.id)");
     expect(headerSource).toContain("referenceCategoryNav");

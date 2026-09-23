@@ -21,6 +21,8 @@ import { parseLegacyStringToDoc } from "@/lib/cms/rich-text-adapter";
 import { AlertTriangle, BadgeCheck, CreditCard, Headset, Instagram, Play, ShieldCheck, Star, Truck, Undo2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useFeaturedProducts, useProducts, useProduct } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/auth-context";
@@ -398,28 +400,40 @@ function TestimonialsBlock({
   }
 
   return (
-    <section className="overflow-hidden bg-background py-12 md:py-24">
-      <div className="container mx-auto px-4">
-        <div className={isFashion ? "mb-8 max-w-3xl md:mb-10" : "mx-auto mb-8 max-w-2xl text-center md:mb-10"}>
+    <section className="overflow-hidden bg-background py-10 md:py-16">
+      <div className="container mx-auto px-4 max-w-5xl">
+        <div className={isFashion ? "mb-8 text-center md:mb-10" : "mx-auto mb-8 max-w-2xl text-center md:mb-10"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Social proof</p>
-          <h2 className={isFashion ? "mt-3 font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl" : "mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl"}>{title || "Customers are talking"}</h2>
+          <h2 className={isFashion ? "mt-3 font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl" : "mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl"}>{title || "Customers are talking"}</h2>
           {subtitle ? <p className="mt-4 text-sm leading-7 text-muted-foreground md:text-base">{subtitle}</p> : null}
         </div>
-        <div className="mx-auto flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 md:grid md:max-w-6xl md:grid-cols-3 md:overflow-visible md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {displayReviews.slice(0, limit).map((review, index) => (
-            <article key={`${review.name ?? "review"}-${index}`} className={isFashion ? "flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between border-y border-border bg-background p-6 sm:min-w-[340px] md:min-w-0" : "flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm sm:min-w-[340px] md:min-w-0"}>
-              <div>
-                {typeof review.rating === "number" && Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5 ? (
-                  <div className="mb-5 flex items-center gap-1 text-accent" aria-label={`${review.rating.toFixed(1)} out of 5`}>
-                    {Array.from({ length: Math.round(review.rating) }).map((_, starIndex) => <Star key={starIndex} className="h-4 w-4 fill-current" aria-hidden="true" />)}
+        <Carousel
+          opts={{ align: "start", loop: true }}
+          plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
+          className="mx-auto w-full max-w-4xl"
+        >
+          <CarouselContent className="-ml-4">
+            {displayReviews.slice(0, limit).map((review, index) => (
+              <CarouselItem key={`${review.name ?? "review"}-${index}`} className="pl-4 md:basis-1/2 lg:basis-1/2">
+                <article className={isFashion ? "flex h-full min-h-[200px] flex-col justify-between border border-border bg-background p-6" : "flex h-full min-h-[200px] flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm"}>
+                  <div>
+                    {typeof review.rating === "number" && Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5 ? (
+                      <div className="mb-4 flex items-center gap-1 text-accent" aria-label={`${review.rating.toFixed(1)} out of 5`}>
+                        {Array.from({ length: Math.round(review.rating) }).map((_, starIndex) => <Star key={starIndex} className="h-4 w-4 fill-current" aria-hidden="true" />)}
+                      </div>
+                    ) : null}
+                    <p className="text-[15px] leading-relaxed text-foreground italic">“{review.comment}”</p>
                   </div>
-                ) : null}
-                <p className="text-base leading-7 text-foreground">“{review.comment}”</p>
-              </div>
-              {review.name ? <p className="mt-6 text-sm font-semibold text-muted-foreground">{review.name}</p> : null}
-            </article>
-          ))}
-        </div>
+                  {review.name ? <p className="mt-6 text-sm font-semibold text-muted-foreground">— {review.name}</p> : null}
+                </article>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <div className="hidden md:block">
+            <CarouselPrevious className="-left-12" />
+            <CarouselNext className="-right-12" />
+          </div>
+        </Carousel>
       </div>
     </section>
   );
@@ -592,9 +606,9 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
       case "promo-banner": return <PromoBanner overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "category-showcase": return <CategoryShowcase overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "featured-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} pagination={mergedProps.pagination} disableLegacyFallback />;
       case "recommended-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} pagination={mergedProps.pagination} disableLegacyFallback />;
       case "comparison": return <ComparisonBlock {...mergedProps} layoutVariant={blockLayoutVariant} />;
       case "recently-viewed": return <RecentlyViewed title={typeof mergedProps.title === "string" ? mergedProps.title : undefined} />;
       case "rich-text": return blockLayoutVariant === "blog-posts" ? <BlogHomepageWidget /> : <RichTextBlock {...mergedProps} templateId={template?.id} />;

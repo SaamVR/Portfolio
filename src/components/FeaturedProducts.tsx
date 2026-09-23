@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
@@ -30,6 +33,7 @@ const FeaturedProducts = ({
   focalX,
   focalY,
   variantOptions,
+  pagination,
   disableLegacyFallback = false,
 }: {
   limit?: number;
@@ -43,8 +47,10 @@ const FeaturedProducts = ({
   focalX?: number;
   focalY?: number;
   variantOptions?: StorefrontVariantOptions;
+  pagination?: boolean;
   disableLegacyFallback?: boolean;
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
   const currentStore = useOptionalStore();
   const { data: featured = [], isLoading: featuredLoading } = useFeaturedProducts(currentStore?.id);
   const { data: allProducts = [], isLoading: productsLoading } = useProducts(currentStore?.id);
@@ -191,7 +197,9 @@ const FeaturedProducts = ({
         >
           {hasSidebar && layoutVariant !== "3-col-sidebar-right" ? sidebar : null}
           <div className={`grid ${isFashion ? "gap-2 sm:gap-3 md:gap-5" : "gap-3 sm:gap-4 md:gap-6"} ${variantGridClass}`}>
-            {productsToRender.slice(0, limit).map((product, i) => (
+            {productsToRender
+              .slice(pagination ? (currentPage - 1) * limit : 0, pagination ? currentPage * limit : limit)
+              .map((product, i) => (
               <AnimatedSection key={product.id} delay={Math.min(i, 4) * 80} animation="blur">
                 <ProductCard product={product} />
               </AnimatedSection>
@@ -199,6 +207,24 @@ const FeaturedProducts = ({
           </div>
           {hasSidebar && layoutVariant === "3-col-sidebar-right" ? sidebar : null}
         </div>
+        {pagination && productsToRender.length > limit ? (
+          <div className="mt-10 flex justify-center gap-2">
+            {Array.from({ length: Math.ceil(productsToRender.length / limit) }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                  currentPage === i + 1
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                )}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {isFashion ? (
           <div className="mt-7 sm:hidden">
             <Link href={storefrontPath("/shop", currentStore?.slug)} className="inline-flex min-h-11 items-center gap-2 border-b border-foreground pb-1 text-sm font-semibold text-foreground">

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -577,15 +579,23 @@
 }
 
 /* Threads storefront: carry the editorial language across catalog and utility pages. */
+
 [data-store-theme-scope] [data-storefront-template="threads"] {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  --threads-shadow-card: 0 2px 12px rgb(20 40 28 / 0.04), 0 8px 30px rgb(20 40 28 / 0.06);
+  --threads-shadow-card-hover: 0 4px 16px rgb(20 40 28 / 0.07), 0 12px 40px rgb(20 40 28 / 0.09);
+  --threads-shadow-elevated: 0 12px 30px rgba(0,0,0,.12);
 }
 
 [data-store-theme-scope] [data-storefront-template="threads"] :is(h1, h2, h3, .font-heading) {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-weight: 500;
   letter-spacing: -0.025em;
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] .font-serif {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
 [data-store-theme-scope] [data-storefront-template="threads"] :is(.rounded-3xl, .rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md) {
@@ -597,9 +607,43 @@
 }
 
 [data-store-theme-scope] [data-storefront-template="threads"] .shadow-sm {
-  box-shadow: 0 8px 24px rgb(20 40 28 / 0.06);
+  box-shadow: var(--threads-shadow-card);
 }
 
 [data-store-theme-scope] [data-storefront-template="threads"] :is(button, a).bg-primary {
   letter-spacing: 0.04em;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] :is(button, a).bg-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgb(20 40 28 / 0.18);
+}
+
+/* Threads: smooth accordion animation */
+[data-storefront-template="threads"] details summary {
+  transition: color 0.2s ease;
+}
+[data-storefront-template="threads"] details summary:hover {
+  color: hsl(var(--primary));
+}
+[data-storefront-template="threads"] details[open] summary + p {
+  animation: threads-faq-reveal 0.3s ease-out;
+}
+@keyframes threads-faq-reveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Threads: refined category card hover */
+[data-storefront-template="threads"] [id="categories"] .group:hover {
+  box-shadow: var(--threads-shadow-card-hover);
+  transform: translateY(-2px);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Threads: section divider accent */
+[data-storefront-template="threads"] .threads-section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent);
 }

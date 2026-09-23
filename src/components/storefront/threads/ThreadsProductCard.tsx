@@ -80,17 +80,17 @@ export function ThreadsProductCard({
     <article
       className={`group min-w-0 ${
         framed
-          ? "rounded-[4px] border border-primary-foreground/10 bg-primary-foreground/10 p-1.5 text-primary-foreground shadow-[0_12px_30px_rgba(0,0,0,.12)]"
-          : ""
+          ? "rounded-[5px] border border-primary-foreground/10 bg-primary-foreground/8 p-1.5 text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,.14)] transition-shadow duration-300 hover:shadow-[0_12px_36px_rgba(0,0,0,.18)]"
+          : "transition-transform duration-300 hover:-translate-y-0.5"
       }`}
     >
       <div
         className={`relative overflow-hidden bg-secondary ${
           framed
-            ? "aspect-square rounded-[2px]"
+            ? "aspect-square rounded-[3px]"
             : compact
-              ? "aspect-[1.3/1] rounded-[3px] border border-border/60"
-              : "aspect-[4/5] rounded-[2px]"
+              ? "aspect-[1.3/1] rounded-[4px] border border-border/50"
+              : "aspect-[4/5] rounded-[3px]"
         }`}
       >
         <Link
@@ -103,7 +103,7 @@ export function ThreadsProductCard({
             alt={product.name}
             fill
             sizes={imageSizes}
-            className={`object-cover transition duration-500 ease-out group-hover:scale-[1.018] ${
+            className={`object-cover transition duration-600 ease-out group-hover:scale-[1.03] ${
               alternateImage ? "group-hover:opacity-0" : ""
             }`}
           />
@@ -113,7 +113,7 @@ export function ThreadsProductCard({
               alt={`${product.name} alternate view`}
               fill
               sizes={imageSizes}
-              className="object-cover opacity-0 transition duration-500 ease-out group-hover:scale-[1.018] group-hover:opacity-100"
+              className="object-cover opacity-0 transition duration-600 ease-out group-hover:scale-[1.03] group-hover:opacity-100"
             />
           ) : null}
         </Link>
@@ -191,7 +191,7 @@ export function ThreadsProductCard({
       >
         <Link
           href={href}
-          className={`block truncate font-medium tracking-[-.01em] ${framed ? "text-primary-foreground text-[10px] md:text-[11px]" : compact ? "text-[10px]" : "text-[12px] md:text-[13px]"}`}
+          className={`block truncate font-medium tracking-[-.01em] ${framed ? "text-primary-foreground text-[11px] md:text-[12px]" : compact ? "text-[10px]" : "text-[12px] md:text-[13px]"}`}
         >
           {product.name}
         </Link>

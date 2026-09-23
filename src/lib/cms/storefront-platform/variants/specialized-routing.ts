@@ -19,7 +19,13 @@ export function shouldUseSpecializedBlockRenderer(
 
   const definition = getStorefrontVariantDefinition(block.type, requested);
   if (!definition) return true;
-  if (definition.rendererKey?.startsWith(`${template.id}/`)) return true;
+  if (
+    definition.rendererKey?.startsWith(`${template.id}/`) ||
+    (template.rendererKind === "fashion" && definition.rendererKey?.startsWith("threads/"))
+  ) {
+    return true;
+  }
 
   return false;
 }
+

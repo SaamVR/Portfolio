@@ -229,8 +229,36 @@ export default function MerchantSignupV3() {
   const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
   const plans = usePublicPlanCatalog();
   const [accountRestriction, setAccountRestriction] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", storeName: "", storeSlug: "", storefrontTemplateId: requestedTemplateId, planId: searchParams.get("planId") || "free" });
-  const [wizardAnswers, setWizardAnswers] = useState<MerchantRegistrationAnswers>(() => createDefaultRegistrationAnswers(getStorefrontTemplateDefinition(requestedTemplateId)));
+  const [form, setForm] = useState(() => {
+    const sandboxStoreName = searchParams.get("store_name");
+    return {
+      name: "",
+      storeName: sandboxStoreName || "",
+      storeSlug: sandboxStoreName ? slugify(sandboxStoreName) : "",
+      storefrontTemplateId: requestedTemplateId,
+      planId: searchParams.get("planId") || "free"
+    };
+  });
+  const [wizardAnswers, setWizardAnswers] = useState<MerchantRegistrationAnswers>(() => {
+    const defaults = createDefaultRegistrationAnswers(getStorefrontTemplateDefinition(requestedTemplateId));
+    if (searchParams.get("sandbox") === "true") {
+      const theme = searchParams.get("theme");
+      const blocks = searchParams.get("blocks");
+      const heroHeadline = searchParams.get("hero_headline");
+      
+      if (theme) {
+        const toneMap: Record<string, any> = { 'clean-minimal': 'clean', 'luxury-dark': 'bold', 'warm-terracotta': 'editorial', 'soft-rose': 'soft', 'bold-neon': 'bold', 'classic-navy': 'clean' };
+        if (toneMap[theme]) defaults.designTone = toneMap[theme];
+      }
+      if (blocks) {
+        defaults.selectedSections = blocks.split(',').filter(b => questionnaireSectionIds.has(b));
+      }
+      if (heroHeadline) {
+        defaults.heroTitle = heroHeadline;
+      }
+    }
+    return defaults;
+  });
   const slugCheckSequence = useRef(0);
 
   const selectedTemplate = useMemo(() => getStorefrontTemplateDefinition(form.storefrontTemplateId), [form.storefrontTemplateId]);

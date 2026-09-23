@@ -95,7 +95,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const digitalOnlyCheckout = isDigitalOnlyCart(checkoutItems);
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
-  const gatewayProviders = paymentSettings?.gateway_providers ?? [];
+  const gatewayProviders = useMemo(() => paymentSettings?.gateway_providers ?? [], [paymentSettings?.gateway_providers]);
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
   const preloadedStorefrontProfile =
     currentStore?.id === checkoutStoreId && typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile

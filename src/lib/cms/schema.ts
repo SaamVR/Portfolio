@@ -162,6 +162,7 @@ const featuredProductsBlockSchema = z.object({
     autoplay: z.boolean().optional(),
     autoplayIntervalMs: z.number().int().min(2500).max(15000).optional(),
     showArrows: z.boolean().optional(),
+    pagination: z.boolean().optional(),
   }).default({}),
 });
 
@@ -193,6 +194,7 @@ const recommendedProductsBlockSchema = z.object({
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
+    pagination: z.boolean().optional(),
   }).default({}),
 });
 

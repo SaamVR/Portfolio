@@ -75,41 +75,9 @@ const defaultStoreData = {
           props: {},
         },
         {
-          id: "block-social-feed",
-          type: "social-feed",
-          sortOrder: 5,
-          isVisible: true,
-          visible: true,
-          props: {
-            title: "Styled by our customers",
-            subtitle: "Real-life looks, product details, and campaign moments.",
-            images: [
-              "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80",
-              "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80",
-              "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800&q=80",
-              "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=80",
-            ],
-          },
-        },
-        {
-          id: "block-trust-badges",
-          type: "trust-badges",
-          sortOrder: 6,
-          isVisible: true,
-          visible: true,
-          props: {
-            title: "Shop with confidence",
-            badges: [
-              { icon: "truck", label: "Flexible Fulfillment", description: "Local delivery, shipping, pickup, or other merchant-defined fulfillment options." },
-              { icon: "payment", label: "Secure Checkout", description: "Payment methods are configured by the merchant for this store." },
-              { icon: "returns", label: "Clear Support", description: "Customers can review the store's return, exchange, and support terms before ordering." },
-            ],
-          },
-        },
-        {
           id: "block-testimonials",
           type: "testimonials",
-          sortOrder: 7,
+          sortOrder: 6,
           isVisible: true,
           visible: true,
           props: {
@@ -125,7 +93,7 @@ const defaultStoreData = {
         {
           id: "block-trust-copy",
           type: "rich-text",
-          sortOrder: 8,
+          sortOrder: 11,
           isVisible: true,
           visible: true,
           props: {
@@ -136,29 +104,62 @@ const defaultStoreData = {
           },
         },
         {
-          id: "block-faq",
-          type: "faq-accordion",
-          sortOrder: 9,
+          id: "block-recommended-products",
+          type: "recommended-products",
+          layoutVariant: "3-col",
+          sortOrder: 5,
           isVisible: true,
           visible: true,
           props: {
-            title: "Questions before checkout",
-            subtitle: "Answer the practical doubts that usually stop first-time buyers.",
-            faqs: [
-              { q: "How long does delivery take?", a: "Delivery timing depends on destination, fulfillment workflow, and the merchant's chosen shipping method." },
-              { q: "Which checkout options are available?", a: "Payment, inquiry, or booking options depend on how this store has been configured." },
-              { q: "Can I exchange an item?", a: "Eligible unworn items can be exchanged within the store's published exchange window." },
+            title: "Product cataloge",
+            tagline: "More to explore",
+            source: "featured-or-all",
+            limit: 15,
+            pagination: true,
+          },
+        },
+
+        {
+          id: "block-trust-badges",
+          type: "trust-badges",
+          sortOrder: 7,
+          isVisible: true,
+          visible: true,
+          props: {
+            title: "Shop with confidence",
+            badges: [
+              { icon: "truck", label: "Flexible Fulfillment", description: "Local delivery, shipping, pickup, or other merchant-defined fulfillment options." },
+              { icon: "payment", label: "Secure Checkout", description: "Payment methods are configured by the merchant for this store." },
+              { icon: "returns", label: "Clear Support", description: "Customers can review the store's return, exchange, and support terms before ordering." },
             ],
           },
         },
         {
           id: "block-recently-viewed",
           type: "recently-viewed",
-          sortOrder: 10,
+          sortOrder: 8,
           isVisible: true,
           visible: true,
           props: {},
         },
+        {
+          id: "block-social-feed",
+          type: "social-feed",
+          sortOrder: 9,
+          isVisible: true,
+          visible: true,
+          props: {
+            title: "Styled by our customers",
+            subtitle: "Real-life looks, product details, and campaign moments.",
+            images: [
+              "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80",
+              "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80",
+              "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800&q=80",
+              "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=80",
+            ],
+          },
+        },
+
       ],
     },
     {

@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
   const previousReport = data?.previous.summary ?? EMPTY_ANALYTICS_REPORT;
   const storeSummaries = useMemo(
     () => labelAnalyticsStoreSummaries(data?.current.storeSummaries ?? [], storeLabels),
-    [data?.current.storeSummaries, storeLabels],
+    [data, storeLabels],
   );
   const canShowCombined = membershipStoreIds.length > 1;
   const hasReportData = report.sessions > 0 || report.pageViews > 0 || report.purchases > 0;

@@ -32,13 +32,27 @@ const shopEligibleCatalogModes = new Set([
 
 const threadsHomepageBlockOrder: StorePageBlock["type"][] = [
   "hero",
-  "trust-badges",
   "category-showcase",
-  "promo-banner",
   "featured-products",
+  "promo-banner",
   "recommended-products",
+  "rich-text",
   "social-feed",
+  "trust-badges",
+  "recently-viewed",
   "faq-accordion",
+];
+
+const fashionHomepageBlockOrder: StorePageBlock["type"][] = [
+  "hero",
+  "category-showcase",
+  "featured-products",
+  "promo-banner",
+  "recommended-products",
+  "testimonials",
+  "trust-badges",
+  "recently-viewed",
+  "social-feed",
   "rich-text",
 ];
 
@@ -64,7 +78,9 @@ function isStorePageBlockType(value: string): value is StorePageBlock["type"] {
 function buildHomepageFromTemplateSeed(seed: TemplatePageSeedDefinition): StorePage {
   const homepageBlockSet = seed.id === "threads"
     ? threadsHomepageBlockOrder
-    : seed.defaultBlockSet;
+    : seed.id === "fashion"
+      ? fashionHomepageBlockOrder
+      : seed.defaultBlockSet;
   const homepageBlocks = homepageBlockSet
     .filter(isStorePageBlockType)
     .map((blockType, index) => {

@@ -11,7 +11,7 @@ test("renderer registry resolves existing renderer kinds without template-id bra
   });
   assert.deepEqual(resolveStorefrontRenderer({ rendererKind: "fashion" }), {
     familyId: "editorial-commerce",
-    implementationId: "fashion-v3",
+    implementationId: "threads-earthy",
   });
   assert.deepEqual(resolveStorefrontRenderer({ rendererKind: "threads" }), {
     familyId: "editorial-commerce",
@@ -22,7 +22,7 @@ test("renderer registry resolves existing renderer kinds without template-id bra
 
 test("shell registry resolves independently from block renderer implementation", () => {
   assert.equal(resolveStorefrontShell({ rendererKind: "generic" }).id, "classic-commerce");
-  assert.equal(resolveStorefrontShell({ rendererKind: "fashion" }).id, "fashion-v3");
+  assert.equal(resolveStorefrontShell({ rendererKind: "fashion" }).id, "threads-earthy");
   assert.equal(resolveStorefrontShell({ rendererKind: "threads" }).id, "threads-earthy");
   assert.equal(Object.keys(storefrontShellRegistry).length, 3);
 });
@@ -35,8 +35,8 @@ test("all current templates preserve the legacy generic/fashion/threads renderin
     const shell = resolveStorefrontShell(template);
 
     if (templateId === "fashion") {
-      assert.equal(renderer.implementationId, "fashion-v3");
-      assert.equal(shell.id, "fashion-v3");
+      assert.equal(renderer.implementationId, "threads-earthy");
+      assert.equal(shell.id, "threads-earthy");
       continue;
     }
 

@@ -32,7 +32,7 @@ export const storefrontRendererFamilyRegistry: Readonly<Record<StorefrontRendere
 
 const rendererSelectionByKind: Readonly<Record<StorefrontTemplateDefinition["rendererKind"], StorefrontRendererSelection>> = {
   generic: { familyId: "generic-commerce", implementationId: "generic" },
-  fashion: { familyId: "editorial-commerce", implementationId: "fashion-v3" },
+  fashion: { familyId: "editorial-commerce", implementationId: "threads-earthy" },
   threads: { familyId: "editorial-commerce", implementationId: "threads-earthy" },
 };
 

@@ -824,11 +824,11 @@ export function applyTemplateDemoContentToPages<
             ...(isFashionPreview ? { layoutVariant: "poster" } : {}),
             props: {
               ...block.props,
-              tagline: isFashionPreview ? "New Drop / 2026" : getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
-              title: isFashionPreview ? "Built for the" : getString(heroSeed.heading, block.props.title as string | undefined),
-              highlight: isFashionPreview ? "City" : block.props.highlight,
+              tagline: isFashionPreview ? "Autumn / Winter '26" : getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
+              title: isFashionPreview ? "Redefine Your" : getString(heroSeed.heading, block.props.title as string | undefined),
+              highlight: isFashionPreview ? "Everyday." : block.props.highlight,
               subtitle: isFashionPreview
-                ? "Relaxed silhouettes, graphic staples, and easy layers made for everyday wear."
+                ? "Curated essentials designed to move with you. Shop new arrivals with free delivery over ৳2,000."
                 : getString(heroSeed.subheading, block.props.subtitle as string | undefined),
               ctaText: isFashionPreview ? "Shop New Drop" : getString(primaryCta?.label, block.props.ctaText as string | undefined),
               ctaLink: getString(primaryCta?.url, block.props.ctaLink as string | undefined),
@@ -910,7 +910,12 @@ export function applyTemplateDemoContentToPages<
           return { ...block, props: { ...block.props, title: "Styled beyond the studio", subtitle: "Outfits, details, and everyday styling from the lookbook." } };
         }
         if (isFashionPreview && block.type === "trust-badges") {
-          return { ...block, props: { ...block.props, title: "The essentials, handled" } };
+          return { ...block, props: { ...block.props, title: "The essentials, handled", badges: [
+            { icon: "truck", label: "Free Delivery Over ৳2,000", description: "Fast, tracked delivery on qualifying orders across Bangladesh." },
+            { icon: "returns", label: "Easy 7-Day Returns", description: "Hassle-free returns on unworn items within 7 days." },
+            { icon: "payment", label: "bKash, Nagad & COD", description: "Pay the way you prefer — mobile wallet or cash on delivery." },
+            { icon: "shield", label: "SteadFast Tracked", description: "Real-time delivery tracking via SteadFast, Pathao, or Paperfly." },
+          ] } };
         }
         if (isFashionPreview && block.type === "faq-accordion") {
           return { ...block, props: { ...block.props, title: "Before you order" } };

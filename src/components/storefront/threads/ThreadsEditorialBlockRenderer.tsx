@@ -28,6 +28,8 @@ import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProdu
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { shouldUseSpecializedBlockRenderer } from "@/lib/cms/storefront-platform/variants/specialized-routing";
+import { launchProducts, type Product } from "@/data/products";
+import { resolveImageUrl } from "@/lib/imageMap";
 import {
   Carousel,
   CarouselContent,
@@ -208,17 +210,21 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
   const isReferencePreview = store?.id === "preview-threads";
 
   return (
-    <section className="relative overflow-hidden border-b border-border/60 bg-secondary/30">
-      <div className="mx-auto grid max-w-[1440px] md:min-h-[300px] md:grid-cols-[44%_56%] min-[900px]:min-h-[225px] min-[900px]:grid-cols-[42%_38%_20%] xl:min-h-[285px]">
-        <div className="relative z-10 flex items-center px-6 py-9 sm:px-8 md:px-12 min-[900px]:py-5 lg:px-16 xl:px-20">
+    <section className="relative overflow-hidden border-b border-border/40 bg-secondary/20">
+      {/* Subtle grain overlay for editorial texture */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] opacity-[.025] mix-blend-overlay" style={{backgroundImage:"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"}} />
+      <div className="mx-auto grid max-w-[1440px] md:min-h-[340px] md:grid-cols-[44%_56%] min-[900px]:min-h-[280px] min-[900px]:grid-cols-[42%_38%_20%] xl:min-h-[340px]">
+        <div className="relative z-10 flex items-center px-6 py-10 sm:px-8 md:px-12 min-[900px]:py-6 lg:px-16 xl:px-20">
           <div className="max-w-[460px]">
-            <p className="mb-2.5 text-[8px] font-bold uppercase tracking-[.28em] text-foreground md:text-[9px]">
+            {/* Accent bar above eyebrow */}
+            <div className="mb-3 h-[2px] w-8 bg-accent" aria-hidden />
+            <p className="mb-3 text-[9px] font-bold uppercase tracking-[.3em] text-accent md:text-[10px]">
               {isReferencePreview ? "New Collection" : eyebrow}
             </p>
-            <h1 className="whitespace-pre-line font-serif text-[46px] font-semibold leading-[.82] tracking-[-.06em] sm:text-[54px] md:text-[60px] min-[900px]:text-[54px] lg:text-[58px] xl:text-[66px]">
+            <h1 className="whitespace-pre-line font-serif text-[50px] font-semibold leading-[.82] tracking-[-.055em] sm:text-[58px] md:text-[64px] min-[900px]:text-[58px] lg:text-[64px] xl:text-[72px]">
               {title}
             </h1>
-            <p className="mt-2.5 max-w-[390px] text-[10px] leading-5 text-foreground/76 md:text-[11px]">
+            <p className="mt-3 max-w-[390px] text-[11px] leading-[1.65] text-foreground/68 md:text-[12px]">
               {isReferencePreview
                 ? "Thoughtfully designed. Made for your everyday."
                 : subtitle}
@@ -228,17 +234,17 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
                 text(p.ctaLink) || "/shop?sort=newest",
                 store?.slug,
               )}
-              className="mt-3.5 inline-flex min-h-11 items-center gap-4 rounded-[3px] bg-primary px-5 text-[8px] font-bold tracking-[.02em] text-primary-foreground md:px-6 md:text-[9px]"
+              className="mt-5 inline-flex min-h-12 items-center gap-4 rounded-[3px] bg-primary px-6 text-[9px] font-bold uppercase tracking-[.08em] text-primary-foreground transition-all duration-300 hover:gap-5 md:px-7 md:text-[10px]"
             >
               {isReferencePreview
                 ? "Shop New Arrivals"
                 : text(p.ctaText) || "Explore New Arrivals"}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform duration-300" />
             </Link>
           </div>
         </div>
 
-        <div className="relative min-h-[300px] overflow-hidden md:min-h-0">
+        <div className="relative min-h-[320px] overflow-hidden md:min-h-0">
           {image ? (
             <>
               <div className="absolute inset-0 hidden sm:block">
@@ -263,14 +269,14 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
               </div>
             </>
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-primary/15" />
+            <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted/60 to-primary/10" />
           )}
-          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-secondary/70 to-transparent" />
+          <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-secondary/80 via-secondary/30 to-transparent" />
         </div>
 
-        <div className="relative hidden items-center bg-background/65 px-6 min-[900px]:flex xl:px-10">
+        <div className="relative hidden items-center bg-background/50 px-6 backdrop-blur-[2px] min-[900px]:flex xl:px-10">
           <div>
-            <p className="font-serif text-[24px] leading-[.94] tracking-[-.035em] text-foreground xl:text-[28px]">
+            <p className="font-serif text-[26px] italic leading-[.96] tracking-[-.03em] text-foreground/85 xl:text-[30px]">
               People
               <br />
               Places
@@ -278,7 +284,7 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
               <br />
               Tomorrow
             </p>
-            <div className="mt-4 h-px w-10 bg-foreground" />
+            <div className="mt-5 h-[2px] w-12 bg-accent/70" />
           </div>
         </div>
       </div>
@@ -328,21 +334,23 @@ function ThreadsTrustStrip({ block }: { block: StorePageBlock }) {
         : fallbackValues;
 
   return (
-    <section className="border-b border-border/60 bg-background">
+    <section className="border-b border-border/40 bg-background">
       <div className="mx-auto grid max-w-[1320px] grid-cols-2 px-4 sm:px-6 md:grid-cols-4 md:px-8">
         {values.map((value, index) => {
           const Icon = trustIcons[index] ?? Sparkles;
           return (
             <div
               key={index}
-              className="flex min-h-[68px] items-center justify-center gap-3 border-border/60 px-3 py-2.5 odd:border-r md:border-r md:px-5 md:last:border-r-0 min-[900px]:min-h-[50px] min-[900px]:py-1.5"
+              className="flex min-h-[76px] items-center justify-center gap-3.5 border-border/40 px-3 py-3 odd:border-r md:border-r md:px-5 md:last:border-r-0 min-[900px]:min-h-[56px] min-[900px]:py-2"
             >
-              <Icon className="h-7 w-7 shrink-0 stroke-[1.45] text-foreground" />
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-primary/15 bg-primary/5">
+                <Icon className="h-4.5 w-4.5 stroke-[1.5] text-primary" />
+              </div>
               <div className="min-w-0">
-                <p className="text-[9px] font-bold md:text-[10px]">
+                <p className="text-[10px] font-bold tracking-[.01em] md:text-[11px]">
                   {text(value.label)}
                 </p>
-                <p className="mt-0.5 truncate text-[8px] text-muted-foreground md:text-[9px]">
+                <p className="mt-0.5 truncate text-[8px] leading-[1.5] text-muted-foreground md:text-[9px]">
                   {text(value.description)}
                 </p>
               </div>
@@ -353,6 +361,63 @@ function ThreadsTrustStrip({ block }: { block: StorePageBlock }) {
     </section>
   );
 }
+
+const DEFAULT_THREAD_CATEGORIES = [
+  {
+    name: "T-Shirts",
+    value: "T-Shirts",
+    image: "/demo-assets/urban-threads-bd/categories/t-shirts.jpg",
+    tagline: "Everyday cotton tees.",
+  },
+  {
+    name: "Polos",
+    value: "Polos",
+    image: "/demo-assets/urban-threads-bd/categories/polos.jpg",
+    tagline: "Smart casual staples.",
+  },
+  {
+    name: "Shirts",
+    value: "Shirts",
+    image: "/demo-assets/urban-threads-bd/categories/shirts.jpg",
+    tagline: "Refined and versatile.",
+  },
+  {
+    name: "Drop Shoulders",
+    value: "Drop Shoulders",
+    image: "/demo-assets/urban-threads-bd/categories/drop-shoulders.jpg",
+    tagline: "Relaxed streetwear.",
+  },
+  {
+    name: "Pants & Joggers",
+    value: "Pants & Joggers",
+    image: "/demo-assets/urban-threads-bd/categories/pants.jpg",
+    tagline: "Complete the look.",
+  },
+  {
+    name: "Women",
+    value: "Women",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80",
+    tagline: "Thoughtfully designed.",
+  },
+  {
+    name: "Men",
+    value: "Men",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
+    tagline: "Everyday essentials.",
+  },
+  {
+    name: "Accessories",
+    value: "Accessories",
+    image: "/demo-assets/urban-threads-bd/categories/polos.jpg",
+    tagline: "Caps, totes & more.",
+  },
+  {
+    name: "Sale",
+    value: "Sale",
+    image: "",
+    tagline: "Good things for a brighter tomorrow.",
+  },
+];
 
 function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
@@ -378,12 +443,13 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
         tagline: "",
       }));
   const isReferencePreview = store?.id === "preview-threads";
+  const effectiveSourceItems = sourceItems.length ? sourceItems : DEFAULT_THREAD_CATEGORIES;
   const items = (
-    isReferencePreview
+    isReferencePreview && sourceItems.length
       ? sourceItems
           .slice(0, 5)
           .concat({ name: "Sale", value: "Sale", image: "", tagline: "" })
-      : sourceItems
+      : effectiveSourceItems
   ).slice(
     0,
     isReferencePreview ? 6 : typeof p.limit === "number" ? p.limit : 6,
@@ -400,12 +466,16 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const shop = storefrontPath("/shop", store?.slug);
 
   return (
-    <section id="categories" className="bg-background py-5 md:py-6 min-[900px]:py-3">
+    <section id="categories" className="bg-background py-8 md:py-10 min-[900px]:py-6">
       <div className="mx-auto max-w-[1360px] px-5 sm:px-6 md:px-8">
-        <div className="mb-3 flex items-center justify-between gap-5">
-          <h2 className="font-sans text-[18px] font-bold leading-none tracking-[-.025em] md:text-[20px]">
-            {text(p.title) || "Shop by Category"}
-          </h2>
+        {/* Refined section header with accent divider */}
+        <div className="mb-5 flex items-end justify-between gap-5">
+          <div>
+            <p className="mb-1.5 text-[8px] font-bold uppercase tracking-[.22em] text-accent md:text-[9px]">Collections</p>
+            <h2 className="font-serif text-[24px] font-medium leading-none tracking-[-.035em] md:text-[28px]">
+              {text(p.title) || "Shop by Category"}
+            </h2>
+          </div>
           <div className="flex items-center gap-2">
             {autoplayEnabled ? (
               <button
@@ -424,9 +494,9 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
             ) : null}
             <Link
               href={shop}
-              className="relative inline-flex min-h-11 items-center text-[9px] font-bold min-[900px]:min-h-11"
+              className="relative inline-flex min-h-11 items-center gap-2 text-[9px] font-bold uppercase tracking-[.06em] text-primary transition-colors hover:text-primary/80 min-[900px]:min-h-11"
             >
-              View All <ArrowRight className="ml-2 h-3.5 w-3.5" />
+              View All <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>
@@ -440,7 +510,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
             {items.map((item, index) => (
               <CarouselItem
                 key={`${item.value}-${index}`}
-                className="basis-[68%] pl-2.5 sm:basis-[36%] md:basis-1/3 md:pl-3 min-[900px]:basis-1/6"
+                className="basis-[60%] pl-2.5 sm:basis-[34%] md:basis-1/3 md:pl-3 min-[900px]:basis-1/6"
               >
                 <Link
                   href={
@@ -448,17 +518,17 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
                       ? `${shop}?sale=1`
                       : `${shop}?category=${encodeURIComponent(item.value)}`
                   }
-                  className="group block overflow-hidden rounded-[4px] border border-border/55 bg-card shadow-[0_6px_18px_rgba(0,0,0,.045)]"
+                  className="group block overflow-hidden rounded-[5px] border border-border/40 bg-card shadow-[0_4px_16px_rgba(0,0,0,.04)] transition-all duration-350"
                 >
                   <div
-                    className={`relative aspect-[5/6] overflow-hidden min-[900px]:aspect-[.89/1] ${item.name === "Sale" ? "bg-primary" : "bg-secondary"}`}
+                    className={`relative overflow-hidden ${item.name === "Sale" ? "aspect-[5/6] bg-primary min-[900px]:aspect-[.89/1]" : "aspect-[5/6] bg-secondary min-[900px]:aspect-[.89/1]"}`}
                   >
                     {item.name === "Sale" ? (
                       <div className="absolute inset-0 flex flex-col justify-center px-6 text-primary-foreground">
-                        <div className="font-serif text-[38px] leading-none">
-                          SALE
+                        <div className="font-serif text-[42px] font-semibold italic leading-none tracking-[-.02em]">
+                          Sale
                         </div>
-                        <p className="mt-4 max-w-[140px] text-[12px] leading-[1.25]">
+                        <p className="mt-3 max-w-[140px] text-[11px] leading-[1.35] text-primary-foreground/80">
                           Good things for a brighter tomorrow.
                         </p>
                       </div>
@@ -468,17 +538,19 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
                         alt={item.name}
                         fill
                         sizes="(min-width: 1024px) 16vw, (min-width: 768px) 33vw, 68vw"
-                        className="object-cover transition duration-500 ease-out group-hover:scale-[1.02]"
+                        className="object-cover transition duration-600 ease-out group-hover:scale-[1.04]"
                       />
                     ) : (
-                      <div className="grid h-full place-items-center text-primary">
+                      <div className="grid h-full place-items-center text-primary/60">
                         {categoryFallbackIcon(item.name)}
                       </div>
                     )}
+                    {/* Hover overlay */}
+                    {item.name !== "Sale" && <div className="absolute inset-0 bg-primary/0 transition-colors duration-300 group-hover:bg-primary/8" />}
                   </div>
-                  <div className="flex min-h-11 items-center justify-between px-3 text-[10px] font-semibold md:px-4 min-[900px]:min-h-9">
+                  <div className="flex min-h-12 items-center justify-between border-t border-border/30 px-3.5 text-[10px] font-semibold tracking-[.01em] md:px-4 min-[900px]:min-h-10">
                     <span className="truncate">{item.name}</span>
-                    <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
                 </Link>
               </CarouselItem>
@@ -489,7 +561,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
               <button
                 type="button"
                 onClick={() => api?.scrollPrev()}
-                className="absolute -left-5 top-[43%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 shadow-sm"
+                className="absolute -left-5 top-[43%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/60 bg-background shadow-[0_4px_12px_rgba(0,0,0,.08)] transition-all hover:border-primary/40 hover:shadow-[0_6px_20px_rgba(0,0,0,.12)]"
                 aria-label="Previous category"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -497,7 +569,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
               <button
                 type="button"
                 onClick={() => api?.scrollNext()}
-                className="absolute -right-5 top-[43%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 shadow-sm"
+                className="absolute -right-5 top-[43%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border/60 bg-background shadow-[0_4px_12px_rgba(0,0,0,.08)] transition-all hover:border-primary/40 hover:shadow-[0_6px_20px_rgba(0,0,0,.12)]"
                 aria-label="Next category"
               >
                 <ArrowRight className="h-4 w-4" />
@@ -545,12 +617,12 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
   ];
 
   return (
-    <section className="bg-background px-5 pb-5 sm:px-6 md:px-8 md:pb-6">
-      <div className="mx-auto grid max-w-[1360px] gap-3 md:grid-cols-2">
+    <section className="bg-background px-5 pb-6 sm:px-6 md:px-8 md:pb-8">
+      <div className="mx-auto grid max-w-[1360px] gap-4 md:grid-cols-2">
         {cards.map((card, index) => (
           <article
             key={index}
-            className="relative min-h-[210px] overflow-hidden rounded-[5px] bg-secondary md:min-h-[220px] min-[900px]:min-h-[164px]"
+            className="group relative min-h-[230px] overflow-hidden rounded-[6px] bg-secondary shadow-[0_4px_20px_rgba(0,0,0,.06)] transition-shadow duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,.1)] md:min-h-[240px] min-[900px]:min-h-[180px]"
           >
             {card.image ? (
               <SafeStorefrontImage
@@ -558,20 +630,20 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
                 alt={card.title}
                 fill
                 sizes="(min-width: 768px) 50vw, 100vw"
-                className="object-cover"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />
             ) : null}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-background/18 to-background/95" />
-            <div className="relative z-10 ml-auto flex min-h-[210px] w-[45%] min-w-[230px] flex-col justify-center p-6 md:min-h-[220px] md:p-7 min-[900px]:min-h-[164px] min-[900px]:p-4 lg:w-[42%]">
-              <h2 className="font-serif text-[30px] font-semibold leading-[.9] tracking-[-.035em] md:text-[34px] min-[900px]:text-[30px]">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-background/20 to-background/95" />
+            <div className="relative z-10 ml-auto flex min-h-[230px] w-[46%] min-w-[240px] flex-col justify-center p-7 md:min-h-[240px] md:p-8 min-[900px]:min-h-[180px] min-[900px]:p-5 lg:w-[43%]">
+              <h2 className="font-serif text-[32px] font-semibold leading-[.88] tracking-[-.04em] md:text-[36px] min-[900px]:text-[32px]">
                 {card.title}
               </h2>
-              <p className="mt-1.5 text-[9px] leading-4 text-foreground/78 md:text-[10px]">
+              <p className="mt-2 text-[10px] leading-[1.6] text-foreground/72 md:text-[11px]">
                 {card.subtitle}
               </p>
               <Link
                 href={storefrontPath(card.href, store?.slug)}
-                className="relative mt-3 inline-flex min-h-11 w-fit items-center gap-3 rounded-[3px] bg-primary px-4 text-[8px] font-bold text-primary-foreground min-[900px]:min-h-11"
+                className="relative mt-4 inline-flex min-h-11 w-fit items-center gap-3 rounded-[3px] bg-primary px-5 text-[9px] font-bold uppercase tracking-[.06em] text-primary-foreground transition-all duration-300 hover:gap-4 min-[900px]:min-h-11"
               >
                 {card.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -584,9 +656,16 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
   );
 }
 
+const DEFAULT_THREAD_PRODUCTS: Product[] = launchProducts.map((p) => ({
+  ...p,
+  image: resolveImageUrl(p.image),
+  images: (p.images || []).map(resolveImageUrl).filter(Boolean),
+}));
+
 function ThreadsFeatured({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
-  const { data: products = [] } = useProducts(store?.id);
+  const { data: dbProducts = [] } = useProducts(store?.id);
+  const products = dbProducts.length > 0 ? dbProducts : DEFAULT_THREAD_PRODUCTS;
   const p = block.props as Record<string, unknown>;
   const featured = products.filter((product) => product.featured);
   const source = featured.length >= 3 ? featured : products;
@@ -610,18 +689,23 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
   if (!visible.length) return null;
 
   return (
-    <section className="relative overflow-hidden bg-primary py-6 text-primary-foreground md:py-7 min-[900px]:py-4">
-      <div className="mx-auto grid max-w-[1360px] gap-5 px-5 sm:px-6 md:px-8 min-[900px]:grid-cols-[190px_minmax(0,1fr)] min-[900px]:items-center xl:grid-cols-[210px_minmax(0,1fr)]">
+    <section className="relative overflow-hidden bg-primary py-10 text-primary-foreground md:py-12 min-[900px]:py-8">
+      {/* Subtle pattern overlay */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[.03]" style={{backgroundImage:"radial-gradient(circle at 1px 1px, currentColor 0.5px, transparent 0)" ,backgroundSize:"24px 24px"}} />
+      <Botanical side="left" level="subtle" inverse />
+      <Botanical side="right" level="subtle" inverse />
+      <div className="relative mx-auto grid max-w-[1360px] gap-6 px-5 sm:px-6 md:px-8 min-[900px]:grid-cols-[220px_minmax(0,1fr)] min-[900px]:items-center xl:grid-cols-[240px_minmax(0,1fr)]">
         <div>
-          <h2 className="font-serif text-[30px] font-semibold leading-[.92] tracking-[-.04em] md:text-[34px]">
+          <div className="mb-2 h-[2px] w-8 bg-primary-foreground/40" aria-hidden />
+          <h2 className="font-serif text-[32px] font-semibold leading-[.9] tracking-[-.04em] md:text-[38px]">
             {text(p.title) || "Featured Products"}
           </h2>
-          <p className="mt-1.5 max-w-[190px] text-[9px] leading-4 text-primary-foreground/75">
+          <p className="mt-2 max-w-[200px] text-[10px] leading-[1.6] text-primary-foreground/70">
             {text(p.subtitle) || "Stories you can wear."}
           </p>
           <Link
             href={storefrontPath("/shop", store?.slug)}
-            className="mt-3 inline-flex min-h-11 items-center gap-3 rounded-[3px] border border-primary-foreground/65 px-4 text-[8px] font-bold"
+            className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-[3px] border border-primary-foreground/50 px-5 text-[9px] font-bold uppercase tracking-[.06em] transition-all duration-300 hover:border-primary-foreground/80 hover:bg-primary-foreground/10"
           >
             View All Products <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -632,11 +716,11 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
           opts={{ align: "start", loop: visible.length > 1 }}
           className="relative min-w-0"
         >
-          <CarouselContent className="-ml-2.5 md:-ml-3">
+          <CarouselContent className="-ml-3 md:-ml-4">
             {visible.map((product, index) => (
               <CarouselItem
                 key={`${product.id}-${index}`}
-                className={`basis-[58%] pl-2.5 sm:basis-[34%] md:basis-1/4 md:pl-3 ${featuredDesktopBasis}`}
+                className={`basis-[56%] pl-3 sm:basis-[34%] md:basis-1/4 md:pl-4 ${featuredDesktopBasis}`}
               >
                 <ThreadsProductCard product={product} framed />
               </CarouselItem>
@@ -647,7 +731,7 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
               <button
                 type="button"
                 onClick={() => api?.scrollPrev()}
-                className="absolute -left-5 top-[44%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/45 bg-primary/95"
+                className="absolute -left-5 top-[44%] z-20 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/30 bg-primary/90 shadow-[0_4px_14px_rgba(0,0,0,.2)] backdrop-blur-sm transition-all hover:border-primary-foreground/60 hover:bg-primary/95"
                 aria-label="Previous product"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -655,7 +739,7 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
               <button
                 type="button"
                 onClick={() => api?.scrollNext()}
-                className="absolute -right-5 top-[44%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground bg-primary text-primary-foreground"
+                className="absolute -right-5 top-[44%] z-20 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/30 bg-primary/90 shadow-[0_4px_14px_rgba(0,0,0,.2)] backdrop-blur-sm transition-all hover:border-primary-foreground/60 hover:bg-primary/95"
                 aria-label="Next product"
               >
                 <ArrowRight className="h-4 w-4" />
@@ -685,7 +769,8 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
 
 function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
-  const { data: products = [] } = useProducts(store?.id);
+  const { data: dbProducts = [] } = useProducts(store?.id);
+  const products = dbProducts.length > 0 ? dbProducts : DEFAULT_THREAD_PRODUCTS;
   const p = block.props as Record<string, unknown>;
   const isReferencePreview = store?.id === "preview-threads";
   const visible = products.slice(
@@ -698,14 +783,17 @@ function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
     : `New at ${store?.name || "Threads"}`;
 
   return (
-    <section className="bg-background py-5 md:py-6 min-[900px]:py-4">
+    <section className="bg-background py-10 md:py-12 min-[900px]:py-8">
       <div className="mx-auto max-w-[1360px] px-5 sm:px-6 md:px-8">
-        <div className="mb-4 flex items-center justify-center min-[900px]:mb-3">
-          <h2 className="font-serif text-[24px] font-medium leading-none tracking-[-.035em] md:text-[27px]">
+        {/* Section header with accent line */}
+        <div className="mb-6 flex flex-col items-center text-center min-[900px]:mb-5">
+          <div className="mb-3 h-[2px] w-8 bg-accent" aria-hidden />
+          <h2 className="font-serif text-[26px] font-medium leading-none tracking-[-.035em] md:text-[30px]">
             {text(p.title) || defaultTitle}
           </h2>
+          <p className="mt-2 text-[10px] text-muted-foreground">The latest additions to our collection</p>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-6 md:gap-x-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-6 md:gap-x-5">
           {visible.map((product) => (
             <ThreadsProductCard key={product.id} product={product} compact />
           ))}
@@ -718,30 +806,34 @@ function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
 function ThreadsCommunity({ block }: { block: StorePageBlock }) {
   const p = block.props as Record<string, unknown>;
   return (
-    <section className="border-y border-border/60 bg-secondary/35 py-5 min-[900px]:py-2">
-      <div className="mx-auto grid max-w-[1120px] gap-5 px-5 sm:px-6 md:grid-cols-[1fr_1.05fr] md:items-center md:px-8">
+    <section className="border-y border-border/40 bg-secondary/25 py-10 min-[900px]:py-6">
+      <div className="mx-auto grid max-w-[1120px] gap-6 px-5 sm:px-6 md:grid-cols-[1fr_1.1fr] md:items-center md:px-8">
         <div>
-          <h2 className="font-serif text-[28px] font-medium leading-none tracking-[-.035em] md:text-[31px]">
+          <div className="mb-2 flex items-center gap-2">
+            <Heart className="h-4 w-4 text-accent" />
+            <span className="text-[8px] font-bold uppercase tracking-[.18em] text-accent">Stay Connected</span>
+          </div>
+          <h2 className="font-serif text-[30px] font-medium leading-[.92] tracking-[-.035em] md:text-[34px]">
             {text(p.title) || "Join Our Community"}
           </h2>
-          <p className="mt-1.5 text-[9px] text-foreground/75 md:text-[10px]">
+          <p className="mt-2 max-w-[340px] text-[10px] leading-[1.6] text-foreground/68 md:text-[11px]">
             {text(p.subtitle) ||
               "Get updates on new collections, offers and more."}
           </p>
         </div>
         <form
           onSubmit={(event) => event.preventDefault()}
-          className="flex min-h-[46px] overflow-hidden rounded-[3px] border border-border bg-background"
+          className="flex min-h-[48px] overflow-hidden rounded-[4px] border border-border/60 bg-background shadow-[0_2px_8px_rgba(0,0,0,.04)] transition-shadow focus-within:border-primary/40 focus-within:shadow-[0_4px_16px_rgba(0,0,0,.08)]"
         >
           <input
             type="email"
             aria-label="Email address"
             placeholder="Your email address"
-            className="h-11 min-w-0 flex-1 bg-transparent px-4 text-[10px] outline-none"
+            className="h-12 min-w-0 flex-1 bg-transparent px-5 text-[11px] outline-none placeholder:text-muted-foreground/50"
           />
           <button
             type="submit"
-            className="min-h-11 min-w-[135px] bg-primary px-5 text-[9px] font-medium text-primary-foreground"
+            className="min-h-12 min-w-[140px] bg-primary px-6 text-[10px] font-semibold uppercase tracking-[.06em] text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Subscribe
           </button>
@@ -799,10 +891,11 @@ function ThreadsFAQ({ block }: { block: StorePageBlock }) {
         : referenceFaqs.slice(0, 4);
 
   return (
-    <section className="bg-background py-6 md:py-7 min-[900px]:py-2">
-      <div className="mx-auto grid max-w-[1120px] gap-7 px-5 sm:px-6 md:grid-cols-[.72fr_1.28fr] md:items-start md:px-8 min-[900px]:gap-5">
+    <section className="bg-background py-12 md:py-14 min-[900px]:py-8">
+      <div className="mx-auto grid max-w-[1120px] gap-8 px-5 sm:px-6 md:grid-cols-[.72fr_1.28fr] md:items-start md:px-8 min-[900px]:gap-6">
         <div>
-          <h2 className="font-serif text-[35px] font-medium leading-[.88] tracking-[-.045em] md:text-[40px]">
+          <div className="mb-3 h-[2px] w-8 bg-accent" aria-hidden />
+          <h2 className="font-serif text-[38px] font-medium leading-[.88] tracking-[-.045em] md:text-[44px]">
             {store?.id === "preview-threads" ? (
               <>
                 Frequently
@@ -813,25 +906,25 @@ function ThreadsFAQ({ block }: { block: StorePageBlock }) {
               text(p.title) || "Frequently Asked Questions"
             )}
           </h2>
-          <p className="mt-3 max-w-[300px] text-[9px] leading-4 text-muted-foreground md:text-[10px]">
+          <p className="mt-4 max-w-[300px] text-[10px] leading-[1.6] text-muted-foreground md:text-[11px]">
             {store?.id === "preview-threads"
               ? "Everything you need to know, right here."
               : text(p.subtitle) || "Everything you need to know, right here."}
           </p>
         </div>
-        <div className="border-t border-border">
+        <div className="rounded-[4px] border border-border/50 bg-card/50 shadow-[0_2px_12px_rgba(0,0,0,.03)]">
           {faqs.map((item, index) => (
             <details
               key={`${item.q}-${index}`}
-              className="group border-b border-border"
+              className="group border-b border-border/40 last:border-b-0"
             >
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-[9px] font-medium [&::-webkit-details-marker]:hidden md:text-[10px] min-[900px]:min-h-6">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 text-[10px] font-medium [&::-webkit-details-marker]:hidden md:text-[11px] min-[900px]:min-h-11 min-[900px]:px-6">
                 <span>{item.q}</span>
-                <span className="grid h-11 w-11 shrink-0 place-items-center text-[18px] transition group-open:rotate-45 min-[900px]:h-6 min-[900px]:w-6 min-[900px]:text-[15px]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/50 text-[16px] transition-all duration-300 group-open:rotate-45 group-open:border-primary/30 group-open:bg-primary/8 group-open:text-primary">
                   +
                 </span>
               </summary>
-              <p className="max-w-[640px] pb-3 pr-12 text-[9px] leading-4 text-muted-foreground">
+              <p className="max-w-[640px] px-5 pb-4 pr-14 text-[10px] leading-[1.7] text-muted-foreground min-[900px]:px-6">
                 {item.a}
               </p>
             </details>
@@ -857,7 +950,7 @@ function extractText(value: unknown): string[] {
 function ThreadsStory({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const p = block.props as Record<string, unknown>;
-  const image = text(p.imageUrl);
+  const image = text(p.imageUrl) || "/images/chapchitra-street.jpg";
   const isReferencePreview = store?.id === "preview-threads";
   const title = isReferencePreview
     ? "Style\nTravels Further"
@@ -868,26 +961,27 @@ function ThreadsStory({ block }: { block: StorePageBlock }) {
       "Every collection starts with a place, a person, or a memory worth carrying forward.";
 
   return (
-    <section className="relative min-h-[220px] overflow-hidden bg-secondary md:min-h-[210px] min-[900px]:min-h-[170px]">
+    <section className="relative min-h-[320px] overflow-hidden bg-secondary md:min-h-[380px] lg:min-h-[420px]">
       {image ? (
         <SafeStorefrontImage
           src={image}
           alt={text(p.imageAlt) || title.replace("\n", " ")}
           fill
           sizes="100vw"
-          className="object-cover"
+          className="object-cover object-center"
         />
       ) : null}
-      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/92 via-[28%] to-transparent to-[62%]" />
-      <div className="relative z-10 mx-auto flex min-h-[220px] max-w-[1360px] items-center px-7 sm:px-10 md:min-h-[210px] md:px-20 min-[900px]:min-h-[170px]">
-        <div className="max-w-[330px]">
-          <h2 className="whitespace-pre-line font-serif text-[37px] font-medium leading-[.88] tracking-[-.045em] md:text-[42px]">
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/88 via-[30%] to-transparent to-[70%]" />
+      <div className="relative z-10 mx-auto flex min-h-[320px] max-w-[1360px] items-center px-7 sm:px-10 md:min-h-[380px] md:px-20 lg:min-h-[420px]">
+        <div className="max-w-[380px]">
+          <div className="mb-3 h-[2px] w-8 bg-accent" aria-hidden />
+          <h2 className="whitespace-pre-line font-serif text-[40px] font-medium leading-[.88] tracking-[-.045em] md:text-[48px] lg:text-[54px]">
             {title}
           </h2>
-          <p className="mt-3 text-[9px] leading-4 text-foreground/80 md:text-[10px]">
+          <p className="mt-4 text-[10.5px] leading-[1.7] text-foreground/75 md:text-[12px]">
             {body}
           </p>
-          <div className="mt-4 h-px w-10 bg-foreground" />
+          <div className="mt-5 h-[2px] w-12 bg-accent/60" />
         </div>
       </div>
     </section>
