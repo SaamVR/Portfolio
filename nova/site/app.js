@@ -13,7 +13,7 @@ const query = new URLSearchParams(location.search);
 const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
 const poseOverrideRaw = query.get('pose');
-const poseOverride = poseOverrideRaw === null ? null : clamp01(Number(poseOverrideRaw));
+const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, Number(poseOverrideRaw)));
 const showCable = query.get('cable') === '1';
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 let activeScene = 'hero';
