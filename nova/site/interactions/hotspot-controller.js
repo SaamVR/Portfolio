@@ -42,8 +42,11 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
         el.dataset.visible=String(visible);
         if(visible){
           const screenOffset=anchor.screenOffset||[0,0];
-          const x=(world.x*.5+.5+(screenOffset[0]||0))*width;
-          const y=(-world.y*.5+.5+(screenOffset[1]||0))*height;
+          const rawX=(world.x*.5+.5+(screenOffset[0]||0))*width;
+          const rawY=(-world.y*.5+.5+(screenOffset[1]||0))*height;
+          const safeInset=Math.min(16,width*.08,height*.08);
+          const x=Math.max(safeInset,Math.min(width-safeInset,rawX));
+          const y=Math.max(safeInset,Math.min(height-safeInset,rawY));
           el.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
         }
         el.setAttribute?.('aria-expanded',String(focused===id));
