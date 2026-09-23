@@ -1,0 +1,100 @@
+name: NOVA Production Public QA
+
+on:
+  push:
+    branches: ["nova/v2-integration"]
+    paths:
+      - "nova/production-qa-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NOVA_PRODUCTION_URL: https://nova-interactive-portfolio.pages.dev/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Audit production root and V1 archive
+        run: |
+          cat > nova/production-public-qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const root=process.env.NOVA_PRODUCTION_URL;
+          fs.mkdirSync('nova-production-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          const errors=[];
+
+          async function auditRoot(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const page=await context.newPage();
+            page.on('pageerror',e=>errors.push(prefix+' root pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push(prefix+' root console: '+m.text());});
+            await page.goto(root,{waitUntil:'networkidle',timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:25000});
+            const state=await page.evaluate(()=>{
+              const body=document.querySelector('.stage--design .copy>p:not(.eyebrow)');
+              const bodySize=body?parseFloat(getComputedStyle(body).fontSize):0;
+              return {
+                title:document.title,
+                model:document.body.dataset.modelState,
+                hasV1:Boolean(document.querySelector('a[href="/v1/"]')),
+                bodySize
+              };
+            });
+            const min=prefix==='mobile'?14:16;
+            if(state.model!=='ready'||!state.title.includes('NOVA')||!state.hasV1||state.bodySize<min){
+              throw new Error(prefix+' production root invalid '+JSON.stringify(state));
+            }
+            await page.screenshot({path:'nova-production-qa/root_'+prefix+'.png'});
+            await context.close();
+            return state;
+          }
+
+          async function auditV1(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const page=await context.newPage();
+            page.on('pageerror',e=>errors.push(prefix+' v1 pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push(prefix+' v1 console: '+m.text());});
+            await page.goto(new URL('v1/',root).href,{waitUntil:'networkidle',timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:25000});
+            const state=await page.evaluate(()=>({
+              title:document.title,
+              model:document.body.dataset.modelState,
+              hero:document.body.innerText.includes('Scroll-controlled product film')
+            }));
+            if(state.model!=='ready'||!state.title.includes('Interactive 3D Product Film')||!state.hero){
+              throw new Error(prefix+' V1 archive invalid '+JSON.stringify(state));
+            }
+            await page.screenshot({path:'nova-production-qa/v1_'+prefix+'.png'});
+            await context.close();
+            return state;
+          }
+
+          const rootDesktop=await auditRoot({width:1440,height:1000},'desktop');
+          const rootMobile=await auditRoot({width:390,height:844},'mobile');
+          const v1Desktop=await auditV1({width:1440,height:1000},'desktop');
+          const v1Mobile=await auditV1({width:390,height:844},'mobile');
+
+          await browser.close();
+          fs.writeFileSync('nova-production-qa/result.json',JSON.stringify({root,rootDesktop,rootMobile,v1Desktop,v1Mobile,errors},null,2));
+          if(errors.length) throw new Error('Production browser errors:\n'+errors.join('\n'));
+          JS
+          node nova/production-public-qa.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-production-public-qa
+          path: nova-production-qa
+          retention-days: 7
