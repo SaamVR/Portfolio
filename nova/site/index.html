@@ -3,127 +3,165 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#eee9df" />
-  <title>NOVA — Interactive 3D Product Film</title>
-  <meta name="description" content="An interactive 3D product film built from a real animated GLTF asset — source animation, camera choreography and live lighting directed by scroll." />
+  <meta name="theme-color" content="#eee8dc" />
+  <title>NOVA — Hear beyond.</title>
+  <meta name="description" content="NOVA is a fictional premium wireless headphone concept presented as an interactive 3D product experience." />
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
   {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
   </script>
 </head>
-<body data-model-state="loading">
+<body data-model-state="loading" data-range="hero" data-theme="light">
+  <canvas id="webgl" aria-label="Interactive 3D NOVA headphone"></canvas>
+  <div class="fallback-object" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="grain" aria-hidden="true"></div>
-  <canvas id="webgl" aria-label="Animated 3D headphone product model"></canvas>
-  <div class="frame frame--left" aria-hidden="true"></div>
-  <div class="frame frame--right" aria-hidden="true"></div>
 
   <header class="masthead">
-    <a class="mark" href="#top" aria-label="NOVA home">NOVA</a>
-    <div class="masthead__center">3D / MOTION / CREATIVE DEVELOPMENT</div>
-    <a class="notes" href="#closing">BUILD NOTES ↘</a>
+    <a class="brand" href="#hero" aria-label="NOVA home">NOVA</a>
+    <nav class="product-nav" aria-label="NOVA product navigation">
+      <a href="#design">Design</a>
+      <a href="#sound">Sound</a>
+      <a href="#control">Control</a>
+      <a href="#experience">Experience</a>
+    </nav>
+    <a class="masthead-cta" href="#discover">Explore NOVA ↗</a>
   </header>
 
-  <div class="runtime" aria-live="polite">
-    <span class="runtime__dot"></span>
-    <span id="runtimeState">LOADING ORIGINAL GLTF</span>
+  <div class="experience-progress" aria-hidden="true"><i id="experienceProgress"></i></div>
+
+  <div class="hotspot-layer" aria-label="Product detail hotspots">
+    <button type="button" class="hotspot" data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
+    <button type="button" class="hotspot" data-hotspot="headband" aria-label="Explore articulated headband design"><i></i><span>Articulated fit</span></button>
+    <button type="button" class="hotspot" data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
   </div>
 
-  <aside class="chapter-rail" aria-label="Experience chapters">
-    <span class="rail-number" id="railNumber">01</span>
-    <div class="rail-line"><i id="railProgress"></i></div>
-    <span class="rail-label" id="railLabel">INTRO</span>
-  </aside>
-
   <main id="top">
-    <section class="chapter chapter--warm chapter--hero" data-scene="hero" data-label="INTRO">
-      <div class="construction construction--hero" aria-hidden="true"><i></i><i></i><i></i></div>
-      <div class="hero-meta reveal">
-        <span>OBJECT / 01</span>
-        <span>INTERACTIVE PRODUCT STUDY</span>
-      </div>
-      <div class="hero-statement reveal">
-        <p>Scroll-controlled product film.<br />No pre-rendered video.</p>
-      </div>
-      <p class="hero-caption reveal">An animated product asset, rebuilt for the browser.</p>
-      <h1 class="hero-word reveal" aria-label="NOVA">NOVA</h1>
-      <div class="scroll-cue" aria-hidden="true"><span>SCROLL</span><i></i></div>
-    </section>
-
-    <section class="chapter chapter--warm chapter--form" data-scene="form" data-label="FORM">
-      <div class="chapter-copy chapter-copy--left reveal">
-        <span class="eyebrow">01 / FORM</span>
-        <h2>Give the<br />object <em>the page.</em></h2>
-        <p>The interface does less so the model can do more. Framing follows the headphone body, not the oversized cable bounds, and the product remains readable while the camera moves.</p>
-      </div>
-      <div class="side-note side-note--right reveal">
-        <span>FRAME</span>
-        <p>Readable from open form to folded pose without forcing the object into a generic product-card layout.</p>
-      </div>
-      <div class="micro-line micro-line--bottom"><span>CAMERA CHOREOGRAPHY AND SOURCE ANIMATION ARE CONTROLLED INDEPENDENTLY.</span></div>
-    </section>
-
-    <section class="chapter chapter--warm chapter--mechanism" data-scene="mechanism" data-label="MECHANISM">
-      <div class="ghost-word" aria-hidden="true">MOTION</div>
-      <div class="chapter-copy chapter-copy--mechanism reveal">
-        <span class="eyebrow">02 / MECHANISM</span>
-        <h2>The source<br />animation<br /><em>becomes the timeline.</em></h2>
-        <p>The original 27.71-second skeletal clip is scrubbed directly by this chapter. No fake explode animation and no video baked over the canvas.</p>
-        <div class="fact-grid" aria-label="Source asset facts">
-          <div><strong>36</strong><span>skin joints</span></div>
-          <div><strong>14</strong><span>skinned meshes</span></div>
-          <div><strong>3</strong><span>source clips</span></div>
-          <div><strong>42</strong><span>main clip channels</span></div>
+    <section id="hero" class="stage stage--hero" data-range-anchor="hero">
+      <div class="stage-inner hero-copy">
+        <p class="eyebrow">Spatial wireless headphones</p>
+        <h1>NOVA</h1>
+        <h2>Hear beyond.</h2>
+        <p class="lede">Immersive listening, adaptive quiet and effortless movement in one sculpted form.</p>
+        <div class="hero-actions">
+          <a class="button button--solid" href="#design">Explore NOVA <span>↘</span></a>
+          <span class="gesture-hint">Scroll to enter the experience</span>
         </div>
       </div>
-      <div class="timeline reveal" aria-hidden="true">
-        <span>SOURCE CLIP / ARMATUREACTION</span><i><b id="timelineNeedle"></b></i><span>27.71 SEC</span>
-      </div>
+      <div class="hero-index" aria-hidden="true"><span>01</span><span>PRODUCT / EXPERIENCE</span></div>
     </section>
 
-    <section class="chapter chapter--dark chapter--choreography" data-scene="choreography" data-label="CHOREOGRAPHY">
-      <div class="dark-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
-      <div class="chapter-copy chapter-copy--center reveal">
-        <span class="eyebrow">03 / CHOREOGRAPHY</span>
-        <h2>Scroll is<br /><em>the director.</em></h2>
-        <p>Model pose, camera arc, key light and typography run on separate curves. It reads like a product film, but the visitor owns the playhead.</p>
+    <section id="design" class="stage stage--design" data-range-anchor="design">
+      <div class="stage-inner copy copy--left">
+        <p class="eyebrow">Sculpted comfort</p>
+        <h2>Made to <em>disappear.</em></h2>
+        <p>Soft-touch contact surfaces and articulated geometry are shaped to feel considered from every angle—quietly present when you wear them, unmistakable when you look closer.</p>
+        <p class="interaction-note">Select a point on the product to inspect the detail.</p>
       </div>
-      <div class="motion-ledger reveal" aria-label="Motion layers">
-        <span>01&nbsp; SOURCE POSE</span><span>02&nbsp; CAMERA</span><span>03&nbsp; LIGHT</span><span>04&nbsp; TYPE</span>
-      </div>
+      <div class="section-marker" aria-hidden="true"><span>DESIGN</span><i></i></div>
     </section>
 
-    <section class="chapter chapter--sand chapter--interaction" data-scene="interaction" data-label="LIVE INPUT">
-      <div class="construction construction--interaction" aria-hidden="true"><i></i><i></i><i></i></div>
-      <div class="chapter-copy chapter-copy--wide reveal">
-        <span class="eyebrow">04 / LIVE INPUT</span>
-        <h2>Light follows<br /><em>your movement.</em></h2>
-        <p>Pointer movement shifts the key light and restrained parallax. Dragging is intentionally unnecessary: the product stays art-directed instead of turning into a toy.</p>
-      </div>
-      <div class="pointer-note reveal"><i></i><span>MOVE POINTER</span></div>
-      <div class="side-note side-note--lower reveal"><span>LIVE INPUT</span><p>Interaction changes emphasis, not orientation.</p></div>
-    </section>
-
-    <section class="chapter chapter--ink chapter--closing" id="closing" data-scene="closing" data-label="BUILD">
-      <div class="closing-grid">
-        <div class="closing-title reveal">
-          <span class="eyebrow">05 / BUILD</span>
-          <h2>Built as<br />a <em>system.</em></h2>
+    <section id="sound" class="stage stage--sound" data-range-anchor="spatial">
+      <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="stage-inner copy copy--center">
+        <p class="eyebrow">Immersive audio</p>
+        <h2>Your space becomes<br /><em>the soundstage.</em></h2>
+        <p>Choose the character of the experience. Each mode reshapes the visual field around NOVA while the product remains at the center.</p>
+        <div class="segmented" role="group" aria-label="Listening mode">
+          <button type="button" data-listening-mode="spatial" aria-pressed="true">Spatial</button>
+          <button type="button" data-listening-mode="focus" aria-pressed="false">Focus</button>
+          <button type="button" data-listening-mode="ambient" aria-pressed="false">Ambient</button>
         </div>
-        <div class="closing-copy reveal">
-          <p>The model is not a background decoration. Source animation, scroll state, camera, light and responsive framing are composed as separate systems and synchronized at runtime.</p>
-          <div class="stack">
-            <span>THREE.JS</span><span>GLTF RUNTIME</span><span>SKINNED ANIMATION</span><span>SCROLL CHOREOGRAPHY</span><span>POINTER LIGHTING</span><span>RESPONSIVE 3D</span>
+      </div>
+    </section>
+
+    <section id="control" class="stage stage--control" data-range-anchor="adaptive">
+      <div class="stage-inner copy copy--right">
+        <p class="eyebrow">Adaptive listening</p>
+        <h2>Silence,<br /><em>on your terms.</em></h2>
+        <p>Move between focused isolation and a more open connection to the space around you.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Noise control mode">
+          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Adaptive</button>
+          <button type="button" data-noise-mode="transparency" aria-pressed="false">Transparency</button>
+        </div>
+      </div>
+      <div class="control-field" aria-hidden="true"><i></i><i></i><i></i></div>
+    </section>
+
+    <section id="form" class="stage stage--form" data-range-anchor="form">
+      <div class="stage-inner copy copy--left copy--compact">
+        <p class="eyebrow">Articulated form</p>
+        <h2>Made to <em>move.</em></h2>
+        <p>NOVA's folding geometry becomes part of the experience. Open it into its listening form or fold it down and continue the journey from there.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Headphone form">
+          <button type="button" data-fold-state="open" aria-pressed="true">Open</button>
+          <button type="button" data-fold-state="fold" aria-pressed="false">Fold</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="experience" class="stage stage--inspect" data-range-anchor="inspect">
+      <div class="stage-inner inspect-copy">
+        <p class="eyebrow">Direct inspection</p>
+        <h2>Look closer.</h2>
+        <p>Drag to move through a curated view of the product. NOVA stays art-directed while the camera responds to you.</p>
+        <div class="inspect-meta">
+          <span class="desktop-only">DRAG HORIZONTALLY</span>
+          <span class="mobile-only">SWIPE HORIZONTALLY</span>
+          <button type="button" id="inspectionReset">Reset view</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="discover" class="stage stage--resolution" data-range-anchor="resolution">
+      <div class="stage-inner resolution-copy">
+        <p class="eyebrow">NOVA / Spatial wireless headphones</p>
+        <h2>Hear beyond.</h2>
+        <p>Designed for immersive listening, adaptive awareness and a form that moves with you.</p>
+        <div class="feature-strip" aria-label="NOVA feature summary">
+          <span>Spatial Audio</span>
+          <span>Adaptive Noise Control</span>
+          <span>Transparency</span>
+          <span>Multipoint</span>
+          <span>Premium Construction</span>
+        </div>
+        <div class="resolution-actions">
+          <a class="button button--solid" href="#behind">Discover NOVA <span>↘</span></a>
+          <button type="button" class="button button--ghost" id="notifyConcept">Notify me</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="behind" class="stage stage--behind" data-range-anchor="behind">
+      <div class="behind-grid">
+        <div>
+          <p class="eyebrow">The experience / 01</p>
+          <h2>Behind NOVA.</h2>
+          <p class="behind-lede">A fictional product campaign built around a live animated 3D asset—not a pre-rendered product video.</p>
+        </div>
+        <div class="build-copy">
+          <p>The same product you just explored is driven at runtime through a skinned GLTF, authored camera choreography, real-time lighting and bounded direct manipulation.</p>
+          <div class="fact-grid">
+            <div><strong>36</strong><span>skeletal joints</span></div>
+            <div><strong>14</strong><span>skinned meshes</span></div>
+            <div><strong>3</strong><span>source clips</span></div>
+            <div><strong>42</strong><span>principal clip channels</span></div>
+          </div>
+          <div class="tech-strip">
+            <span>Three.js</span><span>GLTF runtime</span><span>Scroll choreography</span><span>Responsive 3D</span><span>Real-time lighting</span>
           </div>
         </div>
       </div>
-      <div class="closing-footer reveal">
-        <span>NOVA / INTERACTIVE PRODUCT STUDY</span>
-        <button id="replay" type="button">REPLAY EXPERIENCE ↗</button>
-      </div>
+      <footer class="project-footer">
+        <span>NOVA / INTERACTIVE PRODUCT EXPERIENCE</span>
+        <button type="button" id="replay">Replay experience ↗</button>
+      </footer>
     </section>
   </main>
 
-  <noscript><div class="noscript">NOVA requires JavaScript to render the interactive product model.</div></noscript>
+  <div class="model-status" aria-live="polite">
+    <i></i><span id="runtimeState">Loading NOVA</span>
+  </div>
+  <noscript><div class="noscript">NOVA's product story remains available, but JavaScript is required for the live 3D experience.</div></noscript>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
