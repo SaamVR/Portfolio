@@ -34,3 +34,11 @@ def test_section_local_choreography():
 def test_responsive_and_reduced_motion():
     assert "@media (max-width: 700px)" in css
     assert "prefers-reduced-motion" in css
+
+
+def test_animation_scrub_is_not_paused():
+    assert "action.paused = true" not in js
+    assert "mixer.setTime(targetTime)" in js
+
+def test_cable_is_removed_from_presentation():
+    assert "if(cable) cable.visible = false" in js
