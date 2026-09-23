@@ -31,3 +31,11 @@ def test_build_validates_v2_module_tree():
     for path in required:
         assert path in build
 
+def test_refinement_qa_captures_detail_passes_and_guards_copy_collision():
+    for value in [".06", ".16", ".18", ".22", ".26", ".76", ".83", ".945"]:
+        assert value in qa
+    assert "productCopyCollisionAudit" in qa
+    assert "headline/product collision" in qa
+    assert "390,height:844" in qa
+
+# Contract trigger: validates the QA workflow implementation on this lane head.
