@@ -57,4 +57,25 @@ for (const boundary of [.12,.28,.45,.58,.72,.86,.96]) {
   assert.ok(Math.abs(a.product.scale-b.product.scale) < .04);
   assert.ok(Math.hypot(...a.camera.target.map((v,i)=>v-b.camera.target[i])) < .08);
 }
+
+const vec=()=>({x:0,y:0,z:0});
+const fakeThree={MathUtils:{damp:(current,target)=>target}};
+const fakeCamera={position:vec(),fov:30,updateProjectionMatrix(){this.updated=true;},lookAt(...v){this.look=v;}};
+const fakePresentation={position:vec(),rotation:vec(),scale:{x:1,y:1,z:1}};
+let mixerTime=null;
+const fakeMixer={setTime(v){mixerTime=v;}};
+const fakeRenderer={toneMappingExposure:1};
+const light=()=>({intensity:0,color:{value:null,setHex(v){this.value=v;}},position:vec()});
+const lights={hemi:light(),key:light(),fill:light(),rim:light(),warm:light()};
+let environmentState=null;
+const environment={apply(v){environmentState=v;}};
+const adapter=createRenderAdapter({THREE:fakeThree,camera:fakeCamera,presentation:fakePresentation,mixer:fakeMixer,clipDuration:10,renderer:fakeRenderer,lights,environment,orientationX:-Math.PI/2});
+const rendered=sampleTimeline(.45,'desktop');
+adapter.apply(rendered,.016);
+assert.equal(mixerTime, rendered.product.pose*10);
+assert.deepEqual(fakeCamera.look, rendered.camera.target);
+assert.equal(lights.key.position.x, rendered.lighting.keyPosition[0]);
+assert.equal(fakeRenderer.toneMappingExposure, rendered.lighting.exposure);
+assert.equal(environmentState, rendered.environment);
+
 console.log('timeline_contract: PASS');
