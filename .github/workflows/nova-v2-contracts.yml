@@ -22,10 +22,7 @@ jobs:
       - name: Python contracts
         run: |
           python3 -m pip install -q pytest
-          python3 -m pytest nova/tests/test_contract.py -q
-          if [ -f nova/tests/test_v2_content_contract.py ]; then
-            python3 -m pytest nova/tests/test_v2_content_contract.py -q
-          fi
+          python3 -m pytest nova/tests -q
       - name: Runtime contracts
         run: |
           node nova/tests/timeline_contract.mjs
