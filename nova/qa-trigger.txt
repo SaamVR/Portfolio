@@ -1,1 +1,1 @@
-Run NOVA visual QA against exact GPT-runtime asset bundle.\n
+Run NOVA browser startup diagnostics and seed asset cache.\n
