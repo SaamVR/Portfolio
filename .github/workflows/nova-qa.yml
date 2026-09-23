@@ -70,10 +70,15 @@ jobs:
 
           async function scrollProgress(page,p){
             await page.evaluate(progress=>{
+              document.documentElement.style.scrollBehavior='auto';
               const max=document.documentElement.scrollHeight-innerHeight;
               scrollTo(0,Math.max(0,max*progress));
             },p);
-            await page.waitForTimeout(520);
+            await page.waitForFunction(target=>{
+              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+              return Math.abs(scrollY/max-target)<0.003;
+            },p,{timeout:3000});
+            await page.waitForTimeout(420);
           }
 
           async function captureJourney(viewport,prefix){
@@ -103,6 +108,7 @@ jobs:
                 };
               });
               if(state.model!=='ready') throw new Error(prefix+' model not ready at '+p);
+              if(Math.abs(state.progress-p)>.004) throw new Error(prefix+' scroll drift at '+p+' '+JSON.stringify(state));
               if(!state.activeContentVisible) throw new Error(prefix+' active stage content missing at '+p+' '+JSON.stringify(state));
               const file=prefix+'_p'+String(p).replace('.','')+'.png';
               await page.screenshot({path:'nova-qa/'+file});
