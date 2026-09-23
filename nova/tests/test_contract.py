@@ -64,14 +64,12 @@ def test_v2_integration_wires_product_interactions():
     assert "createModeController(" in js
 
 
-def test_v2_hotspot_earcups_use_animated_component_bounds():
-    assert "surfaceBounds('Circle.009_0'" in js
-    assert "surfaceBounds('Circle.012_0'" in js
+def test_v2_hotspot_earcups_use_skinned_surface_points():
+    assert "skinnedSurface('Circle.009_0',275" in js
+    assert "skinnedSurface('Circle.012_0',275" in js
     assert "offset:[-.12,-.12,0]" in js
 
 
-def test_v2_earcup_hotspots_use_component_bounds():
-    assert "surfaceBounds('Circle.012_0'" in js
-    assert "surfaceBounds('Circle.009_0'" in js
-    assert "skinnedSurface('Circle.012_0'" not in js
-    assert "skinnedSurface('Circle.009_0'" not in js
+def test_v2_earcup_hotspots_do_not_use_mesh_bounds_centers():
+    assert "surfaceBounds('Circle.012_0'" not in js
+    assert "surfaceBounds('Circle.009_0'" not in js
