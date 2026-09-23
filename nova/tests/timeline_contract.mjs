@@ -78,4 +78,16 @@ assert.equal(lights.key.position.x, rendered.lighting.keyPosition[0]);
 assert.equal(fakeRenderer.toneMappingExposure, rendered.lighting.exposure);
 assert.equal(environmentState, rendered.environment);
 
+
+const spatialDesktop=sampleTimeline(.36,'desktop');
+assert.ok(spatialDesktop.camera.target[1] < -.40, 'Spatial camera should frame product above centered copy');
+const adaptiveDesktop=sampleTimeline(.52,'desktop');
+assert.ok(adaptiveDesktop.camera.target[0] > .38, 'Adaptive camera should frame product left of right-aligned copy');
+const resolutionDesktop=sampleTimeline(.90,'desktop');
+assert.ok(resolutionDesktop.camera.target[0] < -.55, 'Resolution camera should frame product right of headline');
+const spatialMobile=sampleTimeline(.36,'mobile');
+assert.ok(spatialMobile.camera.target[1] < -.62, 'Mobile Spatial should keep product above the copy');
+const behindMobile=sampleTimeline(.985,'mobile');
+assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the product secondary');
+
 console.log('timeline_contract: PASS');
