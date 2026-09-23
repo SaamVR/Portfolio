@@ -87,3 +87,14 @@ def test_r10_visual_qa_uses_cinematic_progress_not_full_document_progress():
     assert "document.documentElement.scrollHeight-innerHeight" not in qa
 
 # R10 GREEN trigger after cinematic-progress QA implementation.
+
+def test_post_deploy_and_focused_hotspot_qa_use_cinematic_progress():
+    for workflow in [public_qa, hotspot_qa]:
+        assert "cinematicMax" in workflow
+        assert "behind.offsetTop+behind.offsetHeight-innerHeight" in workflow
+        assert "document.documentElement.scrollHeight-innerHeight" not in workflow
+
+def test_mobile_hotspot_expansion_is_visually_verified():
+    assert "mobile_hotspot_detail.png" in qa
+    assert "aria-expanded" in qa
+    assert "expanded hotspot label" in qa
