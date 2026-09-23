@@ -1,0 +1,69 @@
+name: NOVA Production Bundle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-build.yml"
+      - "nova/site/**"
+      - "nova/build-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore exact GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+
+      - name: Vendor Three.js runtime
+        run: |
+          set -euo pipefail
+          mkdir -p nova/site/vendor/addons/{loaders,utils}
+          mkdir -p /tmp/nova-vendor && cd /tmp/nova-vendor
+          npm init -y >/dev/null 2>&1
+          npm install three@0.180.0 --no-audit --no-fund
+          cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
+
+      - name: Validate production bundle
+        run: |
+          set -euo pipefail
+          test -f nova/site/index.html
+          test -f nova/site/styles.css
+          test -f nova/site/app.js
+          test -f nova/site/assets/headphones-web.gltf
+          test -f nova/site/vendor/three.module.js
+          test -f nova/site/vendor/three.core.js
+          test -f nova/site/vendor/addons/loaders/GLTFLoader.js
+          test -f nova/site/vendor/addons/utils/BufferGeometryUtils.js
+          python3 - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("nova/site")
+          g=json.loads((root/"assets/headphones-web.gltf").read_text())
+          assert len(g["meshes"]) == 14
+          assert len(g["skins"][0]["joints"]) == 36
+          assert len(g["animations"]) == 3
+          assert all((root/"assets"/img["uri"]).exists() for img in g["images"])
+          print("NOVA production bundle verified")
+          PY
+          du -sh nova/site
+          find nova/site -maxdepth 3 -type f | sort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nova-production-site
+          path: nova/site
+          retention-days: 30
