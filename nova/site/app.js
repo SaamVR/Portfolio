@@ -9,8 +9,12 @@ const railLabel = document.querySelector('#railLabel');
 const railProgress = document.querySelector('#railProgress');
 const timelineNeedle = document.querySelector('#timelineNeedle');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const orientationMode = new URLSearchParams(location.search).get('orientation') || 'negx';
+const query = new URLSearchParams(location.search);
+const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
+const poseOverrideRaw = query.get('pose');
+const poseOverride = poseOverrideRaw === null ? null : clamp01(Number(poseOverrideRaw));
+const showCable = query.get('cable') === '1';
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 let activeScene = 'hero';
 let activeProgress = 0;
@@ -169,6 +173,8 @@ function loadModel(){
   const loader = new GLTFLoader();
   loader.load('./assets/headphones-web.gltf', gltf => {
     model = gltf.scene;
+    const cableMesh = model.getObjectByName('Circle.013_0');
+    if(cableMesh) cableMesh.visible = showCable;
     applyTextureQuality(model);
     centerGroup.add(model);
 
@@ -227,7 +233,7 @@ function render(){
   const p = reducedMotion ? .45 : activeProgress;
   const cam = sampleCamera(activeScene, p);
   const lighting = sampleLighting(activeScene, p);
-  const targetTime = sampleAnimation(activeScene, p) * clipDuration;
+  const targetTime = (poseOverride ?? sampleAnimation(activeScene, p)) * clipDuration;
   if(modelReady && mixer) mixer.setTime(targetTime);
   if(skeletonHelper){
     const mechanismPulse = activeScene === 'mechanism' ? Math.max(0, 1 - Math.abs(p - .5) * 1.7) : 0;
