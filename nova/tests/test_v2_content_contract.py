@@ -117,3 +117,32 @@ def test_behind_supporting_copy_waits_for_transition_settle():
     compact = css.replace(" ", "").replace("\n", "")
     assert 'body[data-range="behind"][data-settled="false"].behind-transition.behind-lede' in compact
     assert 'body[data-range="behind"][data-settled="false"].behind-transition.button--outline' in compact
+
+
+def test_r11_readability_system_has_minimum_copy_and_utility_sizes():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert "--body-copy:16px" in compact
+    assert "--body-copy-mobile:14px" in compact
+    assert "--utility-copy:10px" in compact
+    assert "--utility-copy-mobile:10px" in compact
+    assert ".copy>p:not(.eyebrow),.resolution-copy>p:not(.eyebrow)" in compact
+    assert "font-size:var(--body-copy)" in compact
+    assert "color:#565149" in compact
+    assert ".stage--sound.copy>p" in compact
+    assert "color:#c6beb2" in compact
+
+def test_r11_mobile_typography_rebalances_headline_to_supporting_copy():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert "font-size:var(--body-copy-mobile)" in compact
+    assert ".copyh2,.resolution-copyh2,.behind-gridh2{font-size:clamp(46px,13.5vw,70px)" in compact
+
+def test_v1_archive_is_packaged_under_main_site():
+    v1 = ROOT / "v1"
+    assert (v1 / "index.html").exists()
+    assert (v1 / "styles.css").exists()
+    assert (v1 / "app.js").exists()
+    v1_html=(v1/"index.html").read_text()
+    v1_js=(v1/"app.js").read_text()
+    assert "NOVA — Interactive 3D Product Film" in v1_html
+    assert '"three":"../vendor/three.module.js"' in v1_html
+    assert "../assets/headphones-web.gltf" in v1_js
