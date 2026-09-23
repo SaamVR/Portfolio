@@ -23,22 +23,6 @@ body[data-theme="dark"] .masthead{color:#eee7dc}.experience-progress{position:fi
 body[data-stage-gating="true"] .stage>*{opacity:0;pointer-events:none}
 body[data-stage-gating="true"] .stage.is-active>*{opacity:1;pointer-events:auto;transition:none}
 
-body[data-transition="to-dark"][data-range="design"] .stage--design .copy,
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .resolution-copy{color:#eee8de}
-body[data-transition="to-dark"][data-range="design"] .stage--design .copy>p:not(.eyebrow),
-body[data-transition="to-dark"][data-range="design"] .stage--design .interaction-note,
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .resolution-copy>p:not(.eyebrow),
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .eyebrow{color:#b9b0a5!important}
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .feature-strip span{color:#eee8de;border-color:rgba(238,232,222,.28)}
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .button--solid{background:#eee8de;color:#11100f;border-color:#eee8de}
-body[data-transition="to-dark"][data-range="resolution"] .stage--resolution .button--ghost{color:#eee8de;border-color:rgba(238,232,222,.32)}
-body[data-transition="to-light"][data-range="adaptive"] .stage--control .copy{color:#11100f}
-body[data-transition="to-light"][data-range="adaptive"] .stage--control .copy>p:not(.eyebrow),
-body[data-transition="to-light"][data-range="adaptive"] .stage--control .eyebrow{color:#6e675e!important}
-body[data-transition] .copy,body[data-transition] .resolution-copy,
-body[data-transition] .copy>p,body[data-transition] .resolution-copy>p,
-body[data-transition] .feature-strip span{transition:color .34s ease,border-color .34s ease,background .34s ease}
-
 .sound-field,.control-field{pointer-events:none!important}
 .eyebrow{margin:0 0 22px;font:700 8px/1 var(--mono);letter-spacing:.17em;text-transform:uppercase;color:#766f65}.stage--sound .eyebrow,.stage--control .eyebrow,.stage--behind .eyebrow{color:#a69d90}
 .copy{width:min(560px,42vw)}.copy h2,.resolution-copy h2,.behind-grid h2{margin:0;font:800 clamp(62px,7vw,118px)/.82 var(--sans);letter-spacing:-.075em}.copy h2 em,.behind-grid h2 em{font-family:var(--serif);font-weight:400}.copy>p:not(.eyebrow),.resolution-copy>p:not(.eyebrow),.build-copy>p{margin:28px 0 0;max-width:510px;font:400 13px/1.65 var(--sans);color:#6d675f}.stage--sound .copy>p,.stage--control .copy>p{color:#aaa196}.copy--left{margin-right:auto;margin-left:6vw}.copy--right{margin-left:auto;margin-right:7vw}.copy--center{margin:auto;text-align:center;width:min(760px,78vw)}.copy--center>p{margin-left:auto!important;margin-right:auto!important}.copy--compact{width:min(500px,40vw)}
