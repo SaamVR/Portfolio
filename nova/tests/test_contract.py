@@ -78,3 +78,8 @@ def test_v2_earcup_hotspots_do_not_use_mesh_bounds_centers():
 def test_v2_hotspot_resolver_handles_sanitized_gltf_names():
     assert "name.replaceAll('.', '')" in js
     assert "object?.children?.find(child=>child.isSkinnedMesh)" in js
+
+
+def test_v2_earcup_hotspots_drop_legacy_screen_offsets():
+    assert "screenOffset:[.018,.22]" not in js
+    assert "screenOffset:[-.038,.22]" not in js
