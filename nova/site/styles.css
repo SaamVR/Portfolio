@@ -321,3 +321,9 @@ body[data-theme="dark"] .product-nav{color:#c0b8ac}
   .case-index{font-size:10px}
   .project-footer__actions{gap:12px;flex-direction:column;align-items:flex-end}
 }
+
+
+/* R11 copy/product clearance after increasing readable type sizes. */
+@media (min-width:1001px){
+  .stage--form .copy--left{margin-left:3.5vw}
+}
