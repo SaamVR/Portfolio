@@ -148,3 +148,7 @@ for (const [p,minOffset,label] of [
   assert.ok(lateralOffset >= minOffset, `${label} must preserve headline separation while staying large; lateral offset=${lateralOffset}`);
 }
 
+const designMobileClearance=sampleTimeline(.20,'mobile');
+const designMobileLateralOffset=designMobileClearance.product.position[0]-designMobileClearance.camera.target[0];
+assert.ok(designMobileLateralOffset <= .07, `Mobile Design close pass must recenter enough to keep real hotspot targets on-screen; lateral offset=${designMobileLateralOffset}`);
+

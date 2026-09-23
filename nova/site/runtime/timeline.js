@@ -113,10 +113,10 @@ function applyCompositionInfluences(state,p){
 
 function viewportAdjusted(state, viewportClass){
   if(viewportClass === 'mobile'){
-    state.camera.position[0] *= .30;
-    state.camera.target[0] *= .30;
+    state.camera.position[0] *= .24;
+    state.camera.target[0] *= .12;
     state.camera.target[1] -= .14;
-    state.product.position[0] *= .22;
+    state.product.position[0] *= .12;
     state.product.position[1] += .30;
     state.product.yaw *= .62;
     state.product.pitch *= .58;
