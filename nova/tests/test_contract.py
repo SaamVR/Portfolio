@@ -36,3 +36,13 @@ def test_cable_is_removed_from_presentation():
 def test_v2_runtime_contract_modules_exist():
     assert (ROOT / "runtime" / "timeline.js").exists()
     assert (ROOT / "runtime" / "composer.js").exists()
+
+
+def test_v2_app_uses_global_runtime_not_scene_switches():
+    assert './runtime/timeline.js' in js
+    assert './runtime/composer.js' in js
+    assert './runtime/render-adapter.js' in js
+    assert 'resolveScene(' not in js
+    assert 'sceneProgress(' not in js
+    assert 'sampleCamera(' not in js
+    assert 'sampleAnimation(' not in js
