@@ -42,3 +42,12 @@ def test_animation_scrub_is_not_paused():
 
 def test_cable_is_removed_from_presentation():
     assert "if(cable) cable.visible = false" in js
+
+
+def test_pose_ranges_follow_visual_scan():
+    assert "case 'hero': return lerp(0.24, 0.32, e);" in js
+    assert "case 'form': return lerp(0.16, 0.24, e);" in js
+    assert "case 'mechanism': return lerp(0.32, 0.48, e);" in js
+    assert "case 'choreography': return lerp(0.64, 0.80, e);" in js
+    assert "case 'interaction': return lerp(0.70, 0.74, e);" in js
+    assert "case 'closing': return lerp(0.16, 0.08, e);" in js
