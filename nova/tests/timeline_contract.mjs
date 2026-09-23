@@ -104,4 +104,7 @@ assert.equal(sampleTimeline(.279,'desktop').ui.transition,'to-dark','Design shou
 assert.equal(sampleTimeline(.57,'desktop').ui.transition,'to-light','Adaptive should darken copy before Form');
 assert.equal(sampleTimeline(.959,'desktop').ui.transition,'to-dark','Resolution should invert copy before Behind NOVA');
 
+const behindTheme=sampleTimeline(.985,'desktop');
+assert.equal(behindTheme.ui.dark,true,'behind chapter should use dark navigation theme');
+
 console.log('timeline_contract: PASS');
