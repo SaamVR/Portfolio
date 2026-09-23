@@ -82,15 +82,24 @@ jobs:
             const captures=[];
             for(const p of progressPoints){
               await scrollProgress(page,p);
-              const state=await page.evaluate(()=>({
-                range:document.body.dataset.range,
-                rangeProgress:document.body.dataset.rangeProgress,
-                model:document.body.dataset.modelState,
-                settled:document.body.dataset.settled,
-                viewport:{width:innerWidth,height:innerHeight},
-                progress:scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight)
-              }));
+              const state=await page.evaluate(()=>{
+                const range=document.body.dataset.range;
+                const anchor=document.querySelector('[data-range-anchor="'+range+'"]');
+                const content=anchor?.querySelector('.stage-inner,.behind-grid');
+                const rect=content?.getBoundingClientRect();
+                const style=content?getComputedStyle(content):null;
+                return {
+                  range,
+                  rangeProgress:document.body.dataset.rangeProgress,
+                  model:document.body.dataset.modelState,
+                  settled:document.body.dataset.settled,
+                  viewport:{width:innerWidth,height:innerHeight},
+                  progress:scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight),
+                  activeContentVisible:Boolean(rect && rect.bottom>0 && rect.top<innerHeight && Number(style.opacity)>.5)
+                };
+              });
               if(state.model!=='ready') throw new Error(prefix+' model not ready at '+p);
+              if(!state.activeContentVisible) throw new Error(prefix+' active stage content missing at '+p+' '+JSON.stringify(state));
               const file=prefix+'_p'+String(p).replace('.','')+'.png';
               await page.screenshot({path:'nova-qa/'+file});
               captures.push({p,file,state});
