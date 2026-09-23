@@ -16,6 +16,8 @@ const progressEl = document.querySelector('#experienceProgress');
 const hotspotElements = Object.fromEntries(
   [...document.querySelectorAll('[data-hotspot]')].map(el => [el.dataset.hotspot, el])
 );
+const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
+let publishedRange=null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const query = new URLSearchParams(location.search);
 const orientationMode = query.get('orientation') || 'negx';
@@ -245,6 +247,11 @@ function publishState(state){
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
   document.body.dataset.settled=String(Boolean(state.ui.settled));
   document.body.dataset.activeScene=state.range;
+  document.body.dataset.stageGating='true';
+  if(publishedRange!==state.range){
+    for(const stage of rangeStages) stage.classList.toggle('is-active',stage.dataset.rangeAnchor===state.range);
+    publishedRange=state.range;
+  }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
   state.interaction={
     listeningMode,
