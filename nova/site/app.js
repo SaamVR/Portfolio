@@ -138,9 +138,16 @@ function buildHotspotController(size){
     object:model?.getObjectByName(name) || null,
     point:fallbackPoint
   });
-  const cushion=bone('Bone_R.007_Armature',[hx*.60,-hy*.10,hz*.28]);
+  const skinnedSurface=(name,vertexIndex,fallbackPoint)=>{
+    const root=model?.getObjectByName(name) || null;
+    let mesh=root?.isSkinnedMesh ? root : null;
+    root?.traverse?.(obj=>{ if(!mesh && obj.isSkinnedMesh) mesh=obj; });
+    return {mesh,vertexIndex,point:fallbackPoint};
+  };
+
+  const cushion=skinnedSurface('Circle.010_0',21,[hx*.60,-hy*.10,hz*.28]);
   const headband=bone('Bone_R.009_Armature',[0,hy*.70,0]);
-  const controls=bone('Bone_L.007_Armature',[-hx*.62,-hy*.06,hz*.22]);
+  const controls=skinnedSurface('Plane.021_0',307,[-hx*.62,-hy*.06,hz*.22]);
 
   hotspotController=createHotspotController({
     THREE,
@@ -149,7 +156,6 @@ function buildHotspotController(size){
     anchors:{
       cushion:{
         ...cushion,
-        offset:[0,0,0],
         cameraOffset:[.12,-.02,-.16],
         targetOffset:[.10,-.03,0]
       },
@@ -161,7 +167,6 @@ function buildHotspotController(size){
       },
       controls:{
         ...controls,
-        offset:[0,0,0],
         cameraOffset:[-.12,-.01,-.16],
         targetOffset:[-.10,-.02,0]
       }
