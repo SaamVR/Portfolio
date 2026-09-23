@@ -71,3 +71,12 @@ def test_chapter_background_is_state_driven():
     assert 'body::before{content:"";position:fixed' in compact
     for name in ["hero","design","spatial","adaptive","form","inspect","resolution","behind"]:
         assert f'body[data-range="{name}"]::before' in compact
+
+
+def test_hotspot_projection_uses_viewport_origin():
+    compact = css.replace(" ", "").replace("\n", "")
+    hotspot_rule = compact.split(".hotspot{", 1)[1].split("}", 1)[0]
+    assert "left:0" in hotspot_rule
+    assert "top:0" in hotspot_rule
+    assert "left:50%" not in hotspot_rule
+    assert "top:50%" not in hotspot_rule
