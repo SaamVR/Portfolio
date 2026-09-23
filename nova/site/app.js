@@ -170,10 +170,12 @@ function loadModel(){
       mixer = new THREE.AnimationMixer(model);
       const action = mixer.clipAction(clip);
       action.play();
-      action.paused = true;
       mixer.setTime(clipDuration * HERO_ANIMATION_PROGRESS);
       model.updateMatrixWorld(true);
     }
+
+    const cable = model.getObjectByName('Circle.013_0');
+    if(cable) cable.visible = false;
 
     primaryProductBounds = computePrimaryBounds(model);
     const size = primaryProductBounds.getSize(new THREE.Vector3());
