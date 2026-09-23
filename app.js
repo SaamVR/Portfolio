@@ -6,6 +6,11 @@
   const CRM_SETTINGS_KEY = "leadflow-crm-settings";
   let currentLead = null;
   let running = false;
+  let workflowStartedAt = 0;
+  let eventEntries = [];
+  let lastCrmEvent = null;
+  let blueprintSteps = ["Facebook Lead","Validate","AI Qualification","HubSpot","Follow-up","Sales Alert"];
+  let selectedBpIndex = 0;
 
   function applyTheme(theme){
     const next = theme === "light" ? "light" : "dark";
@@ -173,6 +178,37 @@
 
   const delay = ms => new Promise(r=>setTimeout(r,ms));
 
+  function eventTime(){
+    if(!workflowStartedAt) return "0.00s";
+    return ((performance.now()-workflowStartedAt)/1000).toFixed(2)+"s";
+  }
+
+  function renderEventLog(){
+    const log=$("#eventLog");
+    if(!log) return;
+    if(!eventEntries.length){
+      log.innerHTML='<div class="event-empty">Run the workflow to inspect live events.</div>';
+      $("#eventCount").textContent="0 events";
+      return;
+    }
+    log.innerHTML=eventEntries.map(e=>
+      '<div class="event-row '+e.state+'"><time>'+escapeHtml(e.time)+'</time><code>'+escapeHtml(e.code)+'</code><span>'+escapeHtml(e.message)+'</span></div>'
+    ).join("");
+    $("#eventCount").textContent=eventEntries.length+" event"+(eventEntries.length===1?"":"s");
+    log.scrollTop=log.scrollHeight;
+  }
+
+  function logEvent(code,message,state="ok"){
+    eventEntries.push({time:eventTime(),code,message,state});
+    renderEventLog();
+  }
+
+  function resetEventLog(data){
+    eventEntries=[];
+    renderEventLog();
+    logEvent("webhook.received",data.name+" · "+data.company,"live");
+  }
+
   async function runStage(stage, index, reduced){
     const duration = reduced ? 100 : stage.duration;
     const previous = index===0 ? 0 : stage.start;
@@ -181,6 +217,7 @@
     $("#execStatus").textContent=`${String(index+1).padStart(2,"0")} / 06`;
     $("#runAutomation").innerHTML=`Processing <span>${index+1}/6</span>`;
     $("#execMessage").textContent=stage.messages[0];
+    if(stage.eventStart) logEvent(stage.eventStart,stage.messages[0],"live");
 
     const bar=$("#execProgressBar");
     const pulse=$("#execProgressPulse");
@@ -198,6 +235,7 @@
     await delay(duration/messageCount);
     setStep(index,"done",stage.doneLabel);
     $("#execMessage").textContent=stage.doneMessage;
+    if(stage.eventDone) logEvent(stage.eventDone,stage.doneMessage,stage.eventState || "ok");
     await delay(reduced ? 20 : 110);
   }
 
@@ -212,22 +250,24 @@
     $("#execStatus").textContent="STARTING";
     $("#runAutomation").disabled=true;
     $("#runAutomation").innerHTML='Starting <span>↯</span>';
+    workflowStartedAt=performance.now();
+    resetEventLog(data);
 
     const duplicate = leads.find(l => l.name.toLowerCase()===data.name.toLowerCase() && l.company.toLowerCase()===data.company.toLowerCase());
     const qual = scoreLead(data);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const startedAt=performance.now();
+    const startedAt=workflowStartedAt;
     const timerId=setInterval(()=>{
       $("#execTimer").textContent=`${((performance.now()-startedAt)/1000).toFixed(1)}s`;
     },100);
 
     const stages = [
-      {duration:420,start:0,end:8,activeLabel:"Checking",doneLabel:"Valid",doneMessage:"Payload validated and normalized",messages:["Parsing lead payload…","Normalizing required fields…","Input schema validated"]},
-      {duration:760,start:8,end:22,activeLabel:"Searching",doneLabel:duplicate?"Matched":"Clear",doneMessage:duplicate?"Existing CRM contact matched":"No duplicate CRM record found",messages:["Querying CRM contacts…","Comparing name + company…",duplicate?"Existing record detected…":"No matching identity found…"]},
-      {duration:1680,start:22,end:52,activeLabel:"Reasoning",doneLabel:"Scored",doneMessage:`AI qualification complete · ${qual.score}/100`,messages:["Reading intent signals…","Evaluating budget fit…","Weighing timeline urgency…","Scoring purchase intent…"]},
-      {duration:920,start:52,end:69,activeLabel:"Syncing",doneLabel:"Synced",doneMessage:duplicate?"CRM record updated":"New CRM lead created",messages:["Preparing CRM payload…",duplicate?"Updating existing record…":"Creating contact + lead record…","Confirming CRM sync…"]},
-      {duration:1260,start:69,end:91,activeLabel:"Writing",doneLabel:"Drafted",doneMessage:"Personalized follow-up ready",messages:["Generating reply context…","Personalizing next step…","Polishing sales-ready message…"]},
-      {duration:640,start:91,end:100,activeLabel:"Routing",doneLabel:"Sent",doneMessage:qual.status==="hot"?"Hot lead routed to sales":"Lead routed to the correct queue",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing priority sales alert…":"Selecting follow-up queue…","Dispatching notification…"]}
+      {duration:420,start:0,end:8,activeLabel:"Checking",doneLabel:"Valid",doneMessage:"Payload validated and normalized",eventStart:"validation.parse",eventDone:"validation.ok",messages:["Parsing lead payload…","Normalizing required fields…","Input schema validated"]},
+      {duration:760,start:8,end:22,activeLabel:"Searching",doneLabel:duplicate?"Matched":"Clear",doneMessage:duplicate?"Existing CRM contact matched":"No duplicate CRM record found",eventStart:"duplicate.search",eventDone:duplicate?"duplicate.match":"duplicate.clear",eventState:duplicate?"info":"ok",messages:["Querying CRM contacts…","Comparing name + company…",duplicate?"Existing record detected…":"No matching identity found…"]},
+      {duration:1680,start:22,end:52,activeLabel:"Reasoning",doneLabel:"Scored",doneMessage:`AI qualification complete · ${qual.score}/100`,eventStart:"qualification.analyze",eventDone:"qualification.score",eventState:qual.status==="hot"?"hot":"ok",messages:["Reading intent signals…","Evaluating budget fit…","Weighing timeline urgency…","Scoring purchase intent…"]},
+      {duration:920,start:52,end:69,activeLabel:"Syncing",doneLabel:"Synced",doneMessage:duplicate?"CRM record updated":"New CRM lead created",eventStart:"crm.upsert",eventDone:duplicate?"crm.updated":"crm.created",messages:["Preparing CRM payload…",duplicate?"Updating existing record…":"Creating contact + lead record…","Confirming CRM sync…"]},
+      {duration:1260,start:69,end:91,activeLabel:"Writing",doneLabel:"Drafted",doneMessage:"Personalized follow-up ready",eventStart:"followup.compose",eventDone:"followup.ready",messages:["Generating reply context…","Personalizing next step…","Polishing sales-ready message…"]},
+      {duration:640,start:91,end:100,activeLabel:"Routing",doneLabel:"Sent",doneMessage:qual.status==="hot"?"Hot lead routed to sales":"Lead routed to the correct queue",eventStart:"routing.evaluate",eventDone:qual.status==="hot"?"sales.alert":"routing.complete",eventState:qual.status==="hot"?"hot":"ok",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing priority sales alert…":"Selecting follow-up queue…","Dispatching notification…"]}
     ];
 
     try{
@@ -252,8 +292,13 @@
     else leads.unshift(lead);
     save();
     currentLead=lead;
+    lastCrmEvent={id:lead.id,isNew:!duplicate,at:Date.now()};
     showResult(lead);
     renderCRM();
+    renderAnalytics();
+    renderAutomationHistory();
+    animateCrmReaction(lead);
+    logEvent("workflow.complete",lead.status==="hot"?"Qualified lead delivered to sales":"Lead processing complete",lead.status==="hot"?"hot":"ok");
     $("#execProgressBar").style.width="100%";
     $("#execProgressPulse").style.left="calc(100% - 5px)";
     $("#execMessage").textContent=`Workflow complete · ${lead.status==="hot"?"Sales notified":"Lead routed"}`;
@@ -342,17 +387,73 @@
     steps.push("Sales Alert");
     return [...new Set(steps)].slice(0,7);
   }
+
+  function syncBlueprintEditor(){
+    const input=$("#bpNodeLabel");
+    if(!blueprintSteps.length){ input.value=""; return; }
+    selectedBpIndex=Math.max(0,Math.min(selectedBpIndex,blueprintSteps.length-1));
+    input.value=blueprintSteps[selectedBpIndex];
+    $("#bpEditorHint").textContent=`Step ${selectedBpIndex+1} of ${blueprintSteps.length} · click any node to select`;
+    $("#bpMoveLeft").disabled=selectedBpIndex===0;
+    $("#bpMoveRight").disabled=selectedBpIndex===blueprintSteps.length-1;
+    $("#bpRemove").disabled=blueprintSteps.length<=2;
+  }
+
+  function renderBlueprint(animate=false){
+    const container=$("#blueprintFlow");
+    container.classList.remove("bp-animate");
+    container.innerHTML=blueprintSteps.map((s,i)=>
+      `<button type="button" class="bp-node${i===selectedBpIndex?" selected":""}" data-bp-index="${i}" style="--bp-i:${i}">${escapeHtml(s)}</button>${i<blueprintSteps.length-1?`<i style="--bp-i:${i}">→</i>`:""}`
+    ).join("");
+    $$(".bp-node",container).forEach(btn=>btn.addEventListener("click",()=>{
+      selectedBpIndex=Number(btn.dataset.bpIndex);
+      renderBlueprint(false);
+    }));
+    syncBlueprintEditor();
+    if(animate){
+      requestAnimationFrame(()=>container.classList.add("bp-animate"));
+      setTimeout(()=>container.classList.remove("bp-animate"),1500);
+    }
+  }
+
   $("#generateBlueprint").addEventListener("click",()=>{
     const text=$("#processText").value.trim();
     if(!text){$("#blueprintConfidence").textContent="Add a process first";return}
-    const flow=generateBlueprint(text);
-    const container=$("#blueprintFlow");
-    container.classList.remove("bp-animate");
-    container.innerHTML=flow.map((s,i)=>`<span style="--bp-i:${i}">${escapeHtml(s)}</span>${i<flow.length-1?`<i style="--bp-i:${i}">→</i>`:""}`).join("");
-    requestAnimationFrame(()=>container.classList.add("bp-animate"));
+    blueprintSteps=generateBlueprint(text);
+    selectedBpIndex=0;
+    renderBlueprint(true);
     $("#blueprintConfidence").textContent="Workflow generated";
-    $("#blueprintNote").textContent="Suggested sequence based on the systems and manual handoffs mentioned in your description.";
-    setTimeout(()=>container.classList.remove("bp-animate"),1400);
+    $("#blueprintNote").textContent="Select a step to rename, move, add or remove it. The workflow remains fully interactive after generation.";
+  });
+
+  $("#bpRename").addEventListener("click",()=>{
+    const value=$("#bpNodeLabel").value.trim();
+    if(!value) return;
+    blueprintSteps[selectedBpIndex]=value.slice(0,32);
+    renderBlueprint(false);
+    $("#blueprintConfidence").textContent="Step updated";
+  });
+  $("#bpNodeLabel").addEventListener("keydown",e=>{if(e.key==="Enter") $("#bpRename").click()});
+  $("#bpMoveLeft").addEventListener("click",()=>{
+    if(selectedBpIndex<=0) return;
+    [blueprintSteps[selectedBpIndex-1],blueprintSteps[selectedBpIndex]]=[blueprintSteps[selectedBpIndex],blueprintSteps[selectedBpIndex-1]];
+    selectedBpIndex--; renderBlueprint(true);
+  });
+  $("#bpMoveRight").addEventListener("click",()=>{
+    if(selectedBpIndex>=blueprintSteps.length-1) return;
+    [blueprintSteps[selectedBpIndex+1],blueprintSteps[selectedBpIndex]]=[blueprintSteps[selectedBpIndex],blueprintSteps[selectedBpIndex+1]];
+    selectedBpIndex++; renderBlueprint(true);
+  });
+  $("#bpAdd").addEventListener("click",()=>{
+    blueprintSteps.splice(selectedBpIndex+1,0,"New Step");
+    selectedBpIndex++; renderBlueprint(true);
+    setTimeout(()=>{$("#bpNodeLabel").select()},80);
+  });
+  $("#bpRemove").addEventListener("click",()=>{
+    if(blueprintSteps.length<=2) return;
+    blueprintSteps.splice(selectedBpIndex,1);
+    selectedBpIndex=Math.min(selectedBpIndex,blueprintSteps.length-1);
+    renderBlueprint(true);
   });
 
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
@@ -366,7 +467,7 @@
       return match&&status;
     });
     $("#crmRows").innerHTML=filtered.map(l=>`
-      <tr data-id="${escapeHtml(l.id)}">
+      <tr data-id="${escapeHtml(l.id)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}">
         <td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.company)}</td>
         <td><span class="crm-score">${l.score}</span></td>
         <td><span class="crm-status ${l.status}">${l.status==="hot"?"HOT":l.status==="review"?"REVIEW":"NURTURE"}</span></td>
@@ -378,6 +479,29 @@
     $("#crmReview").textContent=leads.filter(l=>l.status==="review").length;
     $("#crmNurture").textContent=leads.filter(l=>l.status==="nurture").length;
     $$("#crmRows tr").forEach(row=>row.addEventListener("click",()=>openLead(row.dataset.id)));
+  }
+
+  function animateCrmReaction(lead){
+    const targets=[$("#crmTotal"), lead.status==="hot"?$("#crmHot"):lead.status==="review"?$("#crmReview"):$("#crmNurture")];
+    targets.forEach(el=>{
+      if(!el) return;
+      el.classList.remove("metric-pop");
+      requestAnimationFrame(()=>el.classList.add("metric-pop"));
+      setTimeout(()=>el.classList.remove("metric-pop"),900);
+    });
+    const row=$(`#crmRows tr[data-id="${CSS.escape(lead.id)}"]`);
+    if(row){
+      row.classList.add("crm-new-row");
+      if($("#crmModal").classList.contains("open")) row.scrollIntoView({block:"nearest",behavior:"smooth"});
+    }
+  }
+
+  function animateAnalyticsReaction(){
+    const summary=$(".analytics-summary");
+    if(!summary) return;
+    summary.classList.remove("analytics-react");
+    requestAnimationFrame(()=>summary.classList.add("analytics-react"));
+    setTimeout(()=>summary.classList.remove("analytics-react"),1100);
   }
 
   function renderAnalytics(){
@@ -431,9 +555,18 @@
     $$(".crm-view").forEach(panel=>panel.classList.toggle("active",panel.dataset.crmPanel===next));
     $("#crmViewTitle").textContent=crmTitles[next];
     $("#leadDrawer").classList.remove("open");
-    if(next==="analytics") renderAnalytics();
+    if(next==="analytics"){
+      renderAnalytics();
+      if(lastCrmEvent && Date.now()-lastCrmEvent.at<30000) setTimeout(animateAnalyticsReaction,80);
+    }
     if(next==="automations") renderAutomationHistory();
-    if(next==="leads") setTimeout(()=>$("#crmSearch").focus(),60);
+    if(next==="leads"){
+      setTimeout(()=>$("#crmSearch").focus(),60);
+      if(lastCrmEvent){
+        const lead=leads.find(l=>l.id===lastCrmEvent.id);
+        if(lead) setTimeout(()=>animateCrmReaction(lead),100);
+      }
+    }
   }
 
   $$(".crm-nav-btn").forEach(btn=>btn.addEventListener("click",()=>switchCrmView(btn.dataset.crmView)));
@@ -555,5 +688,7 @@
     revealTargets.forEach(el=>observer.observe(el));
   }
 
+  renderBlueprint(false);
+  renderEventLog();
   renderCRM();
 })();

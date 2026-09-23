@@ -181,6 +181,12 @@
               <div class="exec-step" data-step="4"><span class="step-state">5</span><div><b>Follow-up Generated</b><small>Draft personalized next-step message</small></div><em>Waiting</em></div>
               <div class="exec-step" data-step="5"><span class="step-state">6</span><div><b>Sales Notification</b><small>Route based on lead temperature</small></div><em>Waiting</em></div>
             </div>
+            <div class="event-console">
+              <div class="event-console-head"><span>EVENT STREAM</span><b id="eventCount">0 events</b></div>
+              <div class="event-log" id="eventLog" aria-live="polite">
+                <div class="event-empty">Run the workflow to inspect live events.</div>
+              </div>
+            </div>
           </div>
 
           <aside class="result-card" id="resultCard">
@@ -244,8 +250,17 @@
           </div>
           <div class="blueprint-output">
             <div class="bp-head"><span>Suggested automation</span><small id="blueprintConfidence">Ready</small></div>
-            <div id="blueprintFlow" class="blueprint-flow">
-              <span>Facebook Lead</span><i>→</i><span>Validate</span><i>→</i><span>AI Qualification</span><i>→</i><span>HubSpot</span><i>→</i><span>Follow-up</span><i>→</i><span>Sales Alert</span>
+            <div id="blueprintFlow" class="blueprint-flow" aria-label="Editable automation workflow"></div>
+            <div class="blueprint-editor">
+              <div class="blueprint-editor-head"><span>EDIT WORKFLOW</span><small id="bpEditorHint">Select a step to configure it</small></div>
+              <div class="blueprint-editor-controls">
+                <input id="bpNodeLabel" type="text" aria-label="Selected workflow step name" placeholder="Step name" />
+                <button id="bpRename" type="button">Apply</button>
+                <button id="bpMoveLeft" type="button" aria-label="Move selected step left">←</button>
+                <button id="bpMoveRight" type="button" aria-label="Move selected step right">→</button>
+                <button id="bpAdd" type="button">+ Step</button>
+                <button id="bpRemove" type="button" class="bp-remove">Remove</button>
+              </div>
             </div>
             <p id="blueprintNote">Designed to remove manual data entry while preserving a sales handoff for qualified leads.</p>
           </div>

@@ -26,12 +26,21 @@ Updated: 2026-09-23
 - Light: warm neutral canvas with green, blue, violet, gold and coral accents
 - Lamp icon stays in navbar; pull cord hangs into hero and uses pendulum/rebound animation
 
+## Completed after baseline
+- Live CRM insertion with highlighted just-synced row
+- CRM metric reaction and analytics refresh after each workflow run
+- Real-time execution event stream with 14 observable events in the canonical run
+- Editable workflow builder: select, rename, move, add and remove generated steps
+- Sequential blueprint generation animation
+- Verified canonical Sarah run: 92/100 HOT LEAD, 4 total leads, 2 hot leads
+- Verified mobile width at 390px with no horizontal overflow
+
 ## Next implementation checkpoint
-1. Live CRM insertion + analytics reaction after workflow completion
-2. Editable generated workflow builder
-3. Real-time execution event log
-4. Preserve responsive behavior, accessibility and reduced-motion
-5. Deploy to Cloudflare Pages and commit completed state here
+1. Add lightweight ROI visualization
+2. Strengthen implementation-proof / production architecture presentation
+3. Improve final client conversion path
+4. Add remaining accessibility and metadata polish
+5. Keep verified changes committed here before/with deployment
 
 ## Operating rule
 From this checkpoint forward, production changes should be committed to this repository after verification and before/with deployment so the repository remains the durable source of truth.

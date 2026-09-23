@@ -658,3 +658,88 @@ html[data-theme="light"] .final-cta:after{content:"";position:absolute;width:210
 @media(prefers-reduced-motion:reduce){
   .pull-cord,.cord-grip,.n1,.n2,.n3,.n4,.tag:before,#runAutomation{animation:none!important}
 }
+
+
+/* Product interaction upgrades v6 */
+.event-console{margin-top:18px;border:1px solid #263f35;border-radius:10px;background:#08130f;overflow:hidden}
+.event-console-head{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 11px;border-bottom:1px solid #20372e;background:#0a1712}
+.event-console-head span{font:500 7px DM Mono;letter-spacing:.12em;color:var(--accent)}
+.event-console-head b{font:400 7px DM Mono;color:#60776c}
+.event-log{height:128px;overflow:auto;padding:7px 10px;scrollbar-width:thin}
+.event-empty{padding:17px 2px;color:#536a60;font:400 8px DM Mono}
+.event-row{display:grid;grid-template-columns:42px 112px 1fr;gap:7px;align-items:start;padding:4px 0;border-bottom:1px solid rgba(70,96,84,.18);font:400 7.5px/1.45 DM Mono}
+.event-row:last-child{border-bottom:0}
+.event-row time{color:#536b61}
+.event-row code{color:#87a99a;white-space:nowrap}
+.event-row span{color:#71887e;min-width:0}
+.event-row.live code{color:var(--amber)}
+.event-row.hot code,.event-row.hot span{color:var(--accent)}
+.event-row.info code{color:var(--blue)}
+.execution-card.running .event-console{border-color:#35574a;box-shadow:inset 0 0 30px rgba(140,244,191,.018)}
+
+.blueprint-editor{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
+.blueprint-editor-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:9px}
+.blueprint-editor-head span{font:500 7px DM Mono;letter-spacing:.11em;color:#728a80}
+.blueprint-editor-head small{font:400 7px DM Mono;color:#556d62}
+.blueprint-editor-controls{display:grid;grid-template-columns:minmax(120px,1fr) auto auto auto auto auto;gap:6px}
+.blueprint-editor-controls input{padding:8px 9px;font-size:9px;margin:0}
+.blueprint-editor-controls button{border:1px solid #2b463a;background:#0f1e19;color:#8da49a;border-radius:7px;padding:7px 9px;font:500 8px DM Mono;cursor:pointer;transition:.2s}
+.blueprint-editor-controls button:hover:not(:disabled){border-color:#527966;color:var(--text);transform:translateY(-1px)}
+.blueprint-editor-controls button:disabled{opacity:.3;cursor:not-allowed}
+.blueprint-editor-controls .bp-remove:hover:not(:disabled){border-color:#875552;color:#ffaaa2}
+.blueprint-flow .bp-node{padding:9px 10px;border:1px solid #2c493c;background:#102019;color:var(--text);border-radius:8px;font:600 10px Manrope;cursor:pointer;transition:.22s;position:relative}
+.blueprint-flow .bp-node:hover{border-color:#527966;transform:translateY(-2px)}
+.blueprint-flow .bp-node.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(140,244,191,.07),0 8px 20px rgba(0,0,0,.12)}
+.blueprint-flow .bp-node.selected:after{content:"";position:absolute;left:50%;bottom:-5px;width:5px;height:5px;border-radius:50%;background:var(--accent);transform:translateX(-50%)}
+.blueprint-flow.bp-animate .bp-node{animation:bpNodeIn .45s cubic-bezier(.2,.78,.2,1) both;animation-delay:calc(var(--bp-i) * 90ms)}
+
+.crm-new-row{position:relative;animation:crmRowArrival 1.3s cubic-bezier(.2,.75,.2,1)}
+.crm-new-row td:first-child{position:relative}
+.crm-new-row td:first-child:before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:2px;border-radius:99px;background:var(--accent);box-shadow:0 0 10px rgba(140,244,191,.38)}
+.metric-pop{animation:metricPop .82s cubic-bezier(.2,.8,.2,1)}
+.analytics-react article{animation:analyticsCardReact .78s cubic-bezier(.2,.8,.2,1)}
+.analytics-react article:nth-child(2){animation-delay:.06s}
+.analytics-react article:nth-child(3){animation-delay:.12s}
+@keyframes crmRowArrival{0%{background:rgba(140,244,191,.17);transform:translateY(-5px)}45%{background:rgba(140,244,191,.08)}100%{background:transparent;transform:none}}
+@keyframes metricPop{0%{transform:scale(.88);color:var(--accent)}55%{transform:scale(1.12);color:var(--accent)}100%{transform:none}}
+@keyframes analyticsCardReact{0%{transform:translateY(8px);box-shadow:0 0 0 rgba(0,0,0,0)}60%{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.12)}100%{transform:none}}
+
+html[data-theme="light"] .event-console{background:#f7faf8;border-color:#c6d6ce}
+html[data-theme="light"] .event-console-head{background:#e8f1ec;border-color:#ccd9d2}
+html[data-theme="light"] .event-console-head span{color:#08714a}
+html[data-theme="light"] .event-console-head b,html[data-theme="light"] .event-row time{color:#5c7368}
+html[data-theme="light"] .event-row{border-color:#e1e8e4}
+html[data-theme="light"] .event-row code{color:#4e6b60}
+html[data-theme="light"] .event-row span{color:#52695f}
+html[data-theme="light"] .event-row.live code{color:#9c6915}
+html[data-theme="light"] .event-row.hot code,html[data-theme="light"] .event-row.hot span{color:#08714a}
+html[data-theme="light"] .event-row.info code{color:#376d9f}
+html[data-theme="light"] .blueprint-editor{border-color:#d2dbd7}
+html[data-theme="light"] .blueprint-editor-head span{color:#684b96}
+html[data-theme="light"] .blueprint-editor-head small{color:#66776f}
+html[data-theme="light"] .blueprint-editor-controls button{background:#fff;color:#50655c;border-color:#c4d2ca;box-shadow:0 3px 8px rgba(39,67,53,.035)}
+html[data-theme="light"] .blueprint-editor-controls button:hover:not(:disabled){background:#f4f8f6;border-color:#8eab9c;color:#18352a}
+html[data-theme="light"] .blueprint-editor-controls .bp-remove:hover:not(:disabled){background:#fff0ed;border-color:#d09a8d;color:#9e4e41}
+html[data-theme="light"] .blueprint-flow .bp-node{color:#19342a;box-shadow:0 4px 11px rgba(41,66,54,.04)}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(1){background:#e9f5ee;border-color:#bfd8ca;color:#176746}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(2){background:#edf4fd;border-color:#c7d8ec;color:#315f92}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(3){background:#f0eafa;border-color:#d5c7e8;color:#644a91}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(4){background:#fff4df;border-color:#ead7b4;color:#90631a}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(5){background:#fff0e9;border-color:#ead0c5;color:#a95744}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(6){background:#e9f4f4;border-color:#c1d8d8;color:#356c6d}
+html[data-theme="light"] .blueprint-flow .bp-node:nth-of-type(7){background:#eef3e7;border-color:#cbd8bc;color:#55713e}
+html[data-theme="light"] .blueprint-flow .bp-node.selected{border-color:#5e4b9a;box-shadow:0 0 0 3px rgba(104,75,150,.08),0 8px 18px rgba(65,54,95,.08)}
+html[data-theme="light"] .blueprint-flow .bp-node.selected:after{background:#684b96}
+html[data-theme="light"] .crm-new-row{animation-name:crmRowArrivalLight}
+@keyframes crmRowArrivalLight{0%{background:#dff3e8;transform:translateY(-5px)}45%{background:#edf8f2}100%{background:transparent;transform:none}}
+
+@media(max-width:980px){.blueprint-editor-controls{grid-template-columns:1fr repeat(3,auto)}.blueprint-editor-controls input{grid-column:1/-1}.blueprint-editor-controls .bp-remove{grid-column:auto}}
+@media(max-width:680px){
+  .event-row{grid-template-columns:38px 90px 1fr;font-size:7px}
+  .event-log{height:118px}
+  .blueprint-editor-head{align-items:flex-start;flex-direction:column;gap:4px}
+  .blueprint-editor-controls{grid-template-columns:1fr 1fr 1fr}
+  .blueprint-editor-controls input{grid-column:1/-1}
+  .blueprint-editor-controls button{padding:8px 7px}
+}
+@media(prefers-reduced-motion:reduce){.crm-new-row,.metric-pop,.analytics-react article,.blueprint-flow.bp-animate .bp-node{animation:none!important}}
