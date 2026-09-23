@@ -60,18 +60,21 @@ jobs:
             page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()));
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
             await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
-            await page.evaluate(()=>{
-              document.documentElement.style.scrollBehavior='auto';
-              const max=document.documentElement.scrollHeight-innerHeight;
-              scrollTo(0,max*.20);
-            });
-            await page.waitForFunction(()=>{
-              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
-              return Math.abs(scrollY/max-.20)<.003;
-            },null,{timeout:3000});
-            await page.waitForTimeout(500);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const state=await page.evaluate(()=>{
+
+            const scrollProgress=async p=>{
+              await page.evaluate(value=>{
+                document.documentElement.style.scrollBehavior='auto';
+                const max=document.documentElement.scrollHeight-innerHeight;
+                scrollTo(0,max*value);
+              },p);
+              await page.waitForFunction(value=>{
+                const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+                return Math.abs(scrollY/max-value)<.003;
+              },p,{timeout:3000});
+              await page.waitForTimeout(300);
+            };
+
+            const readHotspots=()=>page.evaluate(()=>{
               const pick=id=>{
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
                 const r=el.getBoundingClientRect();
@@ -79,17 +82,45 @@ jobs:
               };
               return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight,range:document.body.dataset.range};
             });
-            const minY=prefix==='mobile'?state.height*.25:state.height*.34;
-            const maxY=prefix==='mobile'?state.height*.50:state.height*.62;
-            for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-              if(point.y<minY||point.y>maxY){
-                throw new Error(prefix+' '+id+' hotspot detached '+JSON.stringify({point,minY,maxY,state}));
+
+            const validate=state=>{
+              const margin=12;
+              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
+                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden '+JSON.stringify(state));
+                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
+                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
+                }
+              }
+              const separation=Math.hypot(
+                state.cushion.x-state.controls.x,
+                state.cushion.y-state.controls.y
+              );
+              if(separation<Math.min(90,state.width*.16)){
+                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
+              }
+            };
+
+            await scrollProgress(.18);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const first=await readHotspots();
+            validate(first);
+
+            await scrollProgress(.20);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const second=await readHotspots();
+            validate(second);
+
+            for(const id of ['cushion','controls']){
+              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
+              if(movement<4){
+                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
               }
             }
+
             if(errors.length) throw new Error(prefix+' browser errors '+errors.join(' | '));
             await page.screenshot({path:'nova-hotspot-qa/'+prefix+'.png'});
             await context.close();
-            return state;
+            return {first,second};
           }
 
           const desktop=await audit({width:1440,height:1000},'desktop');
