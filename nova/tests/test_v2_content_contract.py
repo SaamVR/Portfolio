@@ -53,3 +53,12 @@ def test_stage_geometry_matches_global_timeline():
     }
     for name, height in expected.items():
         assert f".stage--{name}{{min-height:{height}" in compact
+
+
+def test_notify_cta_has_visible_demo_panel():
+    assert 'id="notifyConcept"' in html
+    assert 'aria-controls="notifyPanel"' in html
+    assert 'id="notifyPanel"' in html
+    assert 'id="notifyForm"' in html
+    assert 'type="email"' in html
+    assert "No data is transmitted" in html
