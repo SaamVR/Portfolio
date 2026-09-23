@@ -30,3 +30,4 @@ def test_build_validates_v2_module_tree():
     ]
     for path in required:
         assert path in build
+
