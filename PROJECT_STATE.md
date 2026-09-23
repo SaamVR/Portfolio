@@ -130,7 +130,7 @@ Added and production-verified on 2026-09-23.
 
 - StayPilot source: https://github.com/SaamVR/staypilot-hotel-os
 - StayPilot live: https://staypilot-hotel-os.pages.dev/
-- verified StayPilot application release: `eaa2795f`
+- verified StayPilot application release: `145b6fde`
 - Portfolio Work #2 source merge: `8db4c466cf8061b7f1a54e0b9e43e3e4b4dd3da3`
 - Portfolio Cloudflare preview with Work #2: https://c4b4254e.leadflow-ai-bhy.pages.dev
 - primary Portfolio alias verified: https://leadflow-ai-bhy.pages.dev/
@@ -158,6 +158,7 @@ It highlights:
 - Fail-closed backend readiness surface and signed Event-ID ingestion foundation
 - Dormant durable event worker with worker-auth readiness and safe server handler subset
 - Durable outbound webhook outbox for optional n8n / Make / Zapier / custom integrations
+- Safe verified-host outbound dispatcher; exact allowlist + HMAC delivery, still fail-closed in public production
 - Fail-closed server foundation with signed Event-ID intake and multi-tenant RLS schema
 - Booking-derived channel mix and reservation-bound refund approvals
 - Stateful Expense/Maintenance approval effects with exact channel-share rounding
