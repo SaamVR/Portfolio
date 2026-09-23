@@ -298,11 +298,19 @@ jobs:
               const label=el?.querySelector('span');
               return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
             });
-            const expandedLabel=await hotspot.locator('span').evaluate(el=>({
-              display:getComputedStyle(el).display,
-              text:el.textContent?.trim()||''
-            }));
+            const expandedLabel=await hotspot.locator('span').evaluate(el=>{
+              const rect=el.getBoundingClientRect();
+              return {
+                display:getComputedStyle(el).display,
+                text:el.textContent?.trim()||'',
+                labelRect:{left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom},
+                viewport:{width:innerWidth,height:innerHeight}
+              };
+            });
             if(expandedLabel.display==='none'||!expandedLabel.text) throw new Error('expanded hotspot label missing '+JSON.stringify(expandedLabel));
+            if(expandedLabel.labelRect.left<8||expandedLabel.labelRect.right>expandedLabel.viewport.width-8){
+              throw new Error('expanded hotspot label outside viewport '+JSON.stringify(expandedLabel));
+            }
             await page.screenshot({path:'nova-qa/mobile_hotspot_detail.png'});
             await hotspot.tap();
 
