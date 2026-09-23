@@ -98,3 +98,8 @@ def test_mobile_hotspot_expansion_is_visually_verified():
     assert "mobile_hotspot_detail.png" in qa
     assert "aria-expanded" in qa
     assert "expanded hotspot label" in qa
+
+def test_mobile_hotspot_expanded_label_is_viewport_bounded():
+    assert "expanded hotspot label outside viewport" in qa
+    assert "labelRect.left" in qa
+    assert "labelRect.right" in qa
