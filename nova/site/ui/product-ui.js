@@ -34,8 +34,45 @@ export function bindProductUI(actions){
   });
   document.querySelector('#inspectionReset')?.addEventListener('click', () => actions.resetInspection?.());
   document.querySelector('#replay')?.addEventListener('click', () => actions.replay?.());
-  document.querySelector('#notifyConcept')?.addEventListener('click', () => {
-    document.body.dataset.notifyConcept = document.body.dataset.notifyConcept === 'open' ? 'closed' : 'open';
+  const notifyTrigger=document.querySelector('#notifyConcept');
+  const notifyPanel=document.querySelector('#notifyPanel');
+  const notifyClose=document.querySelector('#notifyClose');
+  const notifyForm=document.querySelector('#notifyForm');
+  const notifyEmail=document.querySelector('#notifyEmail');
+  const notifyStatus=document.querySelector('#notifyStatus');
+
+  const setNotifyOpen=(open,{focus=true}={})=>{
+    if(!notifyPanel || !notifyTrigger) return;
+    document.body.dataset.notifyConcept=open?'open':'closed';
+    notifyTrigger.setAttribute('aria-expanded',String(open));
+    notifyPanel.setAttribute('aria-hidden',String(!open));
+    if(open && focus) requestAnimationFrame(()=>notifyEmail?.focus());
+    if(!open && focus) requestAnimationFrame(()=>notifyTrigger.focus());
+  };
+
+  setNotifyOpen(false,{focus:false});
+
+  notifyTrigger?.addEventListener('click',()=>{
+    const isOpen=document.body.dataset.notifyConcept==='open' || document.body.dataset.notifyConcept==='success';
+    setNotifyOpen(!isOpen);
+  });
+  notifyClose?.addEventListener('click',()=>setNotifyOpen(false));
+  notifyForm?.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!notifyForm.checkValidity()){
+      notifyForm.reportValidity();
+      return;
+    }
+    document.body.dataset.notifyConcept='success';
+    notifyTrigger?.setAttribute('aria-expanded','true');
+    notifyPanel?.setAttribute('aria-hidden','false');
+    notifyPanel?.setAttribute('data-state','success');
+    if(notifyStatus) notifyStatus.textContent="You're on the NOVA concept list.";
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && (document.body.dataset.notifyConcept==='open' || document.body.dataset.notifyConcept==='success')){
+      setNotifyOpen(false);
+    }
   });
 }
 
