@@ -9,8 +9,8 @@ const railLabel = document.querySelector('#railLabel');
 const railProgress = document.querySelector('#railProgress');
 const timelineNeedle = document.querySelector('#timelineNeedle');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const orientationMode = new URLSearchParams(location.search).get('orientation') || 'default';
-const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'negx' ? -Math.PI / 2 : 0;
+const orientationMode = new URLSearchParams(location.search).get('orientation') || 'negx';
+const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 let activeScene = 'hero';
 let activeProgress = 0;
@@ -144,13 +144,16 @@ function applyTextureQuality(root){
 }
 
 function computePrimaryBounds(root){
-  // Circle.013 is a ~16-unit cable. It renders, but must not decide camera scale.
-  const cable = root.getObjectByName('Circle.013_0');
-  const oldVisible = cable?.visible;
-  if(cable) cable.visible = false;
+  // Circle.013 is a ~16-unit cable. It renders, but must not decide camera scale or centering.
   root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root);
-  if(cable) cable.visible = oldVisible;
+  const box = new THREE.Box3();
+  const childBox = new THREE.Box3();
+  root.traverse(obj => {
+    if(!obj.isMesh || obj.name === 'Circle.013_0') return;
+    childBox.makeEmpty();
+    childBox.setFromObject(obj, true);
+    if(!childBox.isEmpty()) box.union(childBox);
+  });
   return box;
 }
 
