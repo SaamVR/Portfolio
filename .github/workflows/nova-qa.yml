@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
+      - "nova/site/**"
   workflow_dispatch:
 
 permissions:
@@ -18,57 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct GPT-runtime source
-        run: |
-          set -euo pipefail
-          mkdir -p nova/site/assets nova/site/vendor/addons/{loaders,libs,curves,utils}
-          failed=0
-          for f in index.html styles.css app.js; do
-            echo "=== $f ==="
-            wc -c "nova/recovery/working-v1/${f}.gz.b64"
-            sha256sum "nova/recovery/working-v1/${f}.gz.b64"
-            base64 -d "nova/recovery/working-v1/${f}.gz.b64" > "/tmp/${f}.gz" || { echo "BASE64_FAIL $f"; failed=1; continue; }
-            gzip -t "/tmp/${f}.gz" || { echo "GZIP_FAIL $f"; failed=1; continue; }
-            gzip -dc "/tmp/${f}.gz" > "nova/site/${f}"
-            wc -c "nova/site/${f}"
-          done
-          test "$failed" -eq 0
+      - name: Restore exact GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
 
-      - name: Vendor Three.js
+      - name: Vendor Three.js GLTF runtime
         run: |
           set -euo pipefail
+          mkdir -p nova/site/vendor/addons/loaders
           mkdir -p /tmp/nova-vendor && cd /tmp/nova-vendor
           npm init -y >/dev/null 2>&1
           npm install three@0.180.0 --no-audit --no-fund
           cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
           cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
-          cp node_modules/three/examples/jsm/loaders/FBXLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
-          cp node_modules/three/examples/jsm/libs/fflate.module.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/libs/"
-          cp node_modules/three/examples/jsm/curves/NURBSCurve.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/curves/"
-          cp node_modules/three/examples/jsm/curves/NURBSUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/curves/"
-
-      - name: Cache NOVA source assets
-        id: nova-assets-cache
-        uses: actions/cache@v4
-        with:
-          path: nova/site/assets
-          key: nova-assets-v1-fed3b7e67aeac3c9a8a626b9431f52bc95326e69ac750040c019294ed3849741
-
-      - name: Recover original FBX assets
-        if: steps.nova-assets-cache.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          ASSET_ZIP_URL='https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-2fd8-8211-afeb-ab650cd77a45/raw?se=2026-09-23T05%3A07%3A34Z&sp=r&sv=2026-02-06&sr=b&scid=752b3e95-2651-553b-99ff-3bd3227e6f1e&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T03%3A02%3A02Z&ske=2026-09-24T03%3A02%3A02Z&sks=b&skv=2026-02-06&sig=HHD1F2kPYYas%2BhDMsswNxY3bmFju7LMLYEL6HkWhimY%3D'
-          curl -fsSL --retry 3 "$ASSET_ZIP_URL" -o /tmp/nova-qa-assets.zip
-          echo "ASSET_ZIP_BYTES=$(stat -c%s /tmp/nova-qa-assets.zip)"
-          test $(stat -c%s /tmp/nova-qa-assets.zip) -gt 6000000
-          unzip -q /tmp/nova-qa-assets.zip -d nova/site/assets
-          FBX="nova/site/assets/nova-headphones.fbx"
-          echo "FBX_BYTES=$(stat -c%s "$FBX")"
-          file "$FBX" || true
-          head -c 24 "$FBX" | xxd
-          test $(stat -c%s "$FBX") -gt 2000000
-          head -c 18 "$FBX" | grep -a -q "Kaydara FBX Binary"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
 
       - name: Install browser QA
         run: |
@@ -83,61 +50,75 @@ jobs:
           fs.mkdirSync('nova-qa',{recursive:true});
           const browser = await chromium.launch({headless:true});
           const errors=[];
+
           async function audit(viewport, prefix, scenes){
             const page=await browser.newPage({viewportSize:viewport});
             const localErrors=[];
             page.on('pageerror',e=>{ const v=prefix+': pageerror: '+e.message; errors.push(v); localErrors.push(v); });
-            page.on('console',m=>{if(m.type()==='error'){ const v=prefix+': console: '+m.text(); errors.push(v); localErrors.push(v); }});
+            page.on('console',m=>{ if(m.type()==='error'){ const v=prefix+': console: '+m.text(); errors.push(v); localErrors.push(v); }});
             page.on('requestfailed',r=>{ const v=prefix+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||''); errors.push(v); localErrors.push(v); });
-            page.on('response',r=>{if(r.status()>=400){ const v=prefix+': HTTP '+r.status()+' '+r.url(); errors.push(v); localErrors.push(v); }});
+            page.on('response',r=>{ if(r.status()>=400){ const v=prefix+': HTTP '+r.status()+' '+r.url(); errors.push(v); localErrors.push(v); }});
+
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
-            let ready=false;
-            try{
-              await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',{timeout:15000});
-              ready=true;
-            }catch{}
-            const state=await page.evaluate(()=>({
+            await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',{timeout:20000});
+            const startup=await page.evaluate(()=>({
               model:document.body.dataset.modelState,
               runtime:document.querySelector('#runtimeState')?.textContent,
-              resources:performance.getEntriesByType('resource').map(r=>({name:r.name,transferSize:r.transferSize})).filter(r=>/app\.js|vendor|fbx|png/.test(r.name))
+              sections:[...document.querySelectorAll('[data-scene]')].map(s=>s.dataset.scene),
+              resources:performance.getEntriesByType('resource')
+                .map(r=>({name:r.name,transferSize:r.transferSize}))
+                .filter(r=>/app\.js|vendor|gltf|webp/.test(r.name))
             }));
-            if(!ready || state.model!=='ready'){
-              fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({state,localErrors},null,2));
+            if(startup.model!=='ready'){
+              fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({startup,localErrors},null,2));
               await page.screenshot({path:'nova-qa/'+prefix+'_startup.png',fullPage:false});
-              throw new Error(prefix+' model startup failed '+JSON.stringify({state,localErrors}));
+              throw new Error(prefix+' model startup failed '+JSON.stringify({startup,localErrors}));
             }
+
+            const captures=[];
             for(const [scene,p] of scenes){
               await page.evaluate(([name,progress])=>{
                 const s=document.querySelector('[data-scene="'+name+'"]');
-                const vh=innerHeight; const y=s.offsetTop-vh*.72+progress*(s.offsetHeight-vh*.36);
+                const vh=innerHeight;
+                const y=s.offsetTop-vh*.72+progress*(s.offsetHeight-vh*.36);
                 scrollTo(0,Math.max(0,y));
               },[scene,p]);
-              await page.waitForTimeout(700);
-              await page.screenshot({path:'nova-qa/'+prefix+'_'+scene+'_'+String(p).replace('.','')+'.png',fullPage:false});
+              await page.waitForTimeout(900);
+              const state=await page.evaluate(()=>({
+                active:document.body.dataset.activeScene,
+                model:document.body.dataset.modelState,
+                runtime:document.querySelector('#runtimeState')?.textContent,
+                scrollY,
+                docHeight:document.body.scrollHeight
+              }));
+              const file=prefix+'_'+scene+'_'+String(p).replace('.','')+'.png';
+              await page.screenshot({path:'nova-qa/'+file,fullPage:false});
+              captures.push({file,scene,progress:p,state});
             }
-            const metrics=await page.evaluate(()=>({
-              state:document.body.dataset.modelState,
-              active:document.body.dataset.activeScene,
-              bodyHeight:document.body.scrollHeight,
-              runtime:document.querySelector('#runtimeState')?.textContent,
-              sections:[...document.querySelectorAll('[data-scene]')].map(s=>({scene:s.dataset.scene,height:s.offsetHeight,top:s.offsetTop}))
-            }));
+
             await page.close();
-            return metrics;
+            return {startup,captures};
           }
+
           const desktop=await audit({width:1440,height:1000},'desktop',[
-            ['hero',.15],['form',.48],['mechanism',.25],['mechanism',.68],['choreography',.5],['interaction',.5],['closing',.45]
+            ['hero',.15],['form',.48],['mechanism',.25],['mechanism',.68],
+            ['choreography',.5],['interaction',.5],['closing',.45]
+          ]);
+          const tablet=await audit({width:1024,height:768},'tablet',[
+            ['hero',.15],['form',.48],['mechanism',.55],['choreography',.5],['interaction',.5]
           ]);
           const mobile=await audit({width:390,height:844},'mobile',[
             ['hero',.12],['form',.5],['mechanism',.55],['choreography',.5],['interaction',.5],['closing',.4]
           ]);
-          fs.writeFileSync('nova-qa/audit.json',JSON.stringify({desktop,mobile,errors},null,2));
+
+          fs.writeFileSync('nova-qa/audit.json',JSON.stringify({desktop,tablet,mobile,errors},null,2));
           if(errors.length) throw new Error('Browser errors:\n'+errors.join('\n'));
           await browser.close();
           JS
 
       - name: Run visual audit
         run: |
+          set -euo pipefail
           python3 -m http.server 4173 --directory nova/site >/tmp/nova-server.log 2>&1 &
           SERVER=$!
           trap 'kill $SERVER || true' EXIT
