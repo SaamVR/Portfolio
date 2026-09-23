@@ -90,4 +90,13 @@ assert.ok(spatialMobile.camera.target[1] < -.62, 'Mobile Spatial should keep pro
 const behindMobile=sampleTimeline(.985,'mobile');
 assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the product secondary');
 
+
+const designPose=sampleTimeline(.20,'desktop').product.pose;
+assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
+const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
+for(const p of commercialOpenSamples){
+  const pose=sampleTimeline(p,'desktop').product.pose;
+  assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
+}
+
 console.log('timeline_contract: PASS');
