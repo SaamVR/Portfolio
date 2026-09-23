@@ -247,6 +247,7 @@ function publishState(state){
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
   document.body.dataset.settled=String(Boolean(state.ui.settled));
   document.body.dataset.activeScene=state.range;
+  document.body.dataset.transition=state.ui.transition || 'none';
   document.body.dataset.stageGating='true';
   if(publishedRange!==state.range){
     for(const stage of rangeStages) stage.classList.toggle('is-active',stage.dataset.rangeAnchor===state.range);
