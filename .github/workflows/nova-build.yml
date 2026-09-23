@@ -2,7 +2,7 @@ name: NOVA Production Bundle
 
 on:
   push:
-    branches: [main]
+    branches: [main, "nova/v2-integration"]
     paths:
       - ".github/workflows/nova-build.yml"
       - "nova/site/**"
@@ -38,12 +38,21 @@ jobs:
           cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
           cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
 
-      - name: Validate production bundle
+      - name: Validate V2 production bundle
         run: |
           set -euo pipefail
           test -f nova/site/index.html
           test -f nova/site/styles.css
           test -f nova/site/app.js
+          test -f nova/site/runtime/timeline.js
+          test -f nova/site/runtime/composer.js
+          test -f nova/site/runtime/render-adapter.js
+          test -f nova/site/runtime/environment.js
+          test -f nova/site/ui/product-ui.js
+          test -f nova/site/interactions/fold-controller.js
+          test -f nova/site/interactions/inspection-controller.js
+          test -f nova/site/interactions/hotspot-controller.js
+          test -f nova/site/interactions/mode-controller.js
           test -f nova/site/assets/headphones-web.gltf
           test -f nova/site/vendor/three.module.js
           test -f nova/site/vendor/three.core.js
@@ -57,10 +66,10 @@ jobs:
           assert len(g["skins"][0]["joints"]) == 36
           assert len(g["animations"]) == 3
           assert all((root/"assets"/img["uri"]).exists() for img in g["images"])
-          print("NOVA production bundle verified")
+          print("NOVA V2 production bundle verified")
           PY
           du -sh nova/site
-          find nova/site -maxdepth 3 -type f | sort
+          find nova/site -maxdepth 4 -type f | sort
 
       - uses: actions/upload-artifact@v4
         with:
