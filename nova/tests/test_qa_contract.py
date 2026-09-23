@@ -46,4 +46,4 @@ def test_collision_guard_covers_early_hero_and_design_at_strict_threshold():
     assert "{p:.18,label:'design-close'}" in qa
     assert "{p:.20,label:'design-peak'}" in qa
     assert "result.ratio>.04" in qa
-
+# Trigger fast contracts on the strengthened browser-collision implementation.
