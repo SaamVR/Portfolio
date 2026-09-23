@@ -53,7 +53,7 @@ jobs:
           const errors=[];
 
           async function audit(viewport, prefix, scenes){
-            const page=await browser.newPage({viewportSize:viewport});
+            const page=await browser.newPage({viewport});
             const localErrors=[];
             page.on('pageerror',e=>{ const v=prefix+': pageerror: '+e.message; errors.push(v); localErrors.push(v); });
             page.on('console',m=>{ if(m.type()==='error'){ const v=prefix+': console: '+m.text(); errors.push(v); localErrors.push(v); }});
@@ -72,11 +72,15 @@ jobs:
               model:document.body.dataset.modelState,
               runtime:document.querySelector('#runtimeState')?.textContent,
               sections:[...document.querySelectorAll('[data-scene]')].map(s=>s.dataset.scene),
+              viewport:{width:innerWidth,height:innerHeight},
               resources:performance.getEntriesByType('resource')
                 .map(r=>({name:r.name,transferSize:r.transferSize}))
                 .filter(r=>/app\.js|vendor|gltf|webp/.test(r.name))
             }));
-            if(startupTimedOut || startup.model!=='ready'){
+            if(startup.viewport.width!==viewport.width || startup.viewport.height!==viewport.height){
+              localErrors.push(prefix+': viewport mismatch '+JSON.stringify(startup.viewport)+' expected '+JSON.stringify(viewport));
+            }
+            if(startupTimedOut || startup.model!=='ready' || localErrors.length){
               fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({startup,localErrors},null,2));
               await page.screenshot({path:'nova-qa/'+prefix+'_startup.png',fullPage:false});
               throw new Error(prefix+' model startup failed '+JSON.stringify({startup,localErrors}));
@@ -110,7 +114,7 @@ jobs:
           }
 
           async function orientationCompare(){
-            const page=await browser.newPage({viewportSize:{width:1440,height:1000}});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
             for(const mode of ['posx','negx']){
               await page.goto('http://127.0.0.1:4173/?orientation='+mode,{waitUntil:'networkidle'});
               await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
