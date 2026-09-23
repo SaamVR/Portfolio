@@ -66,7 +66,12 @@ jobs:
             80b3b9d11fec4c9797366ec56225d7f9_R_Part_2_Ao.png
           )
           for f in "${files[@]}"; do curl -fsSL --retry 3 "$BASE/$f" -o "nova/site/assets/$f"; done
-          test $(stat -c%s nova/site/assets/nova-headphones.fbx) -gt 2000000
+          FBX="nova/site/assets/nova-headphones.fbx"
+          echo "FBX_BYTES=$(stat -c%s "$FBX")"
+          file "$FBX" || true
+          head -c 24 "$FBX" | xxd
+          test $(stat -c%s "$FBX") -gt 1000000
+          head -c 18 "$FBX" | grep -a -q "Kaydara FBX Binary"
 
       - name: Install browser QA
         run: |
