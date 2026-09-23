@@ -130,7 +130,7 @@ Added and production-verified on 2026-09-23.
 
 - StayPilot source: https://github.com/SaamVR/staypilot-hotel-os
 - StayPilot live: https://staypilot-hotel-os.pages.dev/
-- verified StayPilot application release: `5acade47`
+- verified StayPilot application release: `9b9b748d`
 - Portfolio Work #2 source merge: `8db4c466cf8061b7f1a54e0b9e43e3e4b4dd3da3`
 - Portfolio Cloudflare preview with Work #2: https://c4b4254e.leadflow-ai-bhy.pages.dev
 - primary Portfolio alias verified: https://leadflow-ai-bhy.pages.dev/
@@ -157,6 +157,7 @@ It highlights:
 - Auditable automation run traces with contextual routing
 - Fail-closed backend readiness surface and signed Event-ID ingestion foundation
 - Fail-closed server foundation with signed Event-ID intake and multi-tenant RLS schema
+- Booking-derived channel mix and reservation-bound refund approvals
 - verified source and live-product CTAs
 
 Rollback branch for the original pre-StayPilot Portfolio state remains:
