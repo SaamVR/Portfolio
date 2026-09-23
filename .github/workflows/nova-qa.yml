@@ -114,7 +114,7 @@ jobs:
           }
 
           async function poseScan(){
-            const page=await browser.newPage({viewportSize:{width:1440,height:1000}});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
             for(const p of [0,.08,.16,.24,.32,.40,.48,.56,.64,.72,.80,.88,.96]){
               await page.goto('http://127.0.0.1:4173/?orientation=negx&pose='+p,{waitUntil:'networkidle'});
               await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
