@@ -345,7 +345,11 @@ window.addEventListener('scroll',()=>{
 canvas.addEventListener('pointerdown',event=>{
   if(document.body.dataset.range!=='inspect') return;
   inspectionController.pointerDown(event.clientX,event.clientY,event.pointerId);
-  canvas.setPointerCapture?.(event.pointerId);
+  try{
+    canvas.setPointerCapture?.(event.pointerId);
+  }catch{
+    // Synthetic/mobile pointer sequences may not have an active native capture.
+  }
   event.preventDefault();
 });
 canvas.addEventListener('pointermove',event=>{
@@ -357,7 +361,11 @@ canvas.addEventListener('pointermove',event=>{
 });
 canvas.addEventListener('pointerup',event=>{
   inspectionController.pointerUp(event.pointerId);
-  canvas.releasePointerCapture?.(event.pointerId);
+  try{
+    if(canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  }catch{
+    // Release is best-effort; controller state is already cleared above.
+  }
 });
 canvas.addEventListener('pointercancel',event=>{
   inspectionController.pointerUp(event.pointerId);
