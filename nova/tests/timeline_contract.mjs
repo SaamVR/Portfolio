@@ -99,4 +99,9 @@ for(const p of commercialOpenSamples){
   assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
 }
 
+
+assert.equal(sampleTimeline(.279,'desktop').ui.transition,'to-dark','Design should invert copy before Sound');
+assert.equal(sampleTimeline(.57,'desktop').ui.transition,'to-light','Adaptive should darken copy before Form');
+assert.equal(sampleTimeline(.959,'desktop').ui.transition,'to-dark','Resolution should invert copy before Behind NOVA');
+
 console.log('timeline_contract: PASS');
