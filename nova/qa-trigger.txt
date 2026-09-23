@@ -1,1 +1,1 @@
-Run NOVA visual QA after Three.js core-module fix.\n
+Run NOVA visual QA for upright-pose and material-alias fix.\n
