@@ -86,4 +86,25 @@ assert.equal(boneReads,1,'animated hotspot must read its bone world position eac
 assert.ok(String(boneElement.style.transform).includes('600px'),'bone X position should drive DOM projection');
 assert.ok(String(boneElement.style.transform).includes('360px'),'bone Y position should drive DOM projection');
 
+let surfaceReads=0;
+const surfaceMesh={
+  getVertexPosition(index,v){
+    surfaceReads++;
+    assert.equal(index,7);
+    return v.set(.1,-.2,0);
+  },
+  localToWorld(v){ return v; }
+};
+const surfaceElement={dataset:{},style:{},setAttribute(){}};
+const surfaceHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{surface:{mesh:surfaceMesh,vertexIndex:7,cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{surface:surfaceElement}
+});
+surfaceHotspots.update({viewport:{width:1000,height:800}});
+assert.equal(surfaceReads,1,'surface hotspot must read current skinned vertex position each update');
+assert.ok(String(surfaceElement.style.transform).includes('550px'));
+assert.ok(String(surfaceElement.style.transform).includes('480px'));
+
 console.log('interaction_contract: PASS');
