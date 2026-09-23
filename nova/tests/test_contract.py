@@ -83,3 +83,11 @@ def test_v2_hotspot_resolver_handles_sanitized_gltf_names():
 def test_v2_earcup_hotspots_drop_legacy_screen_offsets():
     assert "screenOffset:[.018,.22]" not in js
     assert "screenOffset:[-.038,.22]" not in js
+
+def test_r10_fold_pose_prefers_engineered_compact_state():
+    assert "createFoldController({openPose:.72,foldedPose:.50,duration:.92})" in js
+
+def test_case_study_progress_is_decoupled_from_global_document_height():
+    assert "cinematicTrackHeight" in js
+    assert "caseStudyEl" in js
+    assert "dataset.caseStudy" in js

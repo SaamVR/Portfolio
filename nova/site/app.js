@@ -17,6 +17,8 @@ const hotspotElements = Object.fromEntries(
   [...document.querySelectorAll('[data-hotspot]')].map(el => [el.dataset.hotspot, el])
 );
 const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
+const behindStageEl=document.querySelector('#behind');
+const caseStudyEl=document.querySelector('#case-study');
 let publishedRange=null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const query = new URLSearchParams(location.search);
@@ -27,7 +29,7 @@ const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, N
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.72,foldedPose:.40,duration:.72});
+const foldController = createFoldController({openPose:.72,foldedPose:.50,duration:.92});
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
@@ -94,8 +96,13 @@ function viewportClass(){
   return innerWidth <= 700 ? 'mobile' : innerWidth <= 1100 ? 'tablet' : 'desktop';
 }
 
+function cinematicTrackHeight(){
+  const stageBottom=(behindStageEl?.offsetTop||0)+(behindStageEl?.offsetHeight||0);
+  return Math.max(innerHeight+1,stageBottom);
+}
+
 function currentProgress(){
-  return getGlobalProgress(scrollY,document.documentElement.scrollHeight,innerHeight);
+  return getGlobalProgress(scrollY,cinematicTrackHeight(),innerHeight);
 }
 
 function applyTextureQuality(root){
@@ -256,6 +263,8 @@ function sampleAuthoredState(){
 }
 
 function publishState(state){
+  const caseStudyActive=Boolean(caseStudyEl && scrollY>=Math.max(0,caseStudyEl.offsetTop-innerHeight*.18));
+  document.body.dataset.caseStudy=String(caseStudyActive);
   document.body.dataset.range=state.range;
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
   document.body.dataset.settled=String(Boolean(state.ui.settled));

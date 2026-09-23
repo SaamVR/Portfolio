@@ -71,3 +71,12 @@ def test_public_preview_hotspots_follow_authored_motion():
     assert "state.h*.62" not in public_qa
 # Trigger contracts for public motion-aware hotspot QA implementation.
 # Latest-source exact verification checkpoint after mobile recentering.
+
+def test_r10_visual_qa_covers_case_study_handoff():
+    assert "caseStudyAudit" in qa
+    assert "case-study product must yield" in qa
+    assert "prefix+'_case_study.png'" in qa
+    assert "caseStudyAudit({width:1440,height:1000},'desktop')" in qa
+    assert "caseStudyAudit({width:390,height:844},'mobile')" in qa
+
+# R10 GREEN verification trigger after browser QA implementation.

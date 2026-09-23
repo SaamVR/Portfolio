@@ -152,3 +152,8 @@ const designMobileClearance=sampleTimeline(.20,'mobile');
 const designMobileLateralOffset=designMobileClearance.product.position[0]-designMobileClearance.camera.target[0];
 assert.ok(designMobileLateralOffset <= .07, `Mobile Design close pass must recenter enough to keep real hotspot targets on-screen; lateral offset=${designMobileLateralOffset}`);
 
+
+const behindDesktopR10=sampleTimeline(.985,'desktop');
+assert.ok(behindDesktopR10.product.scale < .62, `Behind handoff should make the product clearly secondary on desktop, got ${behindDesktopR10.product.scale}`);
+const behindMobileR10=sampleTimeline(.985,'mobile');
+assert.ok(behindMobileR10.product.scale < .56, `Behind handoff should make the product clearly secondary on mobile, got ${behindMobileR10.product.scale}`);
