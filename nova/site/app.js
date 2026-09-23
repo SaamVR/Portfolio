@@ -113,13 +113,13 @@ function sampleCamera(name, p){
     case 'form':
       return {pos:lerp3([-.34,.04,baseZ-.42],[.26,.08,baseZ-.68],e),look:[0,.04,0],fov:31,scale:mobile?.78:1.20,model:[mobile?0:1.25,mobile?.50:.02,0],yaw:lerp(-.025,.03,e)};
     case 'mechanism':
-      return {pos:lerp3([.36,.02,baseZ-.64],[-.40,.10,baseZ-.60],e),look:[0,.02,0],fov:30,scale:mobile?.73:1.04,model:[mobile?0:lerp(-1.85,-1.35,e),mobile?.58:-.04,0],yaw:lerp(.03,-.04,e)};
+      return {pos:lerp3([.36,.02,baseZ-.64],[-.40,.10,baseZ-.60],e),look:[0,.02,0],fov:30,scale:mobile?.73:lerp(.86,1.04,e),model:[mobile?0:lerp(-2.72,-1.42,e),mobile?.58:-.05,0],yaw:lerp(.03,-.04,e)};
     case 'choreography':
-      return {pos:lerp3([-.58,.10,baseZ-.72],[.62,-.02,baseZ-.92],e),look:[0,-.05,0],fov:29,scale:mobile?.82:1.28,model:[0,mobile?.28:-.48,0],yaw:lerp(-.04,.05,e)};
+      return {pos:lerp3([-.58,.10,baseZ-.72],[.62,-.02,baseZ-.92],e),look:[0,-.16,0],fov:29,scale:mobile?.82:1.20,model:[0,mobile?.28:-1.10,0],yaw:lerp(-.04,.05,e)};
     case 'interaction':
-      return {pos:lerp3([.28,.06,baseZ-.54],[-.15,.02,baseZ-.68],e),look:[0,.02,0],fov:30,scale:mobile?.78:1.14,model:[mobile?0:1.35,mobile?.48:.08,0],yaw:0};
+      return {pos:lerp3([.28,.06,baseZ-.54],[-.15,.02,baseZ-.68],e),look:[0,.0,0],fov:30,scale:mobile?.78:1.08,model:[mobile?0:1.82,mobile?.48:-.10,0],yaw:0};
     case 'closing':
-      return {pos:lerp3([0,.05,baseZ-.02],[0,.06,baseZ+.16],e),look:[0,.02,0],fov:31,scale:mobile?.56:.72,model:[mobile?.58:1.65,mobile?-.12:-.35,0],yaw:lerp(-.08,.05,e)};
+      return {pos:lerp3([0,.05,baseZ-.02],[0,.06,baseZ+.16],e),look:[0,-.10,0],fov:31,scale:mobile?.43:.58,model:[mobile?.74:1.90,mobile?-1.38:-1.20,0],yaw:lerp(-.08,.05,e)};
     default:
       return {pos:[0,0,baseZ],look:[0,0,0],fov:31,scale:1,model:[0,0,0],yaw:0};
   }
