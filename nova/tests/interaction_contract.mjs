@@ -140,4 +140,15 @@ offsetHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height
 assert.ok(String(offsetElement.style.transform).includes('600px'),'responsive screen offset should shift x by viewport fraction');
 assert.ok(String(offsetElement.style.transform).includes('560px'),'responsive screen offset should shift y by viewport fraction');
 
+
+const edgeSafeElement={dataset:{},style:{},setAttribute(){}};
+const edgeSafeHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{edge:{point:[.98,0,0],cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{edge:edgeSafeElement}
+});
+edgeSafeHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:390,height:844}});
+assert.ok(String(edgeSafeElement.style.transform).includes('374px'),'mobile hotspot center must be clamped to a 16px safe inset');
+
 console.log('interaction_contract: PASS');
