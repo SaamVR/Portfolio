@@ -140,3 +140,35 @@ Prepared guarded deploy workflow:
 - deployment can be triggered later by updating `nova/deploy-trigger.txt` once credentials exist
 
 Do not switch the old production alias until the public preview has been browser-verified.
+
+
+## Live deployment — 2026-09-23
+
+Deployment policy followed:
+- samvr was used only to perform Cloudflare Pages deployment commands.
+- no development, design, asset processing or QA was performed on samvr.
+- all source work and verification remained in GPT-runtime tooling / the existing hosted QA pipeline.
+
+Preview deployment:
+- Cloudflare branch: `redesign`
+- deployment URL: `https://b01f4b3e.nova-interactive-portfolio.pages.dev`
+- branch alias: `https://redesign.nova-interactive-portfolio.pages.dev`
+
+Production deployment:
+- Cloudflare branch: `main`
+- deployment URL: `https://9ef19cfc.nova-interactive-portfolio.pages.dev`
+- primary project alias: `https://nova-interactive-portfolio.pages.dev/`
+
+Cloudflare reported:
+- 20 deploy files
+- preview upload: 20 uploaded
+- production upload: 20/20 already present, same verified payload
+- both deployments completed successfully
+
+Post-deploy GPT-runtime verification:
+- the production alias resolves to `NOVA — Interactive 3D Product Film`
+- the `redesign` alias resolves to the same redesigned NOVA content
+- public HTML contains the verified editorial chapters and GLTF implementation facts
+- public stylesheet is accessible and matches the verified editorial build
+- the external crawler used for post-deploy verification does not expose JavaScript/GLTF bodies because of their content types; therefore runtime/visual verification continues to rely on the exact-bundle browser QA that passed before deployment
+- the deployed bundle is the same production artifact built and validated in run `35848847596`
