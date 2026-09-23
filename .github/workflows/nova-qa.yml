@@ -87,10 +87,12 @@ jobs:
               await page.evaluate(([name,progress])=>{
                 const s=document.querySelector('[data-scene="'+name+'"]');
                 const vh=innerHeight;
-                const y=s.offsetTop-vh*.72+progress*(s.offsetHeight-vh*.36);
+                const travel=Math.max(0,s.offsetHeight-vh);
+                const y=s.offsetTop+progress*travel;
                 scrollTo(0,Math.max(0,y));
               },[scene,p]);
               await page.waitForTimeout(900);
+              await page.waitForFunction(expected=>document.body.dataset.activeScene===expected,name,{timeout:3000}).catch(()=>{});
               const state=await page.evaluate(()=>({
                 active:document.body.dataset.activeScene,
                 model:document.body.dataset.modelState,
@@ -106,6 +108,18 @@ jobs:
             await page.close();
             return {startup,captures};
           }
+
+          async function orientationCompare(){
+            const page=await browser.newPage({viewportSize:{width:1440,height:1000}});
+            for(const mode of ['posx','negx']){
+              await page.goto('http://127.0.0.1:4173/?orientation='+mode,{waitUntil:'networkidle'});
+              await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+              await page.waitForTimeout(1200);
+              await page.screenshot({path:'nova-qa/orientation_'+mode+'.png',fullPage:false});
+            }
+            await page.close();
+          }
+          await orientationCompare();
 
           const desktop=await audit({width:1440,height:1000},'desktop',[
             ['hero',.15],['form',.48],['mechanism',.25],['mechanism',.68],
