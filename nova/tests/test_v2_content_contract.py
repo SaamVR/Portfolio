@@ -53,3 +53,11 @@ def test_stage_geometry_matches_global_timeline():
     }
     for name, height in expected.items():
         assert f".stage--{name}{{min-height:{height}" in compact
+
+
+def test_chapter_background_is_state_driven():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert '.stage{position:relative;overflow:clip;background:transparent!important}' in compact
+    assert 'body::before{content:"";position:fixed' in compact
+    for name in ["hero","design","spatial","adaptive","form","inspect","resolution","behind"]:
+        assert f'body[data-range="{name}"]::before' in compact
