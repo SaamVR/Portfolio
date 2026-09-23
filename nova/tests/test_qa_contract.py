@@ -126,3 +126,5 @@ def test_r11_visual_qa_checks_readability_and_v1_archive():
 def test_build_validates_v1_archive_payload():
     for path in ["nova/site/v1/index.html","nova/site/v1/styles.css","nova/site/v1/app.js"]:
         assert path in build
+
+# R11 GREEN verification trigger.
