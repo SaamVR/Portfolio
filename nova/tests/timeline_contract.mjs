@@ -83,6 +83,8 @@ const spatialDesktop=sampleTimeline(.36,'desktop');
 assert.ok(spatialDesktop.camera.target[1] < -.40, 'Spatial camera should frame product above centered copy');
 const adaptiveDesktop=sampleTimeline(.52,'desktop');
 assert.ok(adaptiveDesktop.camera.target[0] > .38, 'Adaptive camera should frame product left of right-aligned copy');
+const formEntryDesktop=sampleTimeline(.581,'desktop');
+assert.ok(formEntryDesktop.camera.target[0] < .18, 'Form entry should clear the left headline field before copy appears');
 const resolutionDesktop=sampleTimeline(.90,'desktop');
 assert.ok(resolutionDesktop.camera.target[0] < -.55, 'Resolution camera should frame product right of headline');
 const spatialMobile=sampleTimeline(.36,'mobile');
