@@ -81,3 +81,16 @@ Updated: 2026-09-23
 - Analytics now includes a stable recent-score activity chart
 - Mobile regression verified at 390px with no horizontal overflow
 
+## Production verification — finished product pass
+- Deployed preview: https://fa0e6719.leadflow-ai-bhy.pages.dev
+- Primary alias verified: https://leadflow-ai-bhy.pages.dev/
+- Default server qualification: Sarah 92/100 → hot at thresholds 80/55
+- Custom CRM threshold test: Sarah 92/100 → review at hot threshold 95
+- Follow-up preference test: disabled setting skips follow-up and disables follow-up CTA
+- Guided walkthrough production framing verified for execution, result, CRM drawer, analytics and workflow builder
+- Guided CRM drawer remains right-docked and analytics chart renders correctly
+- Guided canonical path remains 92/100 HOT LEAD with live server response
+- Light mode verified after finished-product pass
+- Mobile production QA: 390px viewport / 390px document width, no horizontal overflow
+- Production browser QA: no JavaScript errors and no failed resources
+
