@@ -126,7 +126,24 @@
         </div>
         <div class="resolution-actions">
           <a class="button button--solid" href="#behind">Discover NOVA <span>↘</span></a>
-          <button type="button" class="button button--ghost" id="notifyConcept">Notify me</button>
+          <button type="button" class="button button--ghost" id="notifyConcept" aria-controls="notifyPanel" aria-expanded="false">Notify me</button>
+        </div>
+        <div class="notify-panel" id="notifyPanel" aria-hidden="true" aria-labelledby="notifyTitle">
+          <div class="notify-panel__top">
+            <div>
+              <span class="notify-kicker">Release access</span>
+              <h3 id="notifyTitle">Be first to hear.</h3>
+            </div>
+            <button type="button" class="notify-close" id="notifyClose" aria-label="Close release access panel">×</button>
+          </div>
+          <p>Preview the NOVA launch-list interaction with your email address.</p>
+          <form class="notify-form" id="notifyForm" novalidate>
+            <label class="sr-only" for="notifyEmail">Email address</label>
+            <input id="notifyEmail" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required />
+            <button type="submit">Join waitlist</button>
+          </form>
+          <p class="notify-privacy">No data is transmitted. This is an interactive portfolio demo.</p>
+          <p class="notify-status" id="notifyStatus" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>
