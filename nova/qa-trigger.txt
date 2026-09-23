@@ -1,1 +1,1 @@
-Run NOVA visual QA for working-v1 after transport repair.\n
+Run NOVA visual QA with checkpoint diagnostics.\n
