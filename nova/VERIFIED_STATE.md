@@ -106,3 +106,37 @@ The final verified render fixes the issues that caused the rejected draft:
 The source is ready for a deployment preview.
 
 Deployment must not overwrite the old production alias blindly. First deploy a preview from this verified source, check the public URL, then promote/replace the old NOVA deployment only after public-browser verification.
+
+
+## Deployment-ready artifact
+
+Production bundle workflow:
+- workflow: `.github/workflows/nova-build.yml`
+- successful run: `35848847596`
+- artifact: `nova-production-site`
+- artifact ID: `10745090664`
+- artifact size: 1,821,980 bytes
+- artifact SHA-256: `4b00331f63fd17aa70fe74b325871be5ce93956056d94f870eabf6ead4e9b975`
+- retention: 30 days
+
+The bundle contains the verified HTML/CSS/JS, optimized GLTF/WebP assets, Three.js core/module files, GLTFLoader and BufferGeometryUtils.
+
+## Cloudflare preview deployment status
+
+Credential capability check:
+- workflow run: `35848945057`
+- result: blocked only by missing GitHub Actions secrets
+- `CLOUDFLARE_API_TOKEN`: missing
+- `CLOUDFLARE_ACCOUNT_ID`: missing
+
+No secret values were exposed.
+
+Prepared guarded deploy workflow:
+- `.github/workflows/nova-deploy-cloudflare.yml`
+- target Pages project: `nova-interactive-portfolio`
+- preview branch: `redesign`
+- production branch is not touched
+- workflow restores the exact GLTF cache and vendors the verified runtime before deploy
+- deployment can be triggered later by updating `nova/deploy-trigger.txt` once credentials exist
+
+Do not switch the old production alias until the public preview has been browser-verified.
