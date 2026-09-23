@@ -6,6 +6,7 @@ const __dirname = path.dirname(__filename);
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowLocalPreviewCsp = process.env.EZCOMO_PREVIEW_LOCAL_CSP === '1';
+const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 const scriptSrc = [
   "'self'",
@@ -82,10 +83,13 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: isStaticExport ? 'export' : undefined,
+  basePath: isStaticExport ? '/EcomCMS' : undefined,
   experimental: {
     webpackMemoryOptimizations: true,
   },
   images: {
+    unoptimized: isStaticExport ? true : undefined,
     maximumRedirects: 5,
     remotePatterns: [
       {
@@ -133,14 +137,16 @@ const nextConfig = {
     };
     return config;
   },
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: securityHeaders,
-      },
-    ];
-  },
+  ...(isStaticExport ? {} : {
+    async headers() {
+      return [
+        {
+          source: '/(.*)',
+          headers: securityHeaders,
+        },
+      ];
+    },
+  }),
 };
 
 export default nextConfig;
