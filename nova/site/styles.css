@@ -209,3 +209,21 @@ body[data-range="behind"][data-settled="false"] .behind-transition .button--outl
 .behind-transition .button--outline{
   transition:opacity .38s ease,transform .42s cubic-bezier(.22,.61,.36,1);
 }
+
+@media (max-width:700px){
+  .hotspot[data-hotspot="cushion"][aria-expanded="true"] span{
+    left:auto;
+    right:50%;
+    transform:none;
+  }
+  .hotspot[data-hotspot="controls"][aria-expanded="true"] span{
+    left:50%;
+    right:auto;
+    transform:none;
+  }
+  .hotspot[data-hotspot="headband"][aria-expanded="true"] span{
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+  }
+}
