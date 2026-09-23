@@ -34,8 +34,22 @@ export function bindProductUI(actions){
   });
   document.querySelector('#inspectionReset')?.addEventListener('click', () => actions.resetInspection?.());
   document.querySelector('#replay')?.addEventListener('click', () => actions.replay?.());
-  document.querySelector('#notifyConcept')?.addEventListener('click', () => {
-    document.body.dataset.notifyConcept = document.body.dataset.notifyConcept === 'open' ? 'closed' : 'open';
+  const notifyTrigger=document.querySelector('#notifyConcept');
+  const notifyPanel=document.querySelector('#notifyPanel');
+  const setNotifyOpen=open=>{
+    document.body.dataset.notifyConcept=open?'open':'closed';
+    notifyTrigger?.setAttribute('aria-expanded',String(open));
+    notifyPanel?.setAttribute('aria-hidden',String(!open));
+    document.querySelector('.interest-shell')?.setAttribute('aria-hidden',String(!open));
+    if(open) requestAnimationFrame(()=>notifyPanel?.focus());
+    else notifyTrigger?.focus();
+  };
+  notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
+  document.querySelectorAll('[data-notify-close]').forEach(button=>{
+    button.addEventListener('click',()=>setNotifyOpen(false));
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
   });
 }
 
