@@ -58,7 +58,6 @@ def test_hotspot_qa_tracks_authored_motion_not_legacy_fixed_screen_band():
 # Trigger contracts for motion-aware hotspot QA implementation.
 # Final exact verification checkpoint: Contracts + Visual QA + Production Bundle.
 
-
 def test_focused_hotspot_qa_tracks_close_pass_motion_not_fixed_band():
     assert "hotspot should move with authored close pass" in hotspot_qa
     assert "state.height*.34" not in hotspot_qa
@@ -71,3 +70,4 @@ def test_public_preview_hotspots_follow_authored_motion():
     assert "state.h*.34" not in public_qa
     assert "state.h*.62" not in public_qa
 # Trigger contracts for public motion-aware hotspot QA implementation.
+# Latest-source exact verification checkpoint after mobile recentering.
