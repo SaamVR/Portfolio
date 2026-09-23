@@ -86,3 +86,7 @@ def test_transition_metadata_does_not_override_chapter_contrast():
     assert 'body[data-transition="to-dark"]' not in css
     assert 'body[data-transition="to-light"]' not in css
     assert 'body[data-transition] .copy' not in css
+
+
+def test_no_literal_escape_sequences_in_product_copy():
+    assert "\\n" not in html
