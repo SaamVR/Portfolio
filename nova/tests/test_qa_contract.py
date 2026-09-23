@@ -62,3 +62,4 @@ def test_focused_hotspot_qa_tracks_close_pass_motion_not_fixed_band():
     assert "hotspot should move with authored close pass" in hotspot_qa
     assert "state.height*.34" not in hotspot_qa
     assert "state.height*.62" not in hotspot_qa
+# Trigger contracts for focused motion-aware hotspot QA implementation.
