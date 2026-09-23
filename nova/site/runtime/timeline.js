@@ -63,7 +63,7 @@ function segment(progress){
 
 function applyCompositionInfluences(state,p){
   const spatial=windowWeight(p,.24,.30,.43,.49);
-  const adaptive=windowWeight(p,.42,.47,.57,.63);
+  const adaptive=windowWeight(p,.42,.47,.565,.58);
   const resolution=windowWeight(p,.82,.87,.96,1.0);
   const behind=ramp(p,.935,.975);
 
