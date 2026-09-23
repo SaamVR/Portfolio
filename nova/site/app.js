@@ -119,7 +119,7 @@ function sampleCamera(name, p){
     case 'form':
       return {pos:lerp3([-.34,.04,baseZ-.42],[.26,.08,baseZ-.68],e),look:[0,.04,0],fov:31,scale:mobile?.78:1.20,model:[mobile?0:1.25,mobile?.50:.02,0],yaw:lerp(-.025,.03,e)};
     case 'mechanism':
-      return {pos:lerp3([.36,.02,baseZ-.64],[-.40,.10,baseZ-.60],e),look:[0,.02,0],fov:30,scale:mobile?.73:lerp(.48,.96,mechanismMove),model:[mobile?0:lerp(-6.20,-1.55,mechanismMove),mobile?.58:-.10,0],yaw:lerp(.03,-.04,e)};
+      return {pos:lerp3([.36,.02,baseZ-.64],[-.40,.10,baseZ-.60],e),look:[0,.02,0],fov:30,scale:mobile?.73:lerp(.42,.96,mechanismMove),model:[mobile?0:lerp(-7.80,-1.55,mechanismMove),mobile?.58:-.10,0],yaw:lerp(.03,-.04,e)};
     case 'choreography':
       return {pos:lerp3([-.42,.08,baseZ-.68],[.42,-.02,baseZ-.84],e),look:[0,-.10,0],fov:29,scale:mobile?.82:1.08,model:[mobile?0:-2.35,mobile?.28:-1.00,0],yaw:lerp(-.035,.04,e)};
     case 'interaction':
