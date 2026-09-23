@@ -80,3 +80,8 @@ def test_r10_visual_qa_covers_case_study_handoff():
     assert "caseStudyAudit({width:390,height:844},'mobile')" in qa
 
 # R10 GREEN verification trigger after browser QA implementation.
+
+def test_r10_visual_qa_uses_cinematic_progress_not_full_document_progress():
+    assert "cinematicMax" in qa
+    assert "behind.offsetTop+behind.offsetHeight-innerHeight" in qa
+    assert "document.documentElement.scrollHeight-innerHeight" not in qa
