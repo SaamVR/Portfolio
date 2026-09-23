@@ -30,3 +30,9 @@ def test_mobile_and_reduced_motion_are_authored():
     assert "@media (max-width: 700px)" in css
     assert "prefers-reduced-motion" in css
     assert ":focus-visible" in css
+
+
+def test_stage_controls_layer_above_interactive_canvas():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage{position:relative;overflow:clip}" in compact
+    assert ".stage{position:relative;z-index:3;overflow:clip}" not in compact
