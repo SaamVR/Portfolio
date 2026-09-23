@@ -22,7 +22,7 @@ Policy-aware hotel automation and operations layer for independent hotels.
 
 **Live:** https://staypilot-hotel-os.pages.dev/  
 **Source:** https://github.com/SaamVR/staypilot-hotel-os  
-**Verified application release:** `145b6fde`
+**Verified application release:** `9bb79a40`
 
 Highlights:
 - 12 hotel automation workflows
