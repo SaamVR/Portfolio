@@ -1,1 +1,1 @@
-Run NOVA visual QA for upright-pose and material-alias fix.\n
+Run NOVA visual QA from durable FBX cache after upright pose fix v2.\n
