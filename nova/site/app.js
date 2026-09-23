@@ -97,13 +97,14 @@ function resolveScene(){
 function sampleAnimation(name, p){
   const e = ease(p);
   switch(name){
-    case 'hero': return lerp(0.48, 0.52, e);
-    case 'form': return lerp(0.34, 0.26, e);
-    case 'mechanism': return lerp(0.24, 0.56, e);
-    case 'choreography': return lerp(0.68, 0.82, e);
-    case 'interaction': return lerp(0.64, 0.74, e);
-    case 'closing': return lerp(0.74, 0.50, e);
-    default: return 0.5;
+    // Evidence-based ranges chosen from the real 27.71s ArmatureAction pose scan.
+    case 'hero': return lerp(0.24, 0.32, e);
+    case 'form': return lerp(0.16, 0.24, e);
+    case 'mechanism': return lerp(0.32, 0.48, e);
+    case 'choreography': return lerp(0.64, 0.80, e);
+    case 'interaction': return lerp(0.70, 0.74, e);
+    case 'closing': return lerp(0.16, 0.08, e);
+    default: return 0.24;
   }
 }
 
