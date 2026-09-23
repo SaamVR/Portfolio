@@ -420,9 +420,9 @@
         <section class="crm-view active" data-crm-panel="leads">
           <div class="crm-metrics">
             <div><span>Total leads</span><b id="crmTotal">0</b><small>in pipeline</small></div>
-            <div><span>Hot leads</span><b id="crmHot">0</b><small>score 80+</small></div>
-            <div><span>Needs review</span><b id="crmReview">0</b><small>score 55–79</small></div>
-            <div><span>Nurture</span><b id="crmNurture">0</b><small>score below 55</small></div>
+            <div><span>Hot leads</span><b id="crmHot">0</b><small id="crmHotRule">score 80+</small></div>
+            <div><span>Needs review</span><b id="crmReview">0</b><small id="crmReviewRule">score 55–79</small></div>
+            <div><span>Nurture</span><b id="crmNurture">0</b><small id="crmNurtureRule">score below 55</small></div>
           </div>
           <div class="crm-toolbar">
             <div class="search-wrap"><span>⌕</span><input id="crmSearch" placeholder="Search name or company…" /></div>
@@ -463,6 +463,10 @@
               <div class="score-band-labels"><span>Low</span><span>Review</span><span>Hot</span></div>
               <p class="panel-copy" id="analyticsInsight">Qualification insight will update as leads enter the pipeline.</p>
             </div>
+          </div>
+          <div class="crm-panel-card analytics-activity">
+            <div class="crm-panel-head"><div><small>RECENT SCORE ACTIVITY</small><b>Lead quality over the latest runs</b></div><span>0–100</span></div>
+            <div class="score-history" id="scoreHistory" aria-label="Recent lead score chart"></div>
           </div>
         </section>
 

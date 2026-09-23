@@ -14,12 +14,15 @@ function scoreLead(data){
     String(data.company||"").toLowerCase().includes("acme dental") &&
     budget>=5000 && data.timeline==="asap" && text.includes("follow");
   if(canonical) score=92;
+  const hot=Math.max(60,Math.min(98,Number(data?.thresholds?.hot)||80));
+  const review=Math.max(20,Math.min(hot-1,Number(data?.thresholds?.review)||55));
   return {
     score,
-    intent:score>=80?"High":score>=55?"Medium":"Low",
+    intent:score>=hot?"High":score>=review?"Medium":"Low",
     budgetFit:budget>=3000?"Strong":budget>=1000?"Good":"Limited",
     urgency:data.timeline==="asap"?"Immediate":data.timeline==="weeks"?"High":data.timeline==="month"?"Medium":"Low",
-    status:score>=80?"hot":score>=55?"review":"nurture"
+    status:score>=hot?"hot":score>=review?"review":"nurture",
+    thresholds:{hot,review}
   };
 }
 

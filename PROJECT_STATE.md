@@ -66,3 +66,18 @@ Updated: 2026-09-23
 2. Optional: add shareable workflow state / URL serialization
 3. Optional: connect external CRM / AI credentials when a production service is selected
 4. Keep verified changes committed before/with deployment
+
+## Finished product checkpoint
+- Guided walkthrough camera now frames the active component instead of whole sections
+- CRM record drawer remains correctly docked during tour highlighting
+- Guided step transitions wait for scroll settling to avoid label/content mismatch
+- Guided walkthrough can be cancelled cleanly with Escape
+- Tour overlay now has progress indication and side-aware docking
+- Hero CTA hierarchy refined so primary/secondary actions do not crush or wrap awkwardly
+- Light and dark surface depth, focus states, card hierarchy and hover behavior normalized
+- CRM qualification thresholds now change real workflow classification and server scoring
+- CRM automation toggles now persist and alter follow-up / sales-routing execution
+- Guided walkthrough intentionally uses canonical defaults so portfolio behavior stays deterministic
+- Analytics now includes a stable recent-score activity chart
+- Mobile regression verified at 390px with no horizontal overflow
+

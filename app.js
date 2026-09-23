@@ -4,6 +4,24 @@
   const STORAGE_KEY = "leadflow-ai-demo-leads-v2";
   const THEME_KEY = "leadflow-theme";
   const CRM_SETTINGS_KEY = "leadflow-crm-settings";
+  const AUTOMATION_STATE_KEY = "leadflow-automation-state";
+  const DEFAULT_CRM_SETTINGS = {hot:80,review:55,owner:"Growth Team",priority:true,followup:true,queue:true};
+  const DEFAULT_AUTOMATION_STATE = {qualification:true,followup:true,"sales-alert":true};
+
+  function readCrmSettings(){
+    try{
+      const saved=JSON.parse(localStorage.getItem(CRM_SETTINGS_KEY)||"null")||{};
+      return {...DEFAULT_CRM_SETTINGS,...saved,hot:Number(saved.hot||DEFAULT_CRM_SETTINGS.hot),review:Number(saved.review||DEFAULT_CRM_SETTINGS.review)};
+    }catch{return {...DEFAULT_CRM_SETTINGS}}
+  }
+  function readAutomationState(){
+    try{return {...DEFAULT_AUTOMATION_STATE,...(JSON.parse(localStorage.getItem(AUTOMATION_STATE_KEY)||"null")||{})}}
+    catch{return {...DEFAULT_AUTOMATION_STATE}}
+  }
+  function saveAutomationState(state){
+    try{localStorage.setItem(AUTOMATION_STATE_KEY,JSON.stringify(state))}catch{}
+  }
+
   let currentLead = null;
   let running = false;
   let workflowStartedAt = 0;
@@ -87,7 +105,7 @@
   function timelineLabel(v){
     return ({exploring:"Just exploring",month:"Within a month",weeks:"1–2 weeks",asap:"ASAP"})[v] || v;
   }
-  function scoreLead(data){
+  function scoreLead(data, settingsOverride=null){
     const text = (data.need || "").toLowerCase();
     let score = 36;
     const budgetPoints = data.budget >= 15000 ? 30 : data.budget >= 7500 ? 27 : data.budget >= 3000 ? 24 : data.budget >= 1000 ? 14 : 5;
@@ -108,14 +126,15 @@
                       text.includes("follow");
     if (canonical) score = 92;
 
-    const intent = score >= 80 ? "High" : score >= 55 ? "Medium" : "Low";
+    const settings=settingsOverride||readCrmSettings();
+    const intent = score >= settings.hot ? "High" : score >= settings.review ? "Medium" : "Low";
     const budgetFit = data.budget >= 3000 ? "Strong" : data.budget >= 1000 ? "Good" : "Limited";
     const urgency = data.timeline === "asap" ? "Immediate" : data.timeline === "weeks" ? "High" : data.timeline === "month" ? "Medium" : "Low";
-    const status = score >= 80 ? "hot" : score >= 55 ? "review" : "nurture";
+    const status = score >= settings.hot ? "hot" : score >= settings.review ? "review" : "nurture";
     return {score,intent,budgetFit,urgency,status};
   }
 
-  async function qualifyOnServer(data){
+  async function qualifyOnServer(data, settingsOverride=null){
     const proof=$("#backendProof");
     const status=$("#backendStatus");
     const trace=$("#backendTrace");
@@ -126,7 +145,7 @@
       const response=await fetch("/api/qualify",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(data)
+        body:JSON.stringify({...data,thresholds:{hot:(settingsOverride||readCrmSettings()).hot,review:(settingsOverride||readCrmSettings()).review}})
       });
       const payload=await response.json();
       if(!response.ok||!payload.ok||!payload.qualification) throw new Error(payload.error||"server_error");
@@ -240,8 +259,19 @@
 
   async function runStage(stage, index, reduced){
     const duration = reduced ? 100 : stage.duration;
-    const previous = index===0 ? 0 : stage.start;
     const target = stage.end;
+    if(stage.skip){
+      $("#execStatus").textContent=`${String(index+1).padStart(2,"0")} / 06`;
+      $("#runAutomation").innerHTML=`Processing <span>${index+1}/6</span>`;
+      $("#execProgressBar").style.transition=reduced?"none":"width 180ms ease";
+      $("#execProgressBar").style.width=`${target}%`;
+      $("#execProgressPulse").style.left=`calc(${target}% - 5px)`;
+      setStep(index,"done","Skipped");
+      $("#execMessage").textContent=stage.skipMessage;
+      logEvent(stage.eventDone||"stage.skipped",stage.skipMessage,"info");
+      await delay(reduced?20:180);
+      return;
+    }
     setStep(index,"active",stage.activeLabel);
     $("#execStatus").textContent=`${String(index+1).padStart(2,"0")} / 06`;
     $("#runAutomation").innerHTML=`Processing <span>${index+1}/6</span>`;
@@ -268,13 +298,25 @@
     await delay(reduced ? 20 : 110);
   }
 
-  async function runWorkflow(data){
+  async function runWorkflow(data, options={}){
     if(running) return;
+    const guided=options.guided===true;
+    const automationState=guided?{...DEFAULT_AUTOMATION_STATE}:readAutomationState();
+    const crmSettings=guided?{...DEFAULT_CRM_SETTINGS}:readCrmSettings();
+    if(!automationState.qualification){
+      $("#formError").textContent="Lead Qualification is disabled in CRM → Automations. Re-enable it to run this workflow.";
+      return;
+    }
+    $("#formError").textContent="";
+    const followupEnabled=automationState.followup && crmSettings.followup;
     running=true;
     resetSteps();
     $("#resultEmpty").classList.remove("hidden");
     $("#resultContent").classList.add("hidden");
     $("#resultCard").classList.remove("result-reveal");
+    $("#resultCard").classList.add("processing");
+    $("#resultEmpty b").textContent="Qualification in progress";
+    $("#resultEmpty p").textContent="Live signals will resolve here as validation, scoring and routing complete.";
     $(".execution-card").classList.add("running");
     $("#execStatus").textContent="STARTING";
     $("#runAutomation").disabled=true;
@@ -283,8 +325,8 @@
     resetEventLog(data);
 
     const duplicate = leads.find(l => l.name.toLowerCase()===data.name.toLowerCase() && l.company.toLowerCase()===data.company.toLowerCase());
-    let qual = scoreLead(data);
-    const serverQualification=qualifyOnServer(data);
+    let qual = scoreLead(data,crmSettings);
+    const serverQualification=qualifyOnServer(data,crmSettings);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const startedAt=workflowStartedAt;
     const timerId=setInterval(()=>{
@@ -296,8 +338,8 @@
       {duration:760,start:8,end:22,activeLabel:"Searching",doneLabel:duplicate?"Matched":"Clear",doneMessage:duplicate?"Existing CRM contact matched":"No duplicate CRM record found",eventStart:"duplicate.search",eventDone:duplicate?"duplicate.match":"duplicate.clear",eventState:duplicate?"info":"ok",messages:["Querying CRM contacts…","Comparing name + company…",duplicate?"Existing record detected…":"No matching identity found…"]},
       {duration:1680,start:22,end:52,activeLabel:"Reasoning",doneLabel:"Scored",doneMessage:`AI qualification complete · ${qual.score}/100`,eventStart:"qualification.analyze",eventDone:"qualification.score",eventState:qual.status==="hot"?"hot":"ok",messages:["Reading intent signals…","Evaluating budget fit…","Weighing timeline urgency…","Scoring purchase intent…"]},
       {duration:920,start:52,end:69,activeLabel:"Syncing",doneLabel:"Synced",doneMessage:duplicate?"CRM record updated":"New CRM lead created",eventStart:"crm.upsert",eventDone:duplicate?"crm.updated":"crm.created",messages:["Preparing CRM payload…",duplicate?"Updating existing record…":"Creating contact + lead record…","Confirming CRM sync…"]},
-      {duration:1260,start:69,end:91,activeLabel:"Writing",doneLabel:"Drafted",doneMessage:"Personalized follow-up ready",eventStart:"followup.compose",eventDone:"followup.ready",messages:["Generating reply context…","Personalizing next step…","Polishing sales-ready message…"]},
-      {duration:640,start:91,end:100,activeLabel:"Routing",doneLabel:"Sent",doneMessage:qual.status==="hot"?"Hot lead routed to sales":"Lead routed to the correct queue",eventStart:"routing.evaluate",eventDone:qual.status==="hot"?"sales.alert":"routing.complete",eventState:qual.status==="hot"?"hot":"ok",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing priority sales alert…":"Selecting follow-up queue…","Dispatching notification…"]}
+      {duration:1260,start:69,end:91,activeLabel:"Writing",doneLabel:"Drafted",doneMessage:"Personalized follow-up ready",eventStart:"followup.compose",eventDone:followupEnabled?"followup.ready":"followup.skipped",skip:!followupEnabled,skipMessage:"Follow-up generation disabled in CRM controls",messages:["Generating reply context…","Personalizing next step…","Polishing sales-ready message…"]},
+      {duration:640,start:91,end:100,activeLabel:"Routing",doneLabel:"Sent",doneMessage:qual.status==="hot"?"Hot lead routed to sales":"Lead routed to the correct queue",eventStart:"routing.evaluate",eventDone:qual.status==="hot"?"sales.alert":"routing.complete",eventState:qual.status==="hot"?"hot":"ok",skip:false,skipMessage:"Notification routing disabled in CRM controls",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing priority sales alert…":"Selecting follow-up queue…","Dispatching notification…"]}
     ];
 
     try{
@@ -313,6 +355,16 @@
           }else{
             logEvent("api.fallback","Server path unavailable · deterministic browser fallback used","info");
           }
+          const salesRouteEnabled=qual.status==="hot"
+            ? automationState["sales-alert"] && crmSettings.priority
+            : qual.status==="review" ? crmSettings.queue : true;
+          stages[5].skip=!salesRouteEnabled;
+          stages[5].skipMessage=qual.status==="hot"
+            ? "Priority sales alert disabled in CRM controls"
+            : "Human review queue disabled; lead retained in CRM";
+          stages[5].eventDone=salesRouteEnabled
+            ? (qual.status==="hot"?"sales.alert":"routing.complete")
+            : "routing.skipped";
         }
         await runStage(stages[i],i,reduced);
       }
@@ -327,8 +379,9 @@
       timelineLabel:timelineLabel(data.timeline),
       ...qual,
       summary:makeSummary(data,qual),
-      followup:makeFollowup(data,qual),
-      subject:subjectFor(data),
+      followupGenerated:followupEnabled,
+      followup:followupEnabled?makeFollowup(data,qual):"Follow-up generation is disabled in CRM controls for this workflow.",
+      subject:followupEnabled?subjectFor(data):"Follow-up generation disabled",
       created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})
     };
 
@@ -367,7 +420,11 @@
     $("#aiSummary").textContent=lead.summary;
     $("#resultEmpty").classList.add("hidden");
     $("#resultContent").classList.remove("hidden");
-    $("#resultCard").classList.remove("result-reveal");
+    $("#resultCard").classList.remove("processing","result-reveal");
+    $("#resultEmpty b").textContent="Qualification result";
+    $("#resultEmpty p").textContent="Your lead score, intent analysis and generated summary will appear here.";
+    $("#showFollowup").disabled=lead.followupGenerated===false;
+    $("#showFollowup").textContent=lead.followupGenerated===false?"Follow-up disabled":"View generated follow-up";
     requestAnimationFrame(()=>$("#resultCard").classList.add("result-reveal"));
 
     if(!reduced){
@@ -567,6 +624,10 @@
     $("#crmHot").textContent=leads.filter(l=>l.status==="hot").length;
     $("#crmReview").textContent=leads.filter(l=>l.status==="review").length;
     $("#crmNurture").textContent=leads.filter(l=>l.status==="nurture").length;
+    const settings=readCrmSettings();
+    $("#crmHotRule").textContent="score "+settings.hot+"+";
+    $("#crmReviewRule").textContent="score "+settings.review+"–"+(settings.hot-1);
+    $("#crmNurtureRule").textContent="score below "+settings.review;
     $$("#crmRows tr").forEach(row=>row.addEventListener("click",()=>openLead(row.dataset.id)));
   }
 
@@ -612,9 +673,16 @@
     });
     $("#scoreBandFill").style.width=avg+"%";
     $("#scoreBandMarker").style.left="calc("+avg+"% - 5px)";
-    $("#analyticsInsight").textContent=avg>=80
+    const recent=leads.slice(0,8).reverse();
+    $("#scoreHistory").innerHTML=recent.map(l=>
+      '<div class="score-history-item '+l.status+'" title="'+escapeHtml(l.name)+' · '+l.score+'/100">'+
+        '<b>'+l.score+'</b><div><i style="height:'+l.score+'%"></i></div><span>'+escapeHtml((l.name||"?").slice(0,1).toUpperCase())+'</span>'+
+      '</div>'
+    ).join("");
+    const settings=readCrmSettings();
+    $("#analyticsInsight").textContent=avg>=settings.hot
       ? "The current pipeline is weighted toward sales-ready opportunities."
-      : avg>=55
+      : avg>=settings.review
         ? "The pipeline is mixed, with a meaningful share of leads needing review."
         : "Most current leads are early-stage and better suited to nurture.";
   }
@@ -660,12 +728,24 @@
 
   $$(".crm-nav-btn").forEach(btn=>btn.addEventListener("click",()=>switchCrmView(btn.dataset.crmView)));
 
+  const initialAutomationState=readAutomationState();
+  $$(".automation-card").forEach(card=>{
+    const key=card.dataset.automation;
+    const enabled=initialAutomationState[key]!==false;
+    card.classList.toggle("enabled",enabled);
+    const btn=$(".automation-toggle",card);
+    btn.setAttribute("aria-pressed",String(enabled));
+    $("em",btn).textContent=enabled?"On":"Off";
+  });
   $$(".automation-toggle").forEach(btn=>btn.addEventListener("click",()=>{
     const card=btn.closest(".automation-card");
     const enabled=!card.classList.contains("enabled");
     card.classList.toggle("enabled",enabled);
     btn.setAttribute("aria-pressed",String(enabled));
     $("em",btn).textContent=enabled?"On":"Off";
+    const state=readAutomationState();
+    state[card.dataset.automation]=enabled;
+    saveAutomationState(state);
   }));
 
   const settingsEls={
@@ -677,27 +757,27 @@
     $("#reviewThresholdValue").textContent=settingsEls.review.value;
   }
   [settingsEls.hot,settingsEls.review].forEach(el=>el.addEventListener("input",syncSettingOutputs));
-  try{
-    const saved=JSON.parse(localStorage.getItem(CRM_SETTINGS_KEY)||"null");
-    if(saved){
-      if(saved.hot) settingsEls.hot.value=saved.hot;
-      if(saved.review) settingsEls.review.value=saved.review;
-      if(saved.owner) settingsEls.owner.value=saved.owner;
-      if(typeof saved.priority==="boolean") settingsEls.priority.checked=saved.priority;
-      if(typeof saved.followup==="boolean") settingsEls.followup.checked=saved.followup;
-      if(typeof saved.queue==="boolean") settingsEls.queue.checked=saved.queue;
-    }
-  }catch{}
+  const savedSettings=readCrmSettings();
+  settingsEls.hot.value=savedSettings.hot;
+  settingsEls.review.value=savedSettings.review;
+  settingsEls.owner.value=savedSettings.owner;
+  settingsEls.priority.checked=savedSettings.priority;
+  settingsEls.followup.checked=savedSettings.followup;
+  settingsEls.queue.checked=savedSettings.queue;
   syncSettingOutputs();
 
   $("#saveCrmSettings").addEventListener("click",()=>{
+    const hot=Number(settingsEls.hot.value);
+    const review=Math.min(Number(settingsEls.review.value),hot-1);
+    settingsEls.review.value=review;
     const payload={
-      hot:settingsEls.hot.value,review:settingsEls.review.value,owner:settingsEls.owner.value,
+      hot,review,owner:settingsEls.owner.value,
       priority:settingsEls.priority.checked,followup:settingsEls.followup.checked,queue:settingsEls.queue.checked
     };
     try{localStorage.setItem(CRM_SETTINGS_KEY,JSON.stringify(payload))}catch{}
-    $("#settingsSaved").textContent="Settings saved";
-    setTimeout(()=>$("#settingsSaved").textContent="",1800);
+    syncSettingOutputs();
+    $("#settingsSaved").textContent="Saved · applies to the next workflow run";
+    setTimeout(()=>$("#settingsSaved").textContent="",2200);
   });
 
   function openCrm(){
@@ -753,14 +833,50 @@
 
   let guidedActive=false;
   let guidedCancelled=false;
-  function setTourStep(index,label){
+  let activeTourTarget=null;
+
+  function clearTourTarget(){
+    if(activeTourTarget) activeTourTarget.classList.remove("tour-target");
+    activeTourTarget=null;
+  }
+  function setTourStep(index,label,dock="right"){
     $("#tourIndex").textContent=index+" / 4";
     $("#tourLabel").textContent=label;
+    $("#tourStatus").classList.toggle("dock-left",dock==="left");
+    $("#tourStatus").style.setProperty("--tour-progress",(index/4*100)+"%");
+  }
+  async function frameTourTarget(target,index,label,dock="right"){
+    clearTourTarget();
+    if(!target) return;
+    activeTourTarget=target;
+    target.classList.add("tour-target");
+    await delay(30);
+    if(!target.closest(".crm-modal")){
+      const safeTop=window.innerWidth<=680?18:68;
+      const safeBottom=window.innerWidth<=680?86:94;
+      const rect=target.getBoundingClientRect();
+      const available=Math.max(260,window.innerHeight-safeTop-safeBottom);
+      const tall=rect.height>=Math.min(available,window.innerHeight*.55);
+      const desiredTop=tall?safeTop:safeTop+(available-rect.height)/2;
+      const top=Math.max(0,window.scrollY+rect.top-desiredTop);
+      window.scrollTo({top,behavior:reducedMotion?"auto":"smooth"});
+      await delay(reducedMotion?40:560);
+      const settled=target.getBoundingClientRect();
+      if(Math.abs(settled.top-desiredTop)>10||settled.bottom>window.innerHeight-safeBottom+8){
+        const adjustedTop=Math.max(0,window.scrollY+settled.top-desiredTop);
+        window.scrollTo({top:adjustedTop,behavior:"auto"});
+        await delay(45);
+      }
+    }else{
+      await delay(reducedMotion?30:120);
+    }
+    setTourStep(index,label,dock);
   }
   function endTour(){
     guidedCancelled=true;
     guidedActive=false;
-    $("#tourStatus").classList.remove("open");
+    clearTourTarget();
+    $("#tourStatus").classList.remove("open","dock-left");
     $("#tourStatus").setAttribute("aria-hidden","true");
     $("#guidedDemo").disabled=false;
     $("#guidedDemo").innerHTML="<span>▶</span> Guided walkthrough";
@@ -779,40 +895,45 @@
     $("#tourStatus").setAttribute("aria-hidden","false");
 
     try{
-      setTourStep(1,"Run a qualified lead through the live server path");
       $("#leadName").value="Sarah";
       $("#leadCompany").value="Acme Dental";
       $("#leadBudget").value="5000";
       $("#leadTimeline").value="asap";
       $("#leadNeed").value="We need automated appointment lead follow-up";
-      $("#demo").scrollIntoView({behavior:reducedMotion?"auto":"smooth",block:"start"});
-      await delay(reducedMotion?80:700);
+      const guidedRun=runWorkflow({name:"Sarah",company:"Acme Dental",budget:5000,timeline:"asap",need:"We need automated appointment lead follow-up"},{guided:true});
+      await delay(reducedMotion?30:180);
+      await frameTourTarget($(".execution-card"),1,"Live workflow · server qualification + observable events","right");
       if(guidedCancelled) return;
-      await runWorkflow({name:"Sarah",company:"Acme Dental",budget:5000,timeline:"asap",need:"We need automated appointment lead follow-up"});
+      await guidedRun;
+      if(guidedCancelled) return;
+      await delay(reducedMotion?40:780);
+
+      await frameTourTarget($("#resultCard"),1,"Result · 92/100 hot lead with explainable signals","left");
+      await delay(reducedMotion?120:1500);
       if(guidedCancelled) return;
 
-      setTourStep(2,"Inspect the CRM record created by the workflow");
       openCrm();
-      await delay(reducedMotion?80:480);
+      await delay(reducedMotion?80:420);
       if(currentLead) openLead(currentLead.id);
-      await delay(reducedMotion?100:900);
+      await delay(reducedMotion?40:340);
+      await frameTourTarget($("#leadDrawer"),2,"CRM sync · inspect the record created by the workflow","left");
+      await delay(reducedMotion?140:1600);
       if(guidedCancelled) return;
 
-      setTourStep(3,"Watch pipeline analytics react to the new lead");
       switchCrmView("analytics");
-      await delay(reducedMotion?120:1100);
+      $(".crm-main").scrollTop=0;
+      await frameTourTarget($('[data-crm-panel="analytics"]'),3,"Analytics · pipeline metrics react to the new lead","right");
+      await delay(reducedMotion?160:1650);
       if(guidedCancelled) return;
+      clearTourTarget();
       closeCrm();
 
-      setTourStep(4,"Generate and edit the suggested automation blueprint");
-      $("#blueprint").scrollIntoView({behavior:reducedMotion?"auto":"smooth",block:"start"});
-      await delay(reducedMotion?80:720);
-      if(guidedCancelled) return;
+      await delay(reducedMotion?60:260);
       $("#generateBlueprint").click();
-      await delay(reducedMotion?120:900);
+      await delay(reducedMotion?100:520);
       $("#blueprintFlow .bp-node:nth-of-type(2)")?.click();
-      setTourStep(4,"Walkthrough complete · try editing any workflow step");
-      await delay(reducedMotion?250:1300);
+      await frameTourTarget($(".blueprint-output"),4,"Workflow builder · select, rename, reorder or add steps","left");
+      await delay(reducedMotion?260:1850);
     }finally{
       if(guidedActive) endTour();
     }
@@ -820,6 +941,11 @@
 
   document.addEventListener("keydown",e=>{
     if(e.key==="Escape"){
+      if(guidedActive){
+        closeCrm();
+        endTour();
+        return;
+      }
       if($("#followupModal").classList.contains("open")) closeFollow();
       else if($("#leadDrawer").classList.contains("open")) $("#leadDrawer").classList.remove("open");
       else if($("#crmModal").classList.contains("open")) closeCrm();
