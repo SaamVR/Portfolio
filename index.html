@@ -30,6 +30,7 @@
     <nav class="desktop-nav" aria-label="Primary navigation">
       <a href="#workflow">Workflow</a>
       <a href="#demo">Live demo</a>
+      <a href="#live-dashboard">Dashboard</a>
       <a href="#calculator">ROI calculator</a>
       <a href="#architecture">Architecture</a>
     </nav>
@@ -235,6 +236,107 @@
               </div>
             </div>
           </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="live-dashboard" class="section shell live-dashboard-section">
+      <div class="section-head dashboard-section-head">
+        <div><p class="tag">LIVE OPERATIONS DASHBOARD</p><h2>The control room the client operates after handoff.</h2></div>
+        <p>Feed demo data into the same qualification logic and watch the operational dashboard update in real time.</p>
+      </div>
+
+      <div class="ops-dashboard">
+        <aside class="ops-input-panel">
+          <div class="ops-panel-kicker"><span class="ops-live-dot"></span><small>DEMO DATA INPUT</small></div>
+          <h3>Stream a lead into operations.</h3>
+          <p>Use the preset or change the fields. The dashboard will qualify the lead, update the pipeline and write the event into the activity feed.</p>
+          <form id="opsLeadForm" novalidate>
+            <div class="ops-field-pair">
+              <label>Name<input id="opsName" value="Nadia Rahman" required /></label>
+              <label>Company<input id="opsCompany" value="Harbor Dental" required /></label>
+            </div>
+            <label>Lead source
+              <select id="opsSource">
+                <option>Meta Lead Ads</option>
+                <option>Website Form</option>
+                <option>Typeform</option>
+                <option>WhatsApp</option>
+                <option>Referral</option>
+              </select>
+            </label>
+            <div class="ops-field-pair">
+              <label>Budget
+                <select id="opsBudget">
+                  <option value="500">Under $1,000</option>
+                  <option value="2000">$1,000–$3,000</option>
+                  <option value="5000" selected>$3,000–$7,500</option>
+                  <option value="12000">$7,500–$15,000</option>
+                  <option value="25000">$15,000+</option>
+                </select>
+              </label>
+              <label>Timeline
+                <select id="opsTimeline">
+                  <option value="exploring">Exploring</option>
+                  <option value="month">Within a month</option>
+                  <option value="weeks">1–2 weeks</option>
+                  <option value="asap" selected>ASAP</option>
+                </select>
+              </label>
+            </div>
+            <label>Need<input id="opsNeed" value="Automate appointment lead follow-up" required /></label>
+            <button class="primary-btn full ops-stream-btn" id="opsStreamLead" type="submit">Stream demo lead <span>→</span></button>
+          </form>
+          <div class="ops-input-status" id="opsInputStatus">
+            <span class="ops-status-icon">✓</span>
+            <div><b>Ready for input</b><small>Waiting for the next demo event</small></div>
+          </div>
+        </aside>
+
+        <div class="ops-console">
+          <header class="ops-console-top">
+            <div class="ops-console-brand"><span>LF</span><div><b>Lead Operations</b><small>Qualification workspace</small></div></div>
+            <div class="ops-console-actions">
+              <div class="ops-console-state"><span class="ops-live-dot"></span><b>LIVE</b><small id="opsLastSync">synced now</small></div>
+              <button id="opsOpenCrm" type="button">Open full CRM <span>↗</span></button>
+            </div>
+          </header>
+
+          <div class="ops-tour-frame">
+          <div class="ops-kpis">
+            <article><span>Pipeline</span><strong id="opsTotal">0</strong><small>active demo leads</small></article>
+            <article><span>Hot leads</span><strong id="opsHot">0</strong><small id="opsHotRate">0% of pipeline</small></article>
+            <article><span>Average score</span><strong id="opsAverage">0</strong><small>qualification quality</small></article>
+            <article><span>Immediate</span><strong id="opsImmediate">0</strong><small>ASAP timeline</small></article>
+          </div>
+
+          <div class="ops-main-grid">
+            <section class="ops-panel ops-trend-panel">
+              <div class="ops-panel-head"><div><small>QUALIFICATION TREND</small><b>Recent lead scores</b></div><span>0–100</span></div>
+              <div class="ops-score-chart" id="opsScoreChart" aria-label="Recent qualification scores"></div>
+            </section>
+
+            <section class="ops-panel ops-source-panel">
+              <div class="ops-panel-head"><div><small>LEAD SOURCES</small><b>Inbound mix</b></div><span id="opsSourceCount">0 sources</span></div>
+              <div class="ops-source-list" id="opsSourceList"></div>
+            </section>
+          </div>
+
+          <section class="ops-panel ops-pipeline-panel">
+            <div class="ops-panel-head"><div><small>LIVE PIPELINE</small><b>Latest qualified leads</b></div><span id="opsPipelineCount">0 records</span></div>
+            <div class="ops-table-wrap">
+              <table class="ops-table">
+                <thead><tr><th>Lead</th><th>Source</th><th>Score</th><th>Status</th><th>Timeline</th></tr></thead>
+                <tbody id="opsPipelineRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          </div>
+          <section class="ops-panel ops-activity-panel">
+            <div class="ops-panel-head"><div><small>REAL-TIME ACTIVITY</small><b>Automation events</b></div><span><i class="ops-live-dot"></i> streaming</span></div>
+            <div class="ops-activity-feed" id="opsActivityFeed"></div>
+          </section>
         </div>
       </div>
     </section>
@@ -546,7 +648,7 @@
   </div>
 
   <div class="tour-status" id="tourStatus" aria-live="polite" aria-hidden="true">
-    <span id="tourIndex">1 / 4</span>
+    <span id="tourIndex">1 / 5</span>
     <b id="tourLabel">Preparing guided walkthrough…</b>
     <button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button>
   </div>

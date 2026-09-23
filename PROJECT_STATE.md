@@ -94,3 +94,16 @@ Updated: 2026-09-23
 - Mobile production QA: 390px viewport / 390px document width, no horizontal overflow
 - Production browser QA: no JavaScript errors and no failed resources
 
+## Homepage live dashboard checkpoint
+- Added a full realtime operations dashboard directly to the homepage
+- Dashboard demo input supports name, company, lead source, budget, timeline and need
+- Demo input uses the same server qualification contract and CRM thresholds as the main workflow
+- New dashboard leads persist into the same CRM / analytics state rather than an isolated mockup
+- Existing live workflow runs also update the homepage dashboard
+- Dashboard includes live KPI cards, qualification score trend, inbound-source mix, latest qualified pipeline and realtime activity feed
+- New-row, KPI, chart, source and activity animations communicate realtime state changes
+- Dashboard includes a direct Open full CRM action
+- Guided walkthrough expanded from 4 to 5 steps and now showcases the homepage operations dashboard
+- Dashboard core is framed as a viewport-safe tour target
+- Responsive mobile table uses contained horizontal scrolling with no page overflow
+

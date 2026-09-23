@@ -379,6 +379,7 @@
     const lead = {
       id: duplicate?.id || `lead-${Date.now()}`,
       ...data,
+      source:data.source||"Website Form",
       budgetLabel:budgetLabel(data.budget),
       timelineLabel:timelineLabel(data.timeline),
       ...qual,
@@ -398,6 +399,8 @@
     renderCRM();
     renderAnalytics();
     renderAutomationHistory();
+    pushOpsActivity("workflow.complete",lead.name+" · "+lead.company+" · "+lead.score+"/100",lead.status);
+    renderOpsDashboard(lead.id);
     animateCrmReaction(lead);
     logEvent("workflow.complete",lead.status==="hot"?"Qualified lead delivered to sales":"Lead processing complete",lead.status==="hot"?"hot":"ok");
     $("#execProgressBar").style.width="100%";
@@ -607,6 +610,200 @@
   }));
 
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+
+
+
+  /* Homepage live operations dashboard */
+  let opsBusy=false;
+  let opsActivityEntries=[];
+
+  function sourceForLead(lead,index=0){
+    if(lead.source) return lead.source;
+    const defaults={"demo-001":"Website Form","demo-002":"Meta Lead Ads","demo-003":"Referral"};
+    return defaults[lead.id] || ["Website Form","Meta Lead Ads","Typeform","Referral"][index%4];
+  }
+
+  function opsTime(){
+    return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  }
+
+  function pushOpsActivity(code,message,state="ok"){
+    opsActivityEntries.unshift({code,message,state,time:opsTime()});
+    opsActivityEntries=opsActivityEntries.slice(0,6);
+    renderOpsActivity();
+  }
+
+  function renderOpsActivity(){
+    const feed=$("#opsActivityFeed");
+    if(!feed) return;
+    if(!opsActivityEntries.length){
+      opsActivityEntries=leads.slice(0,4).map((lead,i)=>({
+        code:lead.status==="hot"?"sales.route":"crm.sync",
+        message:lead.name+" · "+lead.company+" · "+lead.score+"/100",
+        state:lead.status,
+        time:lead.created||("demo "+(i+1))
+      }));
+    }
+    feed.innerHTML=opsActivityEntries.map((e,i)=>
+      '<div class="ops-activity-row '+escapeHtml(e.state)+'" style="--ops-i:'+i+'">'+
+        '<span class="ops-activity-pulse"></span>'+
+        '<time>'+escapeHtml(e.time)+'</time>'+
+        '<code>'+escapeHtml(e.code)+'</code>'+
+        '<b>'+escapeHtml(e.message)+'</b>'+
+      '</div>'
+    ).join("");
+  }
+
+  function animateOpsNumber(el,value){
+    if(!el) return;
+    const from=Number(String(el.textContent).replace(/[^0-9.-]/g,""))||0;
+    const start=performance.now();
+    const duration=360;
+    const tick=now=>{
+      const p=Math.min(1,(now-start)/duration);
+      const eased=1-Math.pow(1-p,3);
+      el.textContent=Math.round(from+(value-from)*eased);
+      if(p<1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function renderOpsDashboard(highlightId=null){
+    if(!$("#opsTotal")) return;
+    const total=leads.length;
+    const hot=leads.filter(l=>l.status==="hot").length;
+    const avg=total?Math.round(leads.reduce((sum,l)=>sum+Number(l.score||0),0)/total):0;
+    const immediate=leads.filter(l=>l.timeline==="asap").length;
+    animateOpsNumber($("#opsTotal"),total);
+    animateOpsNumber($("#opsHot"),hot);
+    animateOpsNumber($("#opsAverage"),avg);
+    animateOpsNumber($("#opsImmediate"),immediate);
+    $("#opsHotRate").textContent=(total?Math.round(hot/total*100):0)+"% of pipeline";
+    $("#opsLastSync").textContent="synced "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+
+    const recent=leads.slice(0,8).reverse();
+    $("#opsScoreChart").innerHTML=recent.map((l,i)=>
+      '<div class="ops-chart-item '+escapeHtml(l.status)+'" title="'+escapeHtml(l.name)+' · '+l.score+'/100">'+
+        '<b>'+l.score+'</b>'+
+        '<div><i style="height:'+Math.max(5,Number(l.score)||0)+'%;--chart-i:'+i+'"></i></div>'+
+        '<span>'+escapeHtml((l.name||"?").slice(0,1).toUpperCase())+'</span>'+
+      '</div>'
+    ).join("");
+
+    const sourceMap={};
+    leads.forEach((lead,i)=>{
+      const source=sourceForLead(lead,i);
+      sourceMap[source]=(sourceMap[source]||0)+1;
+    });
+    const sources=Object.entries(sourceMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const maxSource=Math.max(1,...sources.map(x=>x[1]));
+    $("#opsSourceCount").textContent=sources.length+" source"+(sources.length===1?"":"s");
+    $("#opsSourceList").innerHTML=sources.map(([name,count],i)=>
+      '<div class="ops-source-row" style="--source-i:'+i+'">'+
+        '<div><span>'+escapeHtml(name)+'</span><b>'+count+'</b></div>'+
+        '<i><em style="width:'+(count/maxSource*100)+'%"></em></i>'+
+      '</div>'
+    ).join("");
+
+    const latest=leads.slice(0,5);
+    $("#opsPipelineCount").textContent=latest.length+" record"+(latest.length===1?"":"s");
+    $("#opsPipelineRows").innerHTML=latest.map((l,i)=>
+      '<tr class="'+(l.id===highlightId?"ops-row-new":"")+'">'+
+        '<td><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td>'+
+        '<td>'+escapeHtml(sourceForLead(l,i))+'</td>'+
+        '<td><strong>'+l.score+'</strong></td>'+
+        '<td><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HOT":l.status==="review"?"REVIEW":"NURTURE")+'</span></td>'+
+        '<td>'+escapeHtml(l.timelineLabel||timelineLabel(l.timeline))+'</td>'+
+      '</tr>'
+    ).join("");
+    renderOpsActivity();
+  }
+
+  async function qualifyOpsLead(data){
+    try{
+      const settings=readCrmSettings();
+      const response=await fetch("/api/qualify",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({...data,thresholds:{hot:settings.hot,review:settings.review}})
+      });
+      const payload=await response.json();
+      if(!response.ok||!payload.ok||!payload.qualification) throw new Error("qualification_failed");
+      return {qualification:payload.qualification,traceId:payload.traceId,server:true};
+    }catch{
+      return {qualification:scoreLead(data),traceId:null,server:false};
+    }
+  }
+
+  function setOpsInputState(mode,title,copy){
+    const box=$("#opsInputStatus");
+    if(!box) return;
+    box.className="ops-input-status "+mode;
+    $(".ops-status-icon",box).textContent=mode==="processing"?"↻":mode==="hot"?"↗":mode==="review"?"◇":mode==="nurture"?"○":"✓";
+    $("b",box).textContent=title;
+    $("small",box).textContent=copy;
+  }
+
+  $("#opsLeadForm")?.addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(opsBusy) return;
+    const data={
+      name:$("#opsName").value.trim(),
+      company:$("#opsCompany").value.trim(),
+      source:$("#opsSource").value,
+      budget:Number($("#opsBudget").value),
+      timeline:$("#opsTimeline").value,
+      need:$("#opsNeed").value.trim()
+    };
+    if(!data.name||!data.company||!data.need){
+      setOpsInputState("error","Complete the demo fields","Name, company and need are required.");
+      return;
+    }
+    opsBusy=true;
+    $("#opsStreamLead").disabled=true;
+    $("#opsStreamLead").innerHTML='Streaming <span>•••</span>';
+    setOpsInputState("processing","Receiving lead","Validating inbound payload…");
+    pushOpsActivity("lead.received",data.name+" · "+data.source,"live");
+    await delay(280);
+    setOpsInputState("processing","Qualifying","Scoring budget, urgency and purchase intent…");
+    pushOpsActivity("qualification.start","Server qualification requested","live");
+
+    const result=await qualifyOpsLead(data);
+    const qual=result.qualification;
+    await delay(360);
+    pushOpsActivity(result.server?"api.qualify":"api.fallback",(result.server?"Server response · ":"Local fallback · ")+qual.score+"/100",qual.status);
+
+    const duplicate=leads.find(l=>l.name.toLowerCase()===data.name.toLowerCase()&&l.company.toLowerCase()===data.company.toLowerCase());
+    const lead={
+      id:duplicate?.id||"ops-"+Date.now(),
+      ...data,
+      budgetLabel:budgetLabel(data.budget),
+      timelineLabel:timelineLabel(data.timeline),
+      ...qual,
+      summary:makeSummary(data,qual),
+      followupGenerated:true,
+      followup:makeFollowup(data,qual),
+      subject:subjectFor(data),
+      created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})
+    };
+    if(duplicate) leads=leads.map(l=>l.id===duplicate.id?lead:l);
+    else leads.unshift(lead);
+    save();
+    currentLead=lead;
+    lastCrmEvent={id:lead.id,isNew:!duplicate,at:Date.now()};
+    renderCRM();
+    renderAnalytics();
+    renderAutomationHistory();
+    pushOpsActivity(duplicate?"crm.updated":"crm.created",(duplicate?"Updated ":"Created ")+data.company+" record","ok");
+    pushOpsActivity(qual.status==="hot"?"sales.route":qual.status==="review"?"review.queue":"nurture.route",qual.status==="hot"?"Priority lead routed to sales":qual.status==="review"?"Lead sent to human review":"Lead added to nurture queue",qual.status);
+    renderOpsDashboard(lead.id);
+    setOpsInputState(qual.status,qual.status==="hot"?"Hot lead routed":qual.status==="review"?"Needs review":"Added to nurture",(result.server?"Live server · ":"Fallback · ")+qual.score+"/100 · "+timelineLabel(data.timeline));
+    $("#opsStreamLead").disabled=false;
+    $("#opsStreamLead").innerHTML='Stream another lead <span>→</span>';
+    opsBusy=false;
+    setTimeout(()=>document.querySelector(".ops-dashboard")?.classList.remove("ops-reacting"),900);
+    document.querySelector(".ops-dashboard")?.classList.add("ops-reacting");
+  });
 
   function renderCRM(){
     const q=$("#crmSearch").value.trim().toLowerCase();
@@ -844,10 +1041,10 @@
     activeTourTarget=null;
   }
   function setTourStep(index,label,dock="right"){
-    $("#tourIndex").textContent=index+" / 4";
+    $("#tourIndex").textContent=index+" / 5";
     $("#tourLabel").textContent=label;
     $("#tourStatus").classList.toggle("dock-left",dock==="left");
-    $("#tourStatus").style.setProperty("--tour-progress",(index/4*100)+"%");
+    $("#tourStatus").style.setProperty("--tour-progress",(index/5*100)+"%");
   }
   async function frameTourTarget(target,index,label,dock="right"){
     clearTourTarget();
@@ -933,10 +1130,14 @@
       closeCrm();
 
       await delay(reducedMotion?60:260);
+      await frameTourTarget($(".ops-tour-frame"),4,"Operations dashboard · live KPIs, source mix and qualified pipeline","right");
+      await delay(reducedMotion?180:1700);
+      if(guidedCancelled) return;
+
       $("#generateBlueprint").click();
       await delay(reducedMotion?100:520);
       $("#blueprintFlow .bp-node:nth-of-type(2)")?.click();
-      await frameTourTarget($(".blueprint-output"),4,"Workflow builder · select, rename, reorder or add steps","left");
+      await frameTourTarget($(".blueprint-output"),5,"Workflow builder · select, rename, reorder or add steps","left");
       await delay(reducedMotion?260:1850);
     }finally{
       if(guidedActive) endTour();
@@ -958,7 +1159,7 @@
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(!reducedMotion && "IntersectionObserver" in window){
-    const revealTargets=$$(".section-head, .workflow-map article, .calculator, .blueprint-layout, .architecture, .case-grid, .final-cta");
+    const revealTargets=$$(".section-head, .workflow-map article, .ops-dashboard, .calculator, .blueprint-layout, .architecture, .case-grid, .final-cta");
     revealTargets.forEach((el,i)=>{
       el.classList.add("scroll-reveal");
       el.style.setProperty("--reveal-delay", `${Math.min((i%4)*70,210)}ms`);
@@ -974,7 +1175,9 @@
     revealTargets.forEach(el=>observer.observe(el));
   }
 
+  $("#opsOpenCrm")?.addEventListener("click",openCrm);
   renderBlueprint(false);
   renderEventLog();
   renderCRM();
+  renderOpsDashboard();
 })();
