@@ -138,14 +138,15 @@ function buildHotspotController(size){
     object:model?.getObjectByName(name) || null,
     point:fallbackPoint
   });
-  const surfaceBounds=(name,fallbackPoint)=>({
-    boundsObject:model?.getObjectByName(name) || null,
+  const skinnedSurface=(name,vertexIndex,fallbackPoint)=>({
+    mesh:model?.getObjectByName(name) || null,
+    vertexIndex,
     point:fallbackPoint
   });
 
-  const cushion=surfaceBounds('Circle.012_0',[hx*.60,-hy*.10,hz*.28]);
+  const cushion=skinnedSurface('Circle.012_0',275,[hx*.60,-hy*.10,hz*.28]);
   const headband=bone('Bone_R.009_Armature',[0,hy*.70,0]);
-  const controls=surfaceBounds('Circle.009_0',[-hx*.62,-hy*.06,hz*.22]);
+  const controls=skinnedSurface('Circle.009_0',275,[-hx*.62,-hy*.06,hz*.22]);
 
   hotspotController=createHotspotController({
     THREE,
