@@ -95,7 +95,11 @@ jobs:
                   settled:document.body.dataset.settled,
                   viewport:{width:innerWidth,height:innerHeight},
                   progress:scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight),
-                  activeContentVisible:Boolean(rect && rect.bottom>0 && rect.top<innerHeight && Number(style.opacity)>.5)
+                  activeContentVisible:Boolean(rect && rect.bottom>0 && rect.top<innerHeight && Number(style.opacity)>.5),
+                  activeContentRect:rect?{top:rect.top,bottom:rect.bottom,height:rect.height}:null,
+                  activeContentOpacity:style?Number(style.opacity):null,
+                  activeStageRect:anchor?(()=>{const r=anchor.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height,offsetTop:anchor.offsetTop};})():null,
+                  scrollMetrics:{scrollY,scrollHeight:document.documentElement.scrollHeight,max:document.documentElement.scrollHeight-innerHeight}
                 };
               });
               if(state.model!=='ready') throw new Error(prefix+' model not ready at '+p);
