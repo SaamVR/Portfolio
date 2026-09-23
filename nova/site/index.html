@@ -126,7 +126,7 @@
         </div>
         <div class="resolution-actions">
           <a class="button button--solid" href="#behind">Discover NOVA <span>↘</span></a>
-          <button type="button" class="button button--ghost" id="notifyConcept">Notify me</button>
+          <button type="button" class="button button--ghost" id="notifyConcept" aria-controls="notifyPanel" aria-expanded="false">Notify me</button>
         </div>
       </div>
     </section>
@@ -157,6 +157,26 @@
       </footer>
     </section>
   </main>
+
+  <div class="interest-shell" aria-hidden="true">
+    <button class="interest-backdrop" type="button" data-notify-close aria-label="Close early access panel"></button>
+    <aside id="notifyPanel" class="interest-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notifyTitle" tabindex="-1">
+      <div class="interest-panel__meta">
+        <span>NOVA / CONCEPT PREVIEW</span>
+        <button type="button" id="notifyClose" data-notify-close aria-label="Close early access panel">Close ×</button>
+      </div>
+      <div class="interest-panel__body">
+        <p class="eyebrow">Early access</p>
+        <h2 id="notifyTitle">Stay close to<br /><em>what comes next.</em></h2>
+        <p>NOVA is a fictional product created for this interactive portfolio experience. This panel demonstrates a launch-interest flow; it does not collect or submit personal data.</p>
+        <div class="interest-panel__status">
+          <i aria-hidden="true"></i>
+          <span>Concept preview / no signup required</span>
+        </div>
+        <button type="button" class="button button--solid" data-notify-close>Continue exploring</button>
+      </div>
+    </aside>
+  </div>
 
   <div class="model-status" aria-live="polite">
     <i></i><span id="runtimeState">Loading NOVA</span>
