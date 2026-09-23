@@ -176,12 +176,11 @@ jobs:
             await context.close();
           }
 
-          async function designHotspotAudit(viewport,prefix){
+          async function hotspotMotionAudit(viewport,prefix){
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
             const {page}=await readyPage(context,prefix+'-hotspots');
-            await scrollProgress(page,.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const state=await page.evaluate(()=>{
+
+            const readHotspots=()=>page.evaluate(()=>{
               const pick=id=>{
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
                 const r=el.getBoundingClientRect();
@@ -189,13 +188,41 @@ jobs:
               };
               return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight};
             });
-            const minY=prefix==='mobile' ? state.height*.25 : state.height*.34;
-            const maxY=prefix==='mobile' ? state.height*.50 : state.height*.62;
-            for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-              if(point.y<minY || point.y>maxY){
-                throw new Error(prefix+' '+id+' hotspot detached from earcup band '+JSON.stringify({point,minY,maxY,state}));
+
+            const validateViewport=state=>{
+              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
+                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden during Design close pass '+JSON.stringify(state));
+                const margin=12;
+                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
+                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
+                }
+              }
+              const separation=Math.hypot(
+                state.cushion.x-state.controls.x,
+                state.cushion.y-state.controls.y
+              );
+              if(separation<Math.min(90,state.width*.16)){
+                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
+              }
+            };
+
+            await scrollProgress(page,.18);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const first=await readHotspots();
+            validateViewport(first);
+
+            await scrollProgress(page,.20);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const second=await readHotspots();
+            validateViewport(second);
+
+            for(const id of ['cushion','controls']){
+              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
+              if(movement<4){
+                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
               }
             }
+
             await page.screenshot({path:'nova-qa/'+prefix+'_hotspots.png'});
             await context.close();
           }
@@ -310,8 +337,8 @@ jobs:
             await context.close();
           }
 
-          await designHotspotAudit({width:1440,height:1000},'desktop');
-          await designHotspotAudit({width:390,height:844},'mobile');
+          await hotspotMotionAudit({width:1440,height:1000},'desktop');
+          await hotspotMotionAudit({width:390,height:844},'mobile');
           await productCopyCollisionAudit({width:1440,height:1000},'desktop');
           await productCopyCollisionAudit({width:390,height:844},'mobile');
 
