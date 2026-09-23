@@ -92,7 +92,7 @@ jobs:
                 scrollTo(0,Math.max(0,y));
               },[scene,p]);
               await page.waitForTimeout(900);
-              await page.waitForFunction(expected=>document.body.dataset.activeScene===expected,name,{timeout:3000}).catch(()=>{});
+              await page.waitForFunction(expected=>document.body.dataset.activeScene===expected,scene,{timeout:3000});
               const state=await page.evaluate(()=>({
                 active:document.body.dataset.activeScene,
                 model:document.body.dataset.modelState,
