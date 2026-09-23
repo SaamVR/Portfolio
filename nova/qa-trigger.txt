@@ -1,1 +1,2 @@
 Run NOVA visual QA from durable FBX cache after upright pose fix v2.\n
+NOVA V2 refinement final verification 2026-09-23
