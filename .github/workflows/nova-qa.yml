@@ -22,9 +22,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p nova/site/assets nova/site/vendor/addons/{loaders,libs,curves,utils}
+          failed=0
           for f in index.html styles.css app.js; do
-            base64 -d "nova/recovery/working-v1/${f}.gz.b64" | gzip -d > "nova/site/${f}"
+            echo "=== $f ==="
+            wc -c "nova/recovery/working-v1/${f}.gz.b64"
+            sha256sum "nova/recovery/working-v1/${f}.gz.b64"
+            base64 -d "nova/recovery/working-v1/${f}.gz.b64" > "/tmp/${f}.gz" || { echo "BASE64_FAIL $f"; failed=1; continue; }
+            gzip -t "/tmp/${f}.gz" || { echo "GZIP_FAIL $f"; failed=1; continue; }
+            gzip -dc "/tmp/${f}.gz" > "nova/site/${f}"
+            wc -c "nova/site/${f}"
           done
+          test "$failed" -eq 0
 
       - name: Vendor Three.js
         run: |
