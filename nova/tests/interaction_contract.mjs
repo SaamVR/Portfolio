@@ -129,4 +129,15 @@ assert.equal(boundsReads,1,'component bounds hotspot must sample precise animate
 assert.ok(String(boundsElement.style.transform).includes('625px'));
 assert.ok(String(boundsElement.style.transform).includes('500px'));
 
+const offsetElement={dataset:{},style:{},setAttribute(){}};
+const offsetHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{point:{point:[0,0,0],screenOffset:[.1,.2],cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{point:offsetElement}
+});
+offsetHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800}});
+assert.ok(String(offsetElement.style.transform).includes('600px'),'responsive screen offset should shift x by viewport fraction');
+assert.ok(String(offsetElement.style.transform).includes('560px'),'responsive screen offset should shift y by viewport fraction');
+
 console.log('interaction_contract: PASS');
