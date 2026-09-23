@@ -2,3 +2,5 @@ Refined V2 public preview verification
 source: 13a3ce83b483d14446a9d9b6b115e9c61996cc6b
 deployment: b6784134
 Deployed preview verification: source 13a3ce83b483d14446a9d9b6b115e9c61996cc6b / deployment 9ca4e898 / 2026-09-23
+
+R10 deployed source 19ddcf2a0c7fc1d8eecbbd35b8579b4c9b51e36c public QA trigger after preview deploy.
