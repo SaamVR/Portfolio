@@ -68,3 +68,10 @@ def test_v2_hotspot_earcups_use_animated_component_bounds():
     assert "surfaceBounds('Plane.021_0'" in js
     assert "surfaceBounds('Circle.010_0'" in js
     assert "offset:[-.12,-.12,0]" in js
+
+
+def test_v2_earcup_hotspots_use_component_bounds():
+    assert "componentBounds('Circle.010_0'" in js
+    assert "componentBounds('Plane.021_0'" in js
+    assert "skinnedSurface('Circle.010_0'" not in js
+    assert "skinnedSurface('Plane.021_0'" not in js
