@@ -9,6 +9,8 @@ const railLabel = document.querySelector('#railLabel');
 const railProgress = document.querySelector('#railProgress');
 const timelineNeedle = document.querySelector('#timelineNeedle');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const orientationMode = new URLSearchParams(location.search).get('orientation') || 'default';
+const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'negx' ? -Math.PI / 2 : 0;
 const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 let activeScene = 'hero';
 let activeProgress = 0;
@@ -222,6 +224,7 @@ function render(){
   presentation.position.x = THREE.MathUtils.damp(presentation.position.x, cam.model[0], 4.2, 1/60);
   presentation.position.y = THREE.MathUtils.damp(presentation.position.y, cam.model[1], 4.2, 1/60);
   presentation.position.z = THREE.MathUtils.damp(presentation.position.z, cam.model[2], 4.2, 1/60);
+  presentation.rotation.x = THREE.MathUtils.damp(presentation.rotation.x, orientationX, 5.2, 1/60);
   presentation.rotation.y = THREE.MathUtils.damp(presentation.rotation.y, cam.yaw + pointer.x * .015 * live, 4.2, 1/60);
   const s = normalization * cam.scale;
   presentation.scale.x = THREE.MathUtils.damp(presentation.scale.x, s, 4.2, 1/60);
