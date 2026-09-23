@@ -80,3 +80,9 @@ def test_hotspot_projection_uses_viewport_origin():
     assert "top:0" in hotspot_rule
     assert "left:50%" not in hotspot_rule
     assert "top:50%" not in hotspot_rule
+
+
+def test_transition_metadata_does_not_override_chapter_contrast():
+    assert 'body[data-transition="to-dark"]' not in css
+    assert 'body[data-transition="to-light"]' not in css
+    assert 'body[data-transition] .copy' not in css
