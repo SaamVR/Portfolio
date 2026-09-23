@@ -327,3 +327,9 @@ body[data-theme="dark"] .product-nav{color:#c0b8ac}
 @media (min-width:1001px){
   .stage--form .copy--left{margin-left:3.5vw}
 }
+
+
+/* R11 mobile cascade correction: do not inherit the desktop 44vw copy width. */
+@media (max-width:700px){
+  .copy,.copy--compact,.copy--center,.inspect-copy,.resolution-copy{width:auto;margin-right:20px}
+}
