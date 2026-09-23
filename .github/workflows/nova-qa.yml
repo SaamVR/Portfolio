@@ -46,7 +46,15 @@ jobs:
           cp node_modules/three/examples/jsm/curves/NURBSCurve.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/curves/"
           cp node_modules/three/examples/jsm/curves/NURBSUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/curves/"
 
+      - name: Cache NOVA source assets
+        id: nova-assets-cache
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-assets-v1-fed3b7e67aeac3c9a8a626b9431f52bc95326e69ac750040c019294ed3849741
+
       - name: Recover original FBX assets
+        if: steps.nova-assets-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           ASSET_ZIP_URL='https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-cfd0-8211-9349-f4beb8b02a9a/raw?se=2026-09-23T05%3A01%3A58Z&sp=r&sv=2026-02-06&sr=b&scid=47bc988d-3131-5ea4-8e34-ccb2efda82e2&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T01%3A39%3A02Z&ske=2026-09-24T01%3A39%3A02Z&sks=b&skv=2026-02-06&sig=QwJhmISydgBE%2BO1M9iFiiCAVj9AWsJxlw3DGDMSTw7A%3D'
@@ -76,12 +84,27 @@ jobs:
           const errors=[];
           async function audit(viewport, prefix, scenes){
             const page=await browser.newPage({viewportSize:viewport});
-            page.on('pageerror',e=>errors.push(prefix+': pageerror: '+e.message));
-            page.on('console',m=>{if(m.type()==='error') errors.push(prefix+': console: '+m.text())});
+            const localErrors=[];
+            page.on('pageerror',e=>{ const v=prefix+': pageerror: '+e.message; errors.push(v); localErrors.push(v); });
+            page.on('console',m=>{if(m.type()==='error'){ const v=prefix+': console: '+m.text(); errors.push(v); localErrors.push(v); }});
+            page.on('requestfailed',r=>{ const v=prefix+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||''); errors.push(v); localErrors.push(v); });
+            page.on('response',r=>{if(r.status()>=400){ const v=prefix+': HTTP '+r.status()+' '+r.url(); errors.push(v); localErrors.push(v); }});
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
-            await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',{timeout:30000});
-            const state=await page.evaluate(()=>({model:document.body.dataset.modelState,runtime:document.querySelector('#runtimeState')?.textContent}));
-            if(state.model!=='ready') throw new Error(prefix+' model state '+JSON.stringify(state));
+            let ready=false;
+            try{
+              await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',{timeout:15000});
+              ready=true;
+            }catch{}
+            const state=await page.evaluate(()=>({
+              model:document.body.dataset.modelState,
+              runtime:document.querySelector('#runtimeState')?.textContent,
+              resources:performance.getEntriesByType('resource').map(r=>({name:r.name,transferSize:r.transferSize})).filter(r=>/app\.js|vendor|fbx|png/.test(r.name))
+            }));
+            if(!ready || state.model!=='ready'){
+              fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({state,localErrors},null,2));
+              await page.screenshot({path:'nova-qa/'+prefix+'_startup.png',fullPage:false});
+              throw new Error(prefix+' model startup failed '+JSON.stringify({state,localErrors}));
+            }
             for(const [scene,p] of scenes){
               await page.evaluate(([name,progress])=>{
                 const s=document.querySelector('[data-scene="'+name+'"]');
