@@ -85,3 +85,5 @@ def test_r10_visual_qa_uses_cinematic_progress_not_full_document_progress():
     assert "cinematicMax" in qa
     assert "behind.offsetTop+behind.offsetHeight-innerHeight" in qa
     assert "document.documentElement.scrollHeight-innerHeight" not in qa
+
+# R10 GREEN trigger after cinematic-progress QA implementation.
