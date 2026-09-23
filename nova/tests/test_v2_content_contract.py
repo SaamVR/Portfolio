@@ -112,3 +112,8 @@ def test_navigation_and_hotspot_detail_have_refined_active_states():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".product-nava.is-active" in compact
     assert '.hotspot[aria-expanded="true"]span' in compact
+
+def test_behind_supporting_copy_waits_for_transition_settle():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'body[data-range="behind"][data-settled="false"].behind-transition.behind-lede' in compact
+    assert 'body[data-range="behind"][data-settled="false"].behind-transition.button--outline' in compact
