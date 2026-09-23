@@ -151,3 +151,8 @@ def test_v1_archive_is_packaged_under_main_site():
 def test_r11_form_copy_moves_left_to_preserve_product_clearance():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".stage--form.copy--left{margin-left:3.5vw}" in compact
+
+
+def test_r11_mobile_copy_width_resets_after_desktop_readability_rule():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".copy,.copy--compact,.copy--center,.inspect-copy,.resolution-copy{width:auto;margin-right:20px}" in compact
