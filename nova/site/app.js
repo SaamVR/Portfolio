@@ -134,15 +134,21 @@ function buildHotspotController(size){
   const hx=size.x*.5;
   const hy=size.y*.5;
   const hz=size.z*.5;
+  const resolveModelObject=name=>{
+    if(!model) return null;
+    return model.getObjectByName(name) || model.getObjectByName(name.replaceAll('.', '')) || null;
+  };
   const bone=(name,fallbackPoint)=>({
-    object:model?.getObjectByName(name) || null,
+    object:resolveModelObject(name),
     point:fallbackPoint
   });
-  const skinnedSurface=(name,vertexIndex,fallbackPoint)=>({
-    mesh:model?.getObjectByName(name) || null,
-    vertexIndex,
-    point:fallbackPoint
-  });
+  const skinnedSurface=(name,vertexIndex,fallbackPoint)=>{
+    const object=resolveModelObject(name);
+    const mesh=object?.isSkinnedMesh
+      ? object
+      : object?.children?.find(child=>child.isSkinnedMesh) || null;
+    return {mesh,vertexIndex,point:fallbackPoint};
+  };
 
   const cushion=skinnedSurface('Circle.012_0',275,[hx*.60,-hy*.10,hz*.28]);
   const headband=bone('Bone_R.009_Armature',[0,hy*.70,0]);
