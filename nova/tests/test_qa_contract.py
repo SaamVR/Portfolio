@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 qa = (ROOT / ".github/workflows/nova-qa.yml").read_text()
 build = (ROOT / ".github/workflows/nova-build.yml").read_text()
+hotspot_qa = (ROOT / ".github/workflows/nova-hotspot-qa.yml").read_text()
 
 def test_visual_qa_targets_v2_integration_and_progress_boundaries():
     assert "nova/v2-integration" in qa
@@ -55,3 +56,9 @@ def test_hotspot_qa_tracks_authored_motion_not_legacy_fixed_screen_band():
     assert "state.height*.62" not in qa
 # Trigger contracts for motion-aware hotspot QA implementation.
 # Final exact verification checkpoint: Contracts + Visual QA + Production Bundle.
+
+
+def test_focused_hotspot_qa_tracks_close_pass_motion_not_fixed_band():
+    assert "hotspot should move with authored close pass" in hotspot_qa
+    assert "state.height*.34" not in hotspot_qa
+    assert "state.height*.62" not in hotspot_qa
