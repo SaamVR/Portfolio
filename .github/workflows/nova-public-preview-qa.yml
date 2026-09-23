@@ -27,7 +27,7 @@ jobs:
 
       - name: Audit deployed V2 preview
         run: |
-          cat > /tmp/nova-public-preview.mjs <<'JS'
+          cat > nova/public-preview-qa.mjs <<'JS'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
 
@@ -128,7 +128,7 @@ jobs:
           fs.writeFileSync('nova-public-qa/result.json',JSON.stringify({url,errors},null,2));
           if(errors.length) throw new Error('Public preview browser errors:\n'+errors.join('\n'));
           JS
-          node /tmp/nova-public-preview.mjs
+          node nova/public-preview-qa.mjs
 
       - name: Upload public preview evidence
         if: always()
