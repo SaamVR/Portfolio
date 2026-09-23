@@ -303,6 +303,42 @@ jobs:
             await context.close();
           }
 
+          async function caseStudyAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,prefix+'-case-study');
+            await page.evaluate(()=>{
+              const section=document.querySelector('#case-study');
+              scrollTo(0,section.offsetTop+24);
+            });
+            await page.waitForFunction(()=>document.body.dataset.caseStudy==='true');
+            await page.waitForTimeout(700);
+            const result=await page.evaluate(()=>{
+              const section=document.querySelector('#case-study');
+              const heading=section?.querySelector('h2');
+              const canvas=document.querySelector('#webgl');
+              const canvasOpacity=Number(getComputedStyle(canvas).opacity);
+              const rect=heading?.getBoundingClientRect();
+              return {
+                active:document.body.dataset.caseStudy,
+                range:document.body.dataset.range,
+                canvasOpacity,
+                headingVisible:Boolean(rect&&rect.bottom>0&&rect.top<innerHeight),
+                role:Boolean(section?.innerText.includes('Role')),
+                challenge:Boolean(section?.innerText.includes('Challenge')),
+                build:Boolean(section?.innerText.includes('What I built')),
+                result:Boolean(section?.innerText.includes('Result'))
+              };
+            });
+            if(result.active!=='true'||result.canvasOpacity>.08){
+              throw new Error(prefix+' case-study product must yield '+JSON.stringify(result));
+            }
+            if(result.range!=='behind'||!result.headingVisible||!result.role||!result.challenge||!result.build||!result.result){
+              throw new Error(prefix+' case-study handoff incomplete '+JSON.stringify(result));
+            }
+            await page.screenshot({path:'nova-qa/'+prefix+'_case_study.png',fullPage:false});
+            await context.close();
+          }
+
           async function reducedMotionAudit(){
             const context=await browser.newContext({viewport:{width:1024,height:768},reducedMotion:'reduce'});
             const {page}=await readyPage(context,'reduced-motion');
@@ -347,6 +383,8 @@ jobs:
           const mobile=await captureJourney({width:390,height:844},'mobile');
           await desktopInteractions();
           await mobileInteractions();
+          await caseStudyAudit({width:1440,height:1000},'desktop');
+          await caseStudyAudit({width:390,height:844},'mobile');
           await reducedMotionAudit();
           await fallbackAudit();
 
