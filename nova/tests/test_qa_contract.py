@@ -69,4 +69,4 @@ def test_public_preview_hotspots_follow_authored_motion():
     assert "deployed hotspot should move with authored close pass" in public_qa
     assert "state.h*.34" not in public_qa
     assert "state.h*.62" not in public_qa
-
+# Trigger contracts for public motion-aware hotspot QA implementation.
