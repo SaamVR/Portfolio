@@ -45,7 +45,7 @@ export function createRenderAdapter({
         if(lights.key){
           lights.key.intensity=damp(lights.key.intensity,state.lighting.key,3.7,step);
           lights.key.color.setHex(state.lighting.keyColor);
-          applyVec(lights,'keyPositionProxy',state.lighting.keyPosition,4.5,step);
+          applyVec(lights.key,'position',state.lighting.keyPosition,4.5,step);
         }
         if(lights.fill) lights.fill.intensity=damp(lights.fill.intensity,state.lighting.fill,3.7,step);
         if(lights.rim){
