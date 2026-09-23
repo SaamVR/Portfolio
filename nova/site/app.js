@@ -25,7 +25,7 @@ const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, N
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.20,foldedPose:.40,duration:.72});
+const foldController = createFoldController({openPose:.72,foldedPose:.40,duration:.72});
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
