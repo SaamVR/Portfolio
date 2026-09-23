@@ -65,8 +65,6 @@ def test_v2_integration_wires_product_interactions():
 
 
 def test_v2_hotspot_earcups_use_skinned_surface_anchors():
-    assert "Plane.021_0" in js
-    assert "Circle.010_0" in js
-    assert "vertexIndex:307" in js
-    assert "vertexIndex:21" in js
+    assert "skinnedSurface('Plane.021_0',307" in js
+    assert "skinnedSurface('Circle.010_0',21" in js
     assert "offset:[-.12,-.12,0]" in js
