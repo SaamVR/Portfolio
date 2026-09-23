@@ -146,3 +146,8 @@ def test_v1_archive_is_packaged_under_main_site():
     assert "NOVA — Interactive 3D Product Film" in v1_html
     assert '"three":"../vendor/three.module.js"' in v1_html
     assert "../assets/headphones-web.gltf" in v1_js
+
+
+def test_r11_form_copy_moves_left_to_preserve_product_clearance():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--form.copy--left{margin-left:3.5vw}" in compact
