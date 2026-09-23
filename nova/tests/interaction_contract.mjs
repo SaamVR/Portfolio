@@ -107,4 +107,26 @@ assert.equal(surfaceReads,1,'surface hotspot must read current skinned vertex po
 assert.ok(String(surfaceElement.style.transform).includes('550px'));
 assert.ok(String(surfaceElement.style.transform).includes('480px'));
 
+let boundsReads=0;
+class FakeBox3 {
+  setFromObject(object,precise){
+    boundsReads++;
+    assert.equal(object.id,'earcup');
+    assert.equal(precise,true);
+    return this;
+  }
+  getCenter(v){ return v.set(.25,-.25,0); }
+}
+const boundsElement={dataset:{},style:{},setAttribute(){}};
+const boundsHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3,Box3:FakeBox3},
+  camera:{},
+  anchors:{earcup:{boundsObject:{id:'earcup'},cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{earcup:boundsElement}
+});
+boundsHotspots.update({viewport:{width:1000,height:800}});
+assert.equal(boundsReads,1,'component bounds hotspot must sample precise animated bounds');
+assert.ok(String(boundsElement.style.transform).includes('625px'));
+assert.ok(String(boundsElement.style.transform).includes('500px'));
+
 console.log('interaction_contract: PASS');
