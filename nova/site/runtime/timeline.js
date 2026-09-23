@@ -13,6 +13,9 @@ const clamp01 = v => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
 const lerp = (a,b,t) => a + (b-a) * t;
 const lerp3 = (a,b,t) => a.map((v,i) => lerp(v,b[i],t));
 const smooth = t => t*t*(3-2*t);
+const ramp = (p,start,end) => smooth(clamp01((p-start)/Math.max(.0001,end-start)));
+const windowWeight = (p,inStart,inEnd,outStart,outEnd) =>
+  ramp(p,inStart,inEnd) * (1-ramp(p,outStart,outEnd));
 
 const KEYFRAMES = [
   {p:0.00, pose:.24, pos:[0,.04,0], scale:1, yaw:0, pitch:0, cam:[0,.10,4.45], target:[0,.08,0], fov:27, exposure:1.02, hemi:1.7, key:4.7, fill:1.1, rim:7.0, warm:4.0, keyColor:0xfff0dc, rimColor:0xc77b4d, keyPos:[3.1,3.7,4.8], tone:0, spatial:0, spread:.45, adaptive:0, openness:.7, motion:.15},
@@ -49,10 +52,35 @@ function segment(progress){
   return [KEYFRAMES.at(-2),KEYFRAMES.at(-1),1];
 }
 
+function applyCompositionInfluences(state,p){
+  const spatial=windowWeight(p,.24,.30,.43,.49);
+  const adaptive=windowWeight(p,.42,.47,.57,.63);
+  const resolution=windowWeight(p,.82,.87,.96,1.0);
+  const behind=ramp(p,.935,.975);
+
+  // Camera framing does the heavy lifting so the product itself stays spatially stable.
+  state.camera.target[1] -= .62 * spatial;
+  state.camera.position[2] += .34 * spatial;
+
+  state.camera.target[0] += .58 * adaptive;
+  state.camera.target[1] -= .12 * adaptive;
+  state.camera.position[2] += .18 * adaptive;
+
+  state.camera.target[0] -= .90 * resolution;
+  state.camera.position[2] += .24 * resolution;
+  state.product.scale *= lerp(1,.90,resolution);
+
+  state.product.scale *= lerp(1,.72,behind);
+  state.camera.position[2] += .12 * behind;
+
+  return state;
+}
+
 function viewportAdjusted(state, viewportClass){
   if(viewportClass === 'mobile'){
     state.camera.position[0] *= .35;
     state.camera.target[0] *= .35;
+    state.camera.target[1] -= .16;
     state.product.position[0] *= .25;
     state.product.position[1] += .34;
     state.camera.position[2] += 1.0;
@@ -103,5 +131,5 @@ export function sampleTimeline(progress, viewportClass='desktop'){
       settled:rangeState.progress > .32 && rangeState.progress < .82
     }
   };
-  return viewportAdjusted(state, viewportClass);
+  return viewportAdjusted(applyCompositionInfluences(state,p), viewportClass);
 }
