@@ -109,3 +109,18 @@ def test_public_preview_verifies_mobile_hotspot_label_bounds():
     assert "mobile_hotspot_detail.png" in public_qa
 
 # R10 final public-label QA GREEN verification trigger.
+
+
+def test_r11_visual_qa_checks_readability_and_v1_archive():
+    assert "readabilityAudit" in qa
+    assert "readability body copy too small" in qa
+    assert "readability utility copy too small" in qa
+    assert "desktop_readability.png" in qa
+    assert "mobile_readability.png" in qa
+    assert "versionArchiveAudit" in qa
+    assert "v1_desktop.png" in qa
+    assert "v1_mobile.png" in qa
+
+def test_build_validates_v1_archive_payload():
+    for path in ["nova/site/v1/index.html","nova/site/v1/styles.css","nova/site/v1/app.js"]:
+        assert path in build
