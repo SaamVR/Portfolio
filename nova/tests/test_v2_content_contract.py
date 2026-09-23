@@ -2,6 +2,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "site"
 html = (ROOT/"index.html").read_text()
 css = (ROOT/"styles.css").read_text()
+ui = (ROOT/"ui"/"product-ui.js").read_text()
 
 def test_product_story_precedes_technical_story():
     assert "Hear beyond" in html
@@ -62,3 +63,6 @@ def test_notify_cta_has_visible_demo_panel():
     assert 'id="notifyForm"' in html
     assert 'type="email"' in html
     assert "No data is transmitted" in html
+    assert "event.preventDefault()" in ui
+    assert "notifyPanel" in ui
+    assert "fetch(" not in ui
