@@ -71,12 +71,16 @@ jobs:
           async function scrollProgress(page,p){
             await page.evaluate(progress=>{
               document.documentElement.style.scrollBehavior='auto';
-              const max=document.documentElement.scrollHeight-innerHeight;
-              scrollTo(0,Math.max(0,max*progress));
+              const cinematicMax=()=>{
+                const behind=document.querySelector('#behind');
+                return Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              };
+              scrollTo(0,Math.max(0,cinematicMax()*progress));
             },p);
             await page.waitForFunction(target=>{
-              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
-              return Math.abs(scrollY/max-target)<0.003;
+              const behind=document.querySelector('#behind');
+              const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              return Math.abs(scrollY/cinematicMax-target)<0.003;
             },p,{timeout:3000});
             await page.waitForTimeout(420);
           }
@@ -90,7 +94,7 @@ jobs:
               const state=await page.evaluate(()=>{
                 const range=document.body.dataset.range;
                 const anchor=document.querySelector('[data-range-anchor="'+range+'"]');
-                const content=anchor?.querySelector('.stage-inner,.behind-grid');
+                const content=anchor?.querySelector('.stage-inner,.behind-grid,.behind-transition');
                 const rect=content?.getBoundingClientRect();
                 const style=content?getComputedStyle(content):null;
                 return {
@@ -99,12 +103,20 @@ jobs:
                   model:document.body.dataset.modelState,
                   settled:document.body.dataset.settled,
                   viewport:{width:innerWidth,height:innerHeight},
-                  progress:scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight),
+                  progress:(()=>{
+                    const behind=document.querySelector('#behind');
+                    const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+                    return scrollY/cinematicMax;
+                  })(),
                   activeContentVisible:Boolean(rect && rect.bottom>0 && rect.top<innerHeight && Number(style.opacity)>.5),
                   activeContentRect:rect?{top:rect.top,bottom:rect.bottom,height:rect.height}:null,
                   activeContentOpacity:style?Number(style.opacity):null,
                   activeStageRect:anchor?(()=>{const r=anchor.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height,offsetTop:anchor.offsetTop};})():null,
-                  scrollMetrics:{scrollY,scrollHeight:document.documentElement.scrollHeight,max:document.documentElement.scrollHeight-innerHeight}
+                  scrollMetrics:(()=>{
+                    const behind=document.querySelector('#behind');
+                    const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+                    return {scrollY,scrollHeight:document.documentElement.scrollHeight,cinematicMax};
+                  })()
                 };
               });
               if(state.model!=='ready') throw new Error(prefix+' model not ready at '+p);
