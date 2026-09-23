@@ -1,1 +1,1 @@
-Run NOVA visual QA with FBX signature validation.\n
+Run NOVA visual QA against exact GPT-runtime asset bundle.\n
