@@ -66,4 +66,24 @@ assert.equal(fakeElement.dataset.visible,'true');
 assert.ok(String(fakeElement.style.transform).includes('translate3d'));
 assert.equal(hotspots.getInfluence().id,'cushion');
 
+
+let boneReads=0;
+const animatedBone={
+  getWorldPosition(v){
+    boneReads++;
+    return v.set(.2,.1,0);
+  }
+};
+const boneElement={dataset:{},style:{},setAttribute(){}};
+const boneHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{earcup:{object:animatedBone,cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{earcup:boneElement}
+});
+boneHotspots.update({viewport:{width:1000,height:800}});
+assert.equal(boneReads,1,'animated hotspot must read its bone world position each update');
+assert.ok(String(boneElement.style.transform).includes('600px'),'bone X position should drive DOM projection');
+assert.ok(String(boneElement.style.transform).includes('360px'),'bone Y position should drive DOM projection');
+
 console.log('interaction_contract: PASS');
