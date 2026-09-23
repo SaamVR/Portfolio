@@ -59,12 +59,14 @@ jobs:
           async function scrollProgress(page,p){
             await page.evaluate(progress=>{
               document.documentElement.style.scrollBehavior='auto';
-              const max=document.documentElement.scrollHeight-innerHeight;
-              scrollTo(0,Math.max(0,max*progress));
+              const behind=document.querySelector('#behind');
+              const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              scrollTo(0,Math.max(0,cinematicMax*progress));
             },p);
             await page.waitForFunction(target=>{
-              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
-              return Math.abs(scrollY/max-target)<0.004;
+              const behind=document.querySelector('#behind');
+              const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              return Math.abs(scrollY/cinematicMax-target)<0.004;
             },p,{timeout:4000});
             await page.waitForTimeout(350);
           }
@@ -133,6 +135,15 @@ jobs:
             const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
             const page=await pageReady(context,'mobile');
             await publicHotspotMotionAudit(page,'mobile');
+            const mobileCushion=page.locator('[data-hotspot="cushion"]');
+            await mobileCushion.tap();
+            await page.waitForFunction(()=>{
+              const el=document.querySelector('[data-hotspot="cushion"]');
+              const label=el?.querySelector('span');
+              return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
+            });
+            await page.screenshot({path:'nova-public-qa/mobile_hotspot_detail.png'});
+            await mobileCushion.tap();
             await page.screenshot({path:'nova-public-qa/mobile_design.png'});
 
             await scrollProgress(page,.36);
