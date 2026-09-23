@@ -29,13 +29,13 @@ jobs:
       - name: Vendor Three.js GLTF runtime
         run: |
           set -euo pipefail
-          mkdir -p nova/site/vendor/addons/loaders
+          mkdir -p nova/site/vendor/addons/loaders nova/site/vendor/addons/utils
           mkdir -p /tmp/nova-vendor && cd /tmp/nova-vendor
           npm init -y >/dev/null 2>&1
           npm install three@0.180.0 --no-audit --no-fund
           cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
           cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
-          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"\n          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
 
       - name: Install browser QA
         run: |
@@ -60,7 +60,13 @@ jobs:
             page.on('response',r=>{ if(r.status()>=400){ const v=prefix+': HTTP '+r.status()+' '+r.url(); errors.push(v); localErrors.push(v); }});
 
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
-            await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',{timeout:20000});
+            let startupTimedOut=false;
+            try{
+              await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',null,{timeout:20000});
+            }catch(e){
+              startupTimedOut=true;
+              localErrors.push(prefix+': startup timeout: '+e.message);
+            }
             const startup=await page.evaluate(()=>({
               model:document.body.dataset.modelState,
               runtime:document.querySelector('#runtimeState')?.textContent,
@@ -69,7 +75,7 @@ jobs:
                 .map(r=>({name:r.name,transferSize:r.transferSize}))
                 .filter(r=>/app\.js|vendor|gltf|webp/.test(r.name))
             }));
-            if(startup.model!=='ready'){
+            if(startupTimedOut || startup.model!=='ready'){
               fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({startup,localErrors},null,2));
               await page.screenshot({path:'nova-qa/'+prefix+'_startup.png',fullPage:false});
               throw new Error(prefix+' model startup failed '+JSON.stringify({startup,localErrors}));
