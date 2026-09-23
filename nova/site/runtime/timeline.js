@@ -43,6 +43,15 @@ export function getRangeState(progress){
   return { range:'behind', progress:1 };
 }
 
+function sampleProductPose(progress){
+  const p=clamp01(progress);
+  if(p<=.12) return lerp(.24,.30,smooth(p/.12));
+  if(p<=.28) return lerp(.30,.24,smooth((p-.12)/.16));
+  if(p<=.32) return lerp(.24,.72,smooth((p-.28)/.04));
+  if(p<=.96) return .72;
+  return lerp(.72,.64,smooth((p-.96)/.04));
+}
+
 function segment(progress){
   const p = clamp01(progress);
   for(let i=0;i<KEYFRAMES.length-1;i++){
@@ -104,7 +113,7 @@ export function sampleTimeline(progress, viewportClass='desktop'){
     range:rangeState.range,
     rangeProgress:rangeState.progress,
     product:{
-      pose:lerp(a.pose,b.pose,t),
+      pose:sampleProductPose(p),
       position:lerp3(a.pos,b.pos,t),
       scale:lerp(a.scale,b.scale,t),
       yaw:lerp(a.yaw,b.yaw,t),
