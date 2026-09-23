@@ -164,3 +164,41 @@ Next checkpoint:
 2. verify public preview from GPT runtime
 3. keep existing production untouched until preview acceptance
 4. after acceptance, merge/promote V2 and deploy exact verified artifact to production
+
+
+## V2 Preview Status — 2026-09-23
+
+NOVA V2 is implemented and public-preview verified.
+
+Current V2 source:
+- verified site source SHA: `6a47d94d8938c9565536998b11eb108fa7937740`
+- integration branch now contains the durable verification docs after that source checkpoint
+- exact production artifact run: `35889178780`
+- current-head visual QA run: `35889178713` — success
+- focused hotspot QA run: `35887935405` — success
+
+Public preview:
+- `https://v2.nova-interactive-portfolio.pages.dev/`
+- immutable deployment: `https://54ccfee1.nova-interactive-portfolio.pages.dev`
+- public browser QA run `35889143030`, attempt 2 — success, zero browser errors
+
+Important final refinements included:
+- product-first commercial narrative with Behind NOVA as a late portfolio reveal
+- continuous authored product/camera/light timeline
+- Spatial/Focus/Ambient and Adaptive/Transparency interactions
+- real Fold/Open source animation control with scroll reconciliation
+- constrained drag/swipe inspection
+- animated GLTF hotspot anchoring without legacy screen offsets
+- state-driven chapter backgrounds
+- accessible local concept-interest panel for Notify
+- responsive mobile/tablet framing
+- reduced-motion and model-failure fallback
+- corrected desktop Adaptive → Form entry collision
+- corrected Behind NOVA literal escape artifact
+
+Deployment policy:
+- samvr is deployment-only
+- V2 preview was deployed from the exact verified artifact
+- production has NOT been promoted yet
+- promote only after user accepts the V2 preview
+- V1 rollback: `backup/nova-interactive-v1-2026-09-23` @ `9c5e084518f35d364fabc1d565ccb31a6e348eba`
