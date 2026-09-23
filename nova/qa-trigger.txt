@@ -1,1 +1,1 @@
-Run NOVA browser startup diagnostics and seed asset cache.\n
+Run NOVA visual QA after Three.js core-module fix.\n
