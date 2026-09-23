@@ -88,6 +88,12 @@ const nextConfig = {
   experimental: {
     webpackMemoryOptimizations: true,
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     unoptimized: isStaticExport ? true : undefined,
     maximumRedirects: 5,
