@@ -58,7 +58,7 @@ jobs:
         if: steps.nova-assets-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          ASSET_ZIP_URL='https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-cfd0-8211-9349-f4beb8b02a9a/raw?se=2026-09-23T05%3A01%3A58Z&sp=r&sv=2026-02-06&sr=b&scid=47bc988d-3131-5ea4-8e34-ccb2efda82e2&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T01%3A39%3A02Z&ske=2026-09-24T01%3A39%3A02Z&sks=b&skv=2026-02-06&sig=QwJhmISydgBE%2BO1M9iFiiCAVj9AWsJxlw3DGDMSTw7A%3D'
+          ASSET_ZIP_URL='https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-2fd8-8211-afeb-ab650cd77a45/raw?se=2026-09-23T05%3A07%3A34Z&sp=r&sv=2026-02-06&sr=b&scid=752b3e95-2651-553b-99ff-3bd3227e6f1e&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T03%3A02%3A02Z&ske=2026-09-24T03%3A02%3A02Z&sks=b&skv=2026-02-06&sig=HHD1F2kPYYas%2BhDMsswNxY3bmFju7LMLYEL6HkWhimY%3D'
           curl -fsSL --retry 3 "$ASSET_ZIP_URL" -o /tmp/nova-qa-assets.zip
           echo "ASSET_ZIP_BYTES=$(stat -c%s /tmp/nova-qa-assets.zip)"
           test $(stat -c%s /tmp/nova-qa-assets.zip) -gt 6000000
