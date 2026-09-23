@@ -22,7 +22,10 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
       for(const [id,anchor] of Object.entries(anchors)){
         const el=getElement(id);
         if(!el) continue;
-        if(anchor.object?.localToWorld){
+        if(anchor.mesh?.getVertexPosition && Number.isInteger(anchor.vertexIndex)){
+          anchor.mesh.getVertexPosition(anchor.vertexIndex,world);
+          anchor.mesh.localToWorld?.(world);
+        }else if(anchor.object?.localToWorld){
           world.fromArray(anchor.offset||[0,0,0]);
           anchor.object.localToWorld(world);
         }else if(anchor.object?.getWorldPosition){
