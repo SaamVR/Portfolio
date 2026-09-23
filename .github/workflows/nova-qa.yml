@@ -113,6 +113,18 @@ jobs:
             return {startup,captures};
           }
 
+          async function poseScan(){
+            const page=await browser.newPage({viewportSize:{width:1440,height:1000}});
+            for(const p of [0,.08,.16,.24,.32,.40,.48,.56,.64,.72,.80,.88,.96]){
+              await page.goto('http://127.0.0.1:4173/?orientation=negx&pose='+p,{waitUntil:'networkidle'});
+              await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+              await page.waitForTimeout(700);
+              await page.screenshot({path:'nova-qa/pose_'+String(p).replace('.','')+'.png',fullPage:false});
+            }
+            await page.close();
+          }
+          await poseScan();
+
           async function orientationCompare(){
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
             for(const mode of ['posx','negx']){
