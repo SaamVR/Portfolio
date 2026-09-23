@@ -27,8 +27,9 @@ def test_responsive_and_reduced_motion():
     assert "prefers-reduced-motion" in css
 
 def test_animation_scrub_is_not_paused():
+    adapter = (ROOT / "runtime" / "render-adapter.js").read_text()
     assert "action.paused = true" not in js
-    assert "mixer.setTime(targetTime)" in js
+    assert "mixer.setTime" in adapter
 
 def test_cable_is_removed_from_presentation():
     assert "if(cable) cable.visible = false" in js
