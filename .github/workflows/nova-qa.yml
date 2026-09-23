@@ -49,28 +49,16 @@ jobs:
       - name: Recover original FBX assets
         run: |
           set -euo pipefail
-          BASE="https://nova-interactive-portfolio.pages.dev/models/headphone"
-          files=(
-            nova-headphones.fbx
-            e8842c426886476cbfccb47c75f6ca53_R_Part_1_Col.png
-            5011ab3194084e6887ed2f244adf30a9_R_Part_3_Ao.png
-            d7e39365d1e4448f9cf17c9b5645eeaa_RGB_Part_2_Col.png
-            01c7efebf6e245ef9f82cfefee2c07c5_R_Part_4_Spec.png
-            4a7061ebc8874e7188bdc0bdbd83e10f_N_Part_5_Nor.png
-            7196a4026ac6412bb2174cfd976fa9e9_N_Part_2_Nor.png
-            8ad733e12a824521a71b97fbf073f858_N_Part_3_Nor.png
-            c8fdbe2141274ca2af2e3c9f47f68d46_RGB_Part_4_Col_2.png
-            15388d20c9f846748a50e35a25be416a_RGB_Part_3_Col.png
-            54989d3d46f94bea9e98e6c33b5105c3_RGB_Part_5_Col.png
-            ab334c1b8cfc48c489edfbfe788824ff_N_Part_4_Nor.png
-            80b3b9d11fec4c9797366ec56225d7f9_R_Part_2_Ao.png
-          )
-          for f in "${files[@]}"; do curl -fsSL --retry 3 "$BASE/$f" -o "nova/site/assets/$f"; done
+          ASSET_ZIP_URL='https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-cfd0-8211-9349-f4beb8b02a9a/raw?se=2026-09-23T05%3A01%3A58Z&sp=r&sv=2026-02-06&sr=b&scid=47bc988d-3131-5ea4-8e34-ccb2efda82e2&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T01%3A39%3A02Z&ske=2026-09-24T01%3A39%3A02Z&sks=b&skv=2026-02-06&sig=QwJhmISydgBE%2BO1M9iFiiCAVj9AWsJxlw3DGDMSTw7A%3D'
+          curl -fsSL --retry 3 "$ASSET_ZIP_URL" -o /tmp/nova-qa-assets.zip
+          echo "ASSET_ZIP_BYTES=$(stat -c%s /tmp/nova-qa-assets.zip)"
+          test $(stat -c%s /tmp/nova-qa-assets.zip) -gt 6000000
+          unzip -q /tmp/nova-qa-assets.zip -d nova/site/assets
           FBX="nova/site/assets/nova-headphones.fbx"
           echo "FBX_BYTES=$(stat -c%s "$FBX")"
           file "$FBX" || true
           head -c 24 "$FBX" | xxd
-          test $(stat -c%s "$FBX") -gt 1000000
+          test $(stat -c%s "$FBX") -gt 2000000
           head -c 18 "$FBX" | grep -a -q "Kaydara FBX Binary"
 
       - name: Install browser QA
