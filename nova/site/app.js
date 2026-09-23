@@ -57,6 +57,7 @@ let mixer = null;
 let clip = null;
 let normalization = 1;
 let primaryProductBounds = null;
+let skeletonHelper = null;
 
 const ease = t => t * t * (3 - 2 * t);
 const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -107,13 +108,20 @@ function sampleCamera(name, p){
   const mobile = innerWidth <= 700;
   const baseZ = mobile ? 7.0 : 5.65;
   switch(name){
-    case 'hero': return {pos: lerp3([0,.06,baseZ],[.12,.05,baseZ-.18],e), look:[0,.04,0], fov: mobile?31:30, scale: mobile?.86:1.02, model:[0,mobile?1.15:.08,0], yaw:0};
-    case 'form': return {pos: lerp3([-.42,.05,baseZ-.42],[.36,.08,baseZ-.68],e), look:[0,.04,0], fov:31, scale: mobile?.90:1.06, model:[mobile?0:1.05,mobile?1.02:.04,0], yaw:lerp(-.03,.035,e)};
-    case 'mechanism': return {pos: lerp3([.45,.02,baseZ-.72],[-.48,.12,baseZ-.62],e), look:[0,.02,0], fov:30, scale: mobile?.9:1.08, model:[mobile?0:-1.0,mobile?1.02:.0,0], yaw:lerp(.035,-.045,e)};
-    case 'choreography': return {pos: lerp3([-.66,.14,baseZ-.82],[.72,-.02,baseZ-1.0],e), look:[0,.04,0], fov:29, scale: mobile?1.03:1.22, model:[0,mobile?1.05:.0,0], yaw:0};
-    case 'interaction': return {pos: lerp3([.34,.08,baseZ-.56],[-.18,.02,baseZ-.72],e), look:[0,.02,0], fov:30, scale: mobile?.92:1.08, model:[mobile?0:.95,mobile?1.00:.03,0], yaw:0};
-    case 'closing': return {pos: lerp3([0,.06,baseZ-.08],[0,.08,baseZ+.18],e), look:[0,.04,0], fov:31, scale: mobile?.82:.92, model:[0,mobile?.9:0,0], yaw:0};
-    default: return {pos:[0,0,baseZ],look:[0,0,0],fov:31,scale:1,model:[0,0,0],yaw:0};
+    case 'hero':
+      return {pos:lerp3([0,.06,baseZ],[.10,.04,baseZ-.16],e),look:[0,.04,0],fov:mobile?31:30,scale:mobile?.78:1.10,model:[0,mobile?.62:.08,0],yaw:0};
+    case 'form':
+      return {pos:lerp3([-.34,.04,baseZ-.42],[.26,.08,baseZ-.68],e),look:[0,.04,0],fov:31,scale:mobile?.78:1.20,model:[mobile?0:1.25,mobile?.50:.02,0],yaw:lerp(-.025,.03,e)};
+    case 'mechanism':
+      return {pos:lerp3([.36,.02,baseZ-.64],[-.40,.10,baseZ-.60],e),look:[0,.02,0],fov:30,scale:mobile?.73:1.04,model:[mobile?0:lerp(-1.85,-1.35,e),mobile?.58:-.04,0],yaw:lerp(.03,-.04,e)};
+    case 'choreography':
+      return {pos:lerp3([-.58,.10,baseZ-.72],[.62,-.02,baseZ-.92],e),look:[0,-.05,0],fov:29,scale:mobile?.82:1.28,model:[0,mobile?.28:-.48,0],yaw:lerp(-.04,.05,e)};
+    case 'interaction':
+      return {pos:lerp3([.28,.06,baseZ-.54],[-.15,.02,baseZ-.68],e),look:[0,.02,0],fov:30,scale:mobile?.78:1.14,model:[mobile?0:1.35,mobile?.48:.08,0],yaw:0};
+    case 'closing':
+      return {pos:lerp3([0,.05,baseZ-.02],[0,.06,baseZ+.16],e),look:[0,.02,0],fov:31,scale:mobile?.56:.72,model:[mobile?.58:1.65,mobile?-.12:-.35,0],yaw:lerp(-.08,.05,e)};
+    default:
+      return {pos:[0,0,baseZ],look:[0,0,0],fov:31,scale:1,model:[0,0,0],yaw:0};
   }
 }
 
@@ -177,6 +185,14 @@ function loadModel(){
     const cable = model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
+    skeletonHelper = new THREE.SkeletonHelper(model);
+    skeletonHelper.material.color.setHex(0xb8794d);
+    skeletonHelper.material.transparent = true;
+    skeletonHelper.material.opacity = 0;
+    skeletonHelper.material.depthTest = false;
+    skeletonHelper.renderOrder = 5;
+    scene.add(skeletonHelper);
+
     primaryProductBounds = computePrimaryBounds(model);
     const size = primaryProductBounds.getSize(new THREE.Vector3());
     const center = primaryProductBounds.getCenter(new THREE.Vector3());
@@ -213,6 +229,11 @@ function render(){
   const lighting = sampleLighting(activeScene, p);
   const targetTime = sampleAnimation(activeScene, p) * clipDuration;
   if(modelReady && mixer) mixer.setTime(targetTime);
+  if(skeletonHelper){
+    const mechanismPulse = activeScene === 'mechanism' ? Math.max(0, 1 - Math.abs(p - .5) * 1.7) : 0;
+    skeletonHelper.material.opacity = THREE.MathUtils.damp(skeletonHelper.material.opacity, mechanismPulse * .20, 5.0, 1/60);
+    skeletonHelper.visible = skeletonHelper.material.opacity > .008;
+  }
 
   pointer.x = THREE.MathUtils.damp(pointer.x, pointer.tx, 5.5, 1/60);
   pointer.y = THREE.MathUtils.damp(pointer.y, pointer.ty, 5.5, 1/60);
