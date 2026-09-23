@@ -47,3 +47,18 @@ def test_v2_app_uses_global_runtime_not_scene_switches():
     assert 'sceneProgress(' not in js
     assert 'sampleCamera(' not in js
     assert 'sampleAnimation(' not in js
+
+
+def test_v2_integration_wires_product_interactions():
+    assert "./runtime/environment.js" in js
+    assert "./ui/product-ui.js" in js
+    assert "./interactions/fold-controller.js" in js
+    assert "./interactions/inspection-controller.js" in js
+    assert "./interactions/hotspot-controller.js" in js
+    assert "./interactions/mode-controller.js" in js
+    assert "bindProductUI(" in js
+    assert "createEnvironment(" in js
+    assert "createFoldController(" in js
+    assert "createInspectionController(" in js
+    assert "createHotspotController(" in js
+    assert "createModeController(" in js
