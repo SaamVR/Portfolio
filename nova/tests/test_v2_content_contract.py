@@ -90,3 +90,11 @@ def test_transition_metadata_does_not_override_chapter_contrast():
 
 def test_no_literal_escape_sequences_in_product_copy():
     assert "\\n" not in html
+
+def test_detail_hotspots_have_premium_readability_cues():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".hotspot:before{" in compact
+    assert 'body[data-range="design"].hotspot[data-visible="true"]' in compact
+    assert ".hotspot:hover" in compact
+    assert ".hotspot:focus-visible" in compact
+
