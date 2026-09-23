@@ -98,3 +98,17 @@ def test_detail_hotspots_have_premium_readability_cues():
     assert ".hotspot:hover" in compact
     assert ".hotspot:focus-visible" in compact
 
+
+def test_behind_nova_has_normal_flow_case_study_handoff():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'id="case-study"' in html
+    for label in ["Role", "Challenge", "What I built", "Result"]:
+        assert label in html
+    assert ".case-study{" in compact
+    assert 'body[data-case-study="true"]#webgl' in compact
+    assert 'body[data-case-study="true"].hotspot-layer' in compact
+
+def test_navigation_and_hotspot_detail_have_refined_active_states():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".product-nava.is-active" in compact
+    assert '.hotspot[aria-expanded="true"]span' in compact
