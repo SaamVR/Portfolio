@@ -73,3 +73,8 @@ def test_v2_hotspot_earcups_use_skinned_surface_points():
 def test_v2_earcup_hotspots_do_not_use_mesh_bounds_centers():
     assert "surfaceBounds('Circle.012_0'" not in js
     assert "surfaceBounds('Circle.009_0'" not in js
+
+
+def test_v2_hotspot_resolver_handles_sanitized_gltf_names():
+    assert "name.replaceAll('.', '')" in js
+    assert "object?.children?.find(child=>child.isSkinnedMesh)" in js
