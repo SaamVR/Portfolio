@@ -751,6 +751,73 @@
   $("#closeFollowup").addEventListener("click",closeFollow);
   $("#followupModal").addEventListener("click",e=>{if(e.target===$("#followupModal"))closeFollow()});
 
+  let guidedActive=false;
+  let guidedCancelled=false;
+  function setTourStep(index,label){
+    $("#tourIndex").textContent=index+" / 4";
+    $("#tourLabel").textContent=label;
+  }
+  function endTour(){
+    guidedCancelled=true;
+    guidedActive=false;
+    $("#tourStatus").classList.remove("open");
+    $("#tourStatus").setAttribute("aria-hidden","true");
+    $("#guidedDemo").disabled=false;
+    $("#guidedDemo").innerHTML="<span>▶</span> Guided walkthrough";
+  }
+  $("#cancelTour").addEventListener("click",()=>{
+    closeCrm();
+    endTour();
+  });
+  $("#guidedDemo").addEventListener("click",async()=>{
+    if(guidedActive||running) return;
+    guidedActive=true;
+    guidedCancelled=false;
+    $("#guidedDemo").disabled=true;
+    $("#guidedDemo").textContent="Walkthrough running…";
+    $("#tourStatus").classList.add("open");
+    $("#tourStatus").setAttribute("aria-hidden","false");
+
+    try{
+      setTourStep(1,"Run a qualified lead through the live server path");
+      $("#leadName").value="Sarah";
+      $("#leadCompany").value="Acme Dental";
+      $("#leadBudget").value="5000";
+      $("#leadTimeline").value="asap";
+      $("#leadNeed").value="We need automated appointment lead follow-up";
+      $("#demo").scrollIntoView({behavior:reducedMotion?"auto":"smooth",block:"start"});
+      await delay(reducedMotion?80:700);
+      if(guidedCancelled) return;
+      await runWorkflow({name:"Sarah",company:"Acme Dental",budget:5000,timeline:"asap",need:"We need automated appointment lead follow-up"});
+      if(guidedCancelled) return;
+
+      setTourStep(2,"Inspect the CRM record created by the workflow");
+      openCrm();
+      await delay(reducedMotion?80:480);
+      if(currentLead) openLead(currentLead.id);
+      await delay(reducedMotion?100:900);
+      if(guidedCancelled) return;
+
+      setTourStep(3,"Watch pipeline analytics react to the new lead");
+      switchCrmView("analytics");
+      await delay(reducedMotion?120:1100);
+      if(guidedCancelled) return;
+      closeCrm();
+
+      setTourStep(4,"Generate and edit the suggested automation blueprint");
+      $("#blueprint").scrollIntoView({behavior:reducedMotion?"auto":"smooth",block:"start"});
+      await delay(reducedMotion?80:720);
+      if(guidedCancelled) return;
+      $("#generateBlueprint").click();
+      await delay(reducedMotion?120:900);
+      $("#blueprintFlow .bp-node:nth-of-type(2)")?.click();
+      setTourStep(4,"Walkthrough complete · try editing any workflow step");
+      await delay(reducedMotion?250:1300);
+    }finally{
+      if(guidedActive) endTour();
+    }
+  });
+
   document.addEventListener("keydown",e=>{
     if(e.key==="Escape"){
       if($("#followupModal").classList.contains("open")) closeFollow();

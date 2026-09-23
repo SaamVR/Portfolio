@@ -53,7 +53,16 @@ Updated: 2026-09-23
 - Production QA: Sarah returns 92 / hot from the server, 15 event-stream events including api.qualify
 - Production QA: no browser errors, no failed resources, no mobile overflow at 390px
 
+## Completed Upwork presentation checkpoint
+- Added transparent Problem → System → Result client scenario using modeled workload inputs
+- Added guided walkthrough from live qualification → CRM record → analytics → editable workflow blueprint
+- Guided walkthrough verified against the production server-backed endpoint
+- Production QA: 92/100 Sarah result, live server response, 15 workflow events, guided flow completes cleanly
+- Mobile QA: 390px viewport remains overflow-free
+- LeadFlow deployments now use a clean staging directory so the shared Portfolio/NOVA workspace is not bundled into Cloudflare Pages
+
 ## Next implementation checkpoint
-1. Add concise Problem → System → Result business framing
-2. Add guided walkthrough mode for clients who do not explore manually
-3. Keep all verified changes committed before/with deployment
+1. Optional: connect CRM settings and automation toggles to actual execution behavior
+2. Optional: add shareable workflow state / URL serialization
+3. Optional: connect external CRM / AI credentials when a production service is selected
+4. Keep verified changes committed before/with deployment

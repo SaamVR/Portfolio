@@ -65,6 +65,7 @@
         <div class="hero-actions">
           <a class="primary-btn" href="#demo">Run a lead through it <span>↓</span></a>
           <button class="secondary-btn" id="openCrmHero" type="button">Explore CRM dashboard</button>
+          <button class="guided-demo-btn" id="guidedDemo" type="button"><span>▶</span> Guided walkthrough</button>
         </div>
         <div class="hero-proof">
           <span>AI qualification</span><i></i>
@@ -108,6 +109,18 @@
         <div class="capability"><span>03</span><b>AI</b><small>Qualification logic</small></div>
         <div class="capability"><span>04</span><b>CRM</b><small>Operational dashboard</small></div>
         <div class="capability"><span>05</span><b>UX</b><small>Visible system state</small></div>
+      </div>
+    </section>
+
+    <section class="section shell client-brief">
+      <div class="section-head">
+        <div><p class="tag">CLIENT SCENARIO</p><h2>A realistic lead-ops brief, translated into a working system.</h2></div>
+        <p>The numbers below are modeled inputs for this demonstration—not invented client performance claims.</p>
+      </div>
+      <div class="brief-grid">
+        <article class="brief-problem"><small>01 · CURRENT STATE</small><b>500 inbound leads / month</b><p>Staff manually validates inquiries, enters CRM data, prepares follow-up and alerts sales.</p><strong>8 min / lead · ~67 hrs repetitive handling</strong></article>
+        <article class="brief-system"><small>02 · AUTOMATED SYSTEM</small><b>One observable workflow</b><p>Capture → validation → server qualification → CRM upsert → follow-up → sales routing.</p><strong>Every decision remains inspectable</strong></article>
+        <article class="brief-outcome"><small>03 · OPERATIONAL OUTCOME</small><b>People handle exceptions, not copying</b><p>Routine processing is mapped for automation while low-confidence and failed actions retain human review paths.</p><strong>Modeled impact, not a fabricated ROI claim</strong></article>
       </div>
     </section>
 
@@ -526,6 +539,12 @@
       </div>
       <p class="microcopy">Prepared from the lead context and qualification result.</p>
     </div>
+  </div>
+
+  <div class="tour-status" id="tourStatus" aria-live="polite" aria-hidden="true">
+    <span id="tourIndex">1 / 4</span>
+    <b id="tourLabel">Preparing guided walkthrough…</b>
+    <button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button>
   </div>
 
   <script src="./app.js"></script>
