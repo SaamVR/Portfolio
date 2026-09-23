@@ -1,6 +1,13 @@
 const LISTENING = new Set(['spatial','focus','ambient']);
 const NOISE = new Set(['adaptive','transparency']);
 const FOLD = new Set(['open','fold']);
+const NAV_TARGET = {
+  design:'#design',
+  spatial:'#sound',
+  adaptive:'#control',
+  form:'#experience',
+  inspect:'#experience'
+};
 
 function setPressed(selector,value,dataKey){
   document.querySelectorAll(selector).forEach(button => {
@@ -30,7 +37,11 @@ export function bindProductUI(actions){
     });
   });
   document.querySelectorAll('[data-hotspot]').forEach(button => {
-    button.addEventListener('click', () => actions.focusHotspot?.(button.dataset.hotspot));
+    button.addEventListener('click', () => {
+      const expanded=button.getAttribute('aria-expanded')==='true';
+      if(expanded) actions.clearHotspot?.();
+      else actions.focusHotspot?.(button.dataset.hotspot);
+    });
   });
   document.querySelector('#inspectionReset')?.addEventListener('click', () => actions.resetInspection?.());
   document.querySelector('#replay')?.addEventListener('click', () => actions.replay?.());
@@ -45,6 +56,19 @@ export function bindProductUI(actions){
     else notifyTrigger?.focus();
   };
   notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
+  const notifyForm=document.querySelector('#notifyDemoForm');
+  const notifyStatus=document.querySelector('#notifyDemoStatus');
+  notifyForm?.addEventListener('submit',event=>{
+    event.preventDefault();
+    const input=notifyForm.querySelector('input[type="email"]');
+    if(!input?.checkValidity()){
+      input?.reportValidity();
+      return;
+    }
+    notifyForm.dataset.state='confirmed';
+    if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
+    input.value='';
+  });
   document.querySelectorAll('[data-notify-close]').forEach(button=>{
     button.addEventListener('click',()=>setNotifyOpen(false));
   });
@@ -58,6 +82,13 @@ export function updateProductUI(state){
   document.body.dataset.range=ui.range || state?.range || 'hero';
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
+  const activeTarget=NAV_TARGET[ui.range || state?.range] || null;
+  document.querySelectorAll('.product-nav a[href^="#"]').forEach(link=>{
+    const active=Boolean(activeTarget && link.getAttribute('href')===activeTarget);
+    link.classList.toggle('is-active',active);
+    if(active) link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  });
   document.querySelector('#experienceProgress')?.style.setProperty('width', `${Math.round((state?.progress||0)*100)}%`);
   if(state?.interaction){
     setPressed('[data-listening-mode]',state.interaction.listeningMode,'listeningMode');
