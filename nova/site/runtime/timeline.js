@@ -105,8 +105,10 @@ function applyCompositionInfluences(state,p){
   state.camera.position[2] += .08 * resolution;
   state.product.scale *= lerp(1,.97,resolution);
 
-  state.product.scale *= lerp(1,.72,behind);
-  state.camera.position[2] += .12 * behind;
+  state.product.scale *= lerp(1,.55,behind);
+  state.product.position[0] += .34 * behind;
+  state.product.position[1] -= .12 * behind;
+  state.camera.position[2] += .48 * behind;
 
   return state;
 }
