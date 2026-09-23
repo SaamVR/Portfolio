@@ -68,3 +68,57 @@ body[data-notify-concept="open"] .interest-panel{transform:translateX(0)}
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto}.segmented button,.hotspot,.masthead,.interest-panel,.interest-backdrop{transition:none!important}
 }
+
+/* Product-detail refinement: keep hotspots restrained, tactile and legible over close views. */
+.hotspot:before{
+  content:"";
+  position:absolute;
+  left:4px;
+  top:50%;
+  width:42px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,currentColor);
+  opacity:.34;
+  transform:translate(-100%,-50%) scaleX(.72);
+  transform-origin:right center;
+  transition:opacity .22s ease,transform .28s cubic-bezier(.2,.72,.2,1);
+  pointer-events:none;
+}
+body[data-range="design"] .hotspot[data-visible="true"],
+body[data-range="inspect"] .hotspot[data-visible="true"]{
+  filter:drop-shadow(0 9px 22px rgba(12,10,8,.10));
+}
+body[data-range="design"] .hotspot[data-visible="true"] span,
+body[data-range="inspect"] .hotspot[data-visible="true"] span{
+  background:rgba(244,239,230,.90);
+  border-color:rgba(15,14,12,.22);
+  box-shadow:0 8px 26px rgba(12,10,8,.07);
+}
+.hotspot:hover,
+.hotspot:focus-visible{
+  opacity:1;
+  transform:translate3d(-50%,-50%,0) scale(1.035);
+  outline:none;
+}
+.hotspot:hover:before,
+.hotspot:focus-visible:before{
+  opacity:.78;
+  transform:translate(-100%,-50%) scaleX(1);
+}
+.hotspot:hover i,
+.hotspot:focus-visible i{
+  background:rgba(238,232,220,.72);
+  box-shadow:0 0 0 5px rgba(166,108,69,.10);
+}
+.hotspot:hover span,
+.hotspot:focus-visible span{
+  border-color:rgba(166,108,69,.48);
+}
+@media (max-width:700px){
+  .hotspot:before{display:none}
+  body[data-range="design"] .hotspot[data-visible="true"],
+  body[data-range="inspect"] .hotspot[data-visible="true"]{filter:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .hotspot:before{transition:none!important}
+}
