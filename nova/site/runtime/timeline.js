@@ -136,7 +136,7 @@ export function sampleTimeline(progress, viewportClass='desktop'){
     },
     ui:{
       range:rangeState.range,
-      dark:rangeState.range === 'spatial' || rangeState.range === 'adaptive',
+      dark:rangeState.range === 'spatial' || rangeState.range === 'adaptive' || rangeState.range === 'behind',
       settled:rangeState.progress > .32 && rangeState.progress < .82
     }
   };
