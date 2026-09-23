@@ -172,3 +172,64 @@ Post-deploy GPT-runtime verification:
 - public stylesheet is accessible and matches the verified editorial build
 - the external crawler used for post-deploy verification does not expose JavaScript/GLTF bodies because of their content types; therefore runtime/visual verification continues to rely on the exact-bundle browser QA that passed before deployment
 - the deployed bundle is the same production artifact built and validated in run `35848847596`
+
+
+## NOVA V2 verified product-experience checkpoint — 2026-09-23
+
+Verified source commit:
+
+`265c033a5d229ad9141d26040545621ea1336cc2`
+
+V2 architecture now verified:
+- product-first fictional NOVA headphone campaign precedes the technical portfolio reveal
+- one global authored motion timeline replaces V1 scene-switch choreography
+- camera, product pose, lighting and environment are composed continuously
+- Fold/Open owns skeletal pose temporarily and blends back to scroll
+- constrained drag/swipe inspection works on desktop/mobile
+- Spatial/Focus/Ambient and Adaptive/Transparency controls produce bounded environment/light state
+- hotspot anchors resolve sanitized GLTF object names and attach to real animated earcup/headband geometry
+- chapter background is driven by active product state rather than overlapping sticky section paint
+- exact-position browser QA disables smooth scrolling in the harness and verifies requested normalized progress
+- Notify interaction is visible and covered by desktop/mobile QA
+- reduced-motion and GLTF failure fallback paths remain usable
+
+Final hotspot correction:
+- previous earcup anchors silently fell back because Three.js sanitized names such as `Circle.012_0` to `Circle012_0`
+- resolver now checks sanitized names and finds the child SkinnedMesh
+- obsolete 22%-viewport screen offsets were removed after the real mesh anchors became active
+- focused hotspot QA now places Control Surface / Soft-touch Cushion on the physical earcups and Articulated Fit on the headband
+
+Verification:
+- V2 contract run: `35887935304` — success
+- focused hotspot QA run: `35887935405` — success
+- focused hotspot artifact: `10763801727`
+- focused hotspot artifact SHA-256: `ae2b3d7ea8996ca3a09b45c3029848c10212f84d53e58bbdfd29a8fe1f6e42c6`
+- full V2 visual QA run: `35887935332` — success
+- full V2 visual QA artifact: `10763432202`
+- full V2 visual QA artifact SHA-256: `135d6be23450a7b916134c1af97f398dcc039804ace15794008d0641757997a1`
+
+The full browser matrix covers:
+- desktop 1440 × 1000
+- tablet 1024 × 768
+- mobile 390 × 844
+- exact timeline boundary captures
+- Focus / Transparency modes
+- Fold / fold release
+- inspection drag / reset
+- mobile Ambient / swipe
+- Notify panel
+- reduced motion
+- GLTF failure fallback
+
+Exact production artifact:
+- production bundle run: `35887935309` — success
+- artifact: `nova-production-site`
+- artifact ID: `10763018698`
+- artifact SHA-256: `566a18e53bd2c0f850ee9a380f4ff6851af50ebfba4fc484e1cf60345a9238a4`
+- artifact size: 1,832,977 bytes
+
+Deployment policy:
+- all development/debugging/design/QA remains in GPT runtime / hosted GitHub Actions
+- samvr is deployment-only
+- deploy this exact artifact to a V2 preview branch first
+- do not replace Cloudflare production until the V2 preview is publicly verified
