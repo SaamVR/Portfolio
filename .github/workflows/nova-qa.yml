@@ -41,6 +41,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install three@0.180.0 --no-audit --no-fund
           cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
           cp node_modules/three/examples/jsm/loaders/FBXLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
           cp node_modules/three/examples/jsm/libs/fflate.module.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/libs/"
           cp node_modules/three/examples/jsm/curves/NURBSCurve.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/curves/"
