@@ -64,12 +64,14 @@ jobs:
             const scrollProgress=async p=>{
               await page.evaluate(value=>{
                 document.documentElement.style.scrollBehavior='auto';
-                const max=document.documentElement.scrollHeight-innerHeight;
-                scrollTo(0,max*value);
+                const behind=document.querySelector('#behind');
+                const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+                scrollTo(0,cinematicMax*value);
               },p);
               await page.waitForFunction(value=>{
-                const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
-                return Math.abs(scrollY/max-value)<.003;
+                const behind=document.querySelector('#behind');
+                const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+                return Math.abs(scrollY/cinematicMax-value)<.003;
               },p,{timeout:3000});
               await page.waitForTimeout(300);
             };
