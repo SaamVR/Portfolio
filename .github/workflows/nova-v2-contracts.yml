@@ -1,0 +1,34 @@
+name: NOVA V2 Contracts
+
+on:
+  push:
+    branches:
+      - "nova/v2-*"
+    paths:
+      - ".github/workflows/nova-v2-contracts.yml"
+      - "nova/site/**"
+      - "nova/tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python contracts
+        run: |
+          python3 -m pip install -q pytest
+          python3 -m pytest nova/tests/test_contract.py -q
+          if [ -f nova/tests/test_v2_content_contract.py ]; then
+            python3 -m pytest nova/tests/test_v2_content_contract.py -q
+          fi
+      - name: Runtime contracts
+        run: |
+          node nova/tests/timeline_contract.mjs
+          if [ -f nova/tests/interaction_contract.mjs ]; then
+            node nova/tests/interaction_contract.mjs
+          fi
