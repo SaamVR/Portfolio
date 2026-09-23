@@ -132,23 +132,31 @@ function buildHotspotController(size){
   const hx=size.x*.5;
   const hy=size.y*.5;
   const hz=size.z*.5;
+  const bone=(name,fallbackPoint)=>({
+    object:model?.getObjectByName(name) || null,
+    point:fallbackPoint
+  });
+  const cushion=bone('Bone_R.007_Armature',[hx*.60,-hy*.10,hz*.28]);
+  const headband=bone('Bone_R.009_Armature',[0,hy*.70,0]);
+  const controls=bone('Bone_L.007_Armature',[-hx*.62,-hy*.06,hz*.22]);
+
   hotspotController=createHotspotController({
     THREE,
     camera,
     elements:hotspotElements,
     anchors:{
       cushion:{
-        point:[hx*.60,-hy*.10,hz*.28],
+        ...cushion,
         cameraOffset:[.12,-.02,-.16],
         targetOffset:[.10,-.03,0]
       },
       headband:{
-        point:[0,hy*.70,0],
+        ...headband,
         cameraOffset:[-.08,.12,-.10],
         targetOffset:[0,.11,0]
       },
       controls:{
-        point:[-hx*.62,-hy*.06,hz*.22],
+        ...controls,
         cameraOffset:[-.12,-.01,-.16],
         targetOffset:[-.10,-.02,0]
       }
