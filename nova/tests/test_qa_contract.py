@@ -39,3 +39,11 @@ def test_refinement_qa_captures_detail_passes_and_guards_copy_collision():
     assert "390,height:844" in qa
 
 # Contract trigger: validates the QA workflow implementation on this lane head.
+
+def test_collision_guard_covers_early_hero_and_design_at_strict_threshold():
+    assert "{p:.02,label:'hero-opening'}" in qa
+    assert "{p:.10,label:'hero-resolved'}" in qa
+    assert "{p:.18,label:'design-close'}" in qa
+    assert "{p:.20,label:'design-peak'}" in qa
+    assert "result.ratio>.04" in qa
+
