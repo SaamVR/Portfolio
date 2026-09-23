@@ -58,6 +58,11 @@ jobs:
           test -f nova/site/vendor/three.core.js
           test -f nova/site/vendor/addons/loaders/GLTFLoader.js
           test -f nova/site/vendor/addons/utils/BufferGeometryUtils.js
+          test -f nova/site/v1/index.html
+          test -f nova/site/v1/styles.css
+          test -f nova/site/v1/app.js
+          grep -q "../assets/headphones-web.gltf" nova/site/v1/app.js
+          grep -q "../vendor/three.module.js" nova/site/v1/index.html
           python3 - <<'PY'
           import json, pathlib
           root=pathlib.Path("nova/site")
