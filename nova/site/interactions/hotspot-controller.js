@@ -22,8 +22,15 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
       for(const [id,anchor] of Object.entries(anchors)){
         const el=getElement(id);
         if(!el) continue;
-        world.fromArray(anchor.point||[0,0,0]);
-        modelRoot?.localToWorld?.(world);
+        if(anchor.object?.localToWorld){
+          world.fromArray(anchor.offset||[0,0,0]);
+          anchor.object.localToWorld(world);
+        }else if(anchor.object?.getWorldPosition){
+          anchor.object.getWorldPosition(world);
+        }else{
+          world.fromArray(anchor.point||[0,0,0]);
+          modelRoot?.localToWorld?.(world);
+        }
         world.project(camera);
         const visible=Number.isFinite(world.x)&&Number.isFinite(world.y)&&world.z>=-1.2&&world.z<=1.2&&Math.abs(world.x)<=1.15&&Math.abs(world.y)<=1.15;
         el.dataset.visible=String(visible);
