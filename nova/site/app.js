@@ -149,16 +149,19 @@ function buildHotspotController(size){
     anchors:{
       cushion:{
         ...cushion,
+        offset:[0,-1.20,-.95],
         cameraOffset:[.12,-.02,-.16],
         targetOffset:[.10,-.03,0]
       },
       headband:{
         ...headband,
+        offset:[-.12,-.12,0],
         cameraOffset:[-.08,.12,-.10],
         targetOffset:[0,.11,0]
       },
       controls:{
         ...controls,
+        offset:[0,-.43,-1.23],
         cameraOffset:[-.12,-.01,-.16],
         targetOffset:[-.10,-.02,0]
       }
