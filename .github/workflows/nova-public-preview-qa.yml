@@ -69,24 +69,47 @@ jobs:
             await page.waitForTimeout(350);
           }
 
-          async function assertHotspots(page,prefix){
-            await scrollProgress(page,.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const state=await page.evaluate(()=>{
-              const pick=id=>{const r=document.querySelector('[data-hotspot="'+id+'"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};};
+          async function publicHotspotMotionAudit(page,prefix){
+            const readHotspots=()=>page.evaluate(()=>{
+              const pick=id=>{
+                const el=document.querySelector('[data-hotspot="'+id+'"]');
+                const r=el.getBoundingClientRect();
+                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
+              };
               return {cushion:pick('cushion'),controls:pick('controls'),w:innerWidth,h:innerHeight};
             });
-            const min=prefix==='mobile'?state.h*.25:state.h*.34;
-            const max=prefix==='mobile'?state.h*.50:state.h*.62;
-            for(const [id,p] of Object.entries({cushion:state.cushion,controls:state.controls})){
-              if(p.y<min||p.y>max) throw new Error(prefix+' deployed '+id+' hotspot detached '+JSON.stringify({p,min,max,state}));
+            const validate=state=>{
+              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
+                if(point.visible!=='true') throw new Error(prefix+' deployed '+id+' hotspot hidden '+JSON.stringify(state));
+                const margin=12;
+                if(point.x<margin||point.x>state.w-margin||point.y<margin||point.y>state.h-margin){
+                  throw new Error(prefix+' deployed '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
+                }
+              }
+            };
+
+            await scrollProgress(page,.18);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const first=await readHotspots();
+            validate(first);
+
+            await scrollProgress(page,.20);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const second=await readHotspots();
+            validate(second);
+
+            for(const id of ['cushion','controls']){
+              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
+              if(movement<4){
+                throw new Error(prefix+' deployed hotspot should move with authored close pass '+JSON.stringify({id,movement,first:first[id],second:second[id]}));
+              }
             }
           }
 
           {
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const page=await pageReady(context,'desktop');
-            await assertHotspots(page,'desktop');
+            await publicHotspotMotionAudit(page,'desktop');
             await page.screenshot({path:'nova-public-qa/desktop_design.png'});
 
             await scrollProgress(page,.36);
@@ -109,7 +132,7 @@ jobs:
           {
             const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
             const page=await pageReady(context,'mobile');
-            await assertHotspots(page,'mobile');
+            await publicHotspotMotionAudit(page,'mobile');
             await page.screenshot({path:'nova-public-qa/mobile_design.png'});
 
             await scrollProgress(page,.36);
