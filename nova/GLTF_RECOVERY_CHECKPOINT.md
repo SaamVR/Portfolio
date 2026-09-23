@@ -84,3 +84,66 @@ Those captures are not valid evidence for the requested chapter. The QA runner m
 5. Rerun desktop/tablet/mobile browser screenshots.
 6. Inspect orientation, model/type collision, framing and dark-chapter lighting before any deployment.
 7. Commit the chosen orientation only after the visual evidence passes.
+
+
+## Progress recovered after the first GLTF checkpoint
+
+Additional successful work was found in repository history after the connection gap:
+
+- `df7cb8d1ebe07a400edd8b3a97375621a90afcfa` — enabled real scroll-scrubbed GLTF motion and removed cable clutter.
+- `23688b33665dda9286ba9ae983f576fc4528b8df` — locked contracts for real animation scrub + cable-free presentation.
+- `144fac4f3e24d5029f70f775967f69b0754ddb1b` — handled sanitized GLTF cable node naming.
+- `96aaa26df3c84d1940c9174ca1db5957d441ce11` — corrected QA to use/assert true desktop/tablet/mobile viewport sizes.
+- `6e735ae36114a195ce9daf67ffa7ffd894db0feb` — converted long sections into sticky editorial stages.
+- `5e3b5cc5c36c11d70eceef1eccd9031195a9ecee` — added per-chapter 3D choreography and a restrained SkeletonHelper overlay in the Mechanism chapter.
+- `3661633c43fc507447a080973f98e9d33aebb212` — tuned camera/model placement to resolve product/type collisions by chapter.
+
+All of those commits had successful NOVA Visual QA runs.
+
+### Successful pose scan
+
+The later pose-scan bug was fixed by:
+- `e824b8dc6b8a36066f47a86806fe9d8127f0cbdb`
+- `cd50ec43c73e86bac946a0618d69ccaea2b41c1e`
+
+Successful QA run:
+- run ID `35839814535`
+- artifact `nova-visual-qa`
+- artifact SHA-256 `8d550f3fa327b2fd3d128eec8364f1eb0f5bdde0538b81f0eddc6b41afe6e975`
+
+The real 27.71-second `ArmatureAction` was sampled at:
+`0.00, 0.08, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80, 0.88, 0.96`.
+
+Visual findings:
+- strong upright/open product silhouettes: approximately `0.16–0.32`, `0.48`, and `0.64–0.80`
+- folded/transition silhouettes: `0.00`, `0.40`, `0.88–0.96`
+- `0.56` is a more oblique/transitional pose
+- the original hero mapping was therefore sampling a weaker transition rather than the strongest recognizable product state
+
+### Current design state
+
+The latest verified editorial design is materially stronger than the rejected live draft:
+- warm editorial hero/form/mechanism chapters
+- deliberate dark choreography chapter
+- sand interaction chapter
+- black build/closing chapter
+- sticky 100svh stages inside long scroll sections
+- separate animation, camera, lighting and typography curves
+- real responsive desktop/tablet/mobile framing
+- skeleton visualization appears only as a Mechanism explanation layer
+- model placement has been tuned to avoid headline collisions
+- the cable is hidden from the showcase presentation because it visually read as detached/broken and distorted framing
+
+### Current remaining task
+
+Do not redesign the page again.
+
+The next task is to replace the arbitrary chapter pose ranges with evidence-based source-animation ranges:
+- Hero: strongest open/product-identifiable pose
+- Form: clean upright pose with subtle source motion
+- Mechanism: intentionally traverse a fold/open range so the source rig is visibly doing useful work
+- Choreography: use a more dynamic but still legible open pose range
+- Interaction: hold a stable product pose while pointer light/parallax carries the interaction
+- Closing: compact, deliberate final pose that does not collide with copy
+
+After that, rerun the existing exact GLTF browser QA and inspect screenshots before deployment.
