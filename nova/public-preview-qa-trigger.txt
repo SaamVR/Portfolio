@@ -6,3 +6,5 @@ Deployed preview verification: source 13a3ce83b483d14446a9d9b6b115e9c61996cc6b /
 R10 deployed source 19ddcf2a0c7fc1d8eecbbd35b8579b4c9b51e36c public QA trigger after preview deploy.
 
 R11 readability + V1 archive preview verification for source f8e16128be6017292cf276ea6d3903e55191a753.
+
+Final R11 safe-inset preview verification for source 62dc4d8aad433460a7f1b5cd6071897571b78412.
