@@ -149,7 +149,7 @@ function computePrimaryBounds(root){
   const box = new THREE.Box3();
   const childBox = new THREE.Box3();
   root.traverse(obj => {
-    if(!obj.isMesh || obj.name === 'Circle.013_0') return;
+    if(!obj.isMesh || obj.name === 'Circle013_0' || obj.name === 'Circle.013_0') return;
     childBox.makeEmpty();
     childBox.setFromObject(obj, true);
     if(!childBox.isEmpty()) box.union(childBox);
@@ -174,7 +174,7 @@ function loadModel(){
       model.updateMatrixWorld(true);
     }
 
-    const cable = model.getObjectByName('Circle.013_0');
+    const cable = model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
     primaryProductBounds = computePrimaryBounds(model);
