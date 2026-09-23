@@ -47,3 +47,10 @@ def test_collision_guard_covers_early_hero_and_design_at_strict_threshold():
     assert "{p:.20,label:'design-peak'}" in qa
     assert "result.ratio>.04" in qa
 # Trigger fast contracts on the strengthened browser-collision implementation.
+
+def test_hotspot_qa_tracks_authored_motion_not_legacy_fixed_screen_band():
+    assert "hotspotMotionAudit" in qa
+    assert "hotspot should move with authored close pass" in qa
+    assert "state.height*.34" not in qa
+    assert "state.height*.62" not in qa
+
