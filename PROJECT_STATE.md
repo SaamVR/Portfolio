@@ -35,12 +35,18 @@ Updated: 2026-09-23
 - Verified canonical Sarah run: 92/100 HOT LEAD, 4 total leads, 2 hot leads
 - Verified mobile width at 390px with no horizontal overflow
 
+## Completed polish checkpoint
+- ROI calculator now includes animated workload and labor-spend visualization
+- Architecture now includes a four-stage production implementation proof
+- Final CTA routes visitors into the editable workflow builder and live execution path
+- Added SVG favicon and Open Graph / social metadata
+- Regression QA: no JavaScript errors, no missing resources, no horizontal overflow at 390px
+
 ## Next implementation checkpoint
-1. Add lightweight ROI visualization
-2. Strengthen implementation-proof / production architecture presentation
-3. Improve final client conversion path
-4. Add remaining accessibility and metadata polish
-5. Keep verified changes committed here before/with deployment
+1. Optional: connect CRM settings/toggles to actual execution behavior
+2. Optional: add shareable workflow state / URL serialization
+3. Optional: add production backend integration when credentials/services are selected
+4. Keep verified changes committed here before/with deployment
 
 ## Operating rule
 From this checkpoint forward, production changes should be committed to this repository after verification and before/with deployment so the repository remains the durable source of truth.

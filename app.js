@@ -363,8 +363,14 @@
     const cost=Math.max(0,Math.min(1000,Number($("#calcCost").value)||0));
     const hours=(leads*mins)/60;
     const money=hours*cost;
-    $("#hoursSaved").textContent=Math.round(hours).toLocaleString();
-    $("#manualCost").textContent=`$${Math.round(money).toLocaleString()}/month`;
+    const roundedHours=Math.round(hours);
+    const roundedMoney=Math.round(money);
+    $("#hoursSaved").textContent=roundedHours.toLocaleString();
+    $("#manualCost").textContent=`$${roundedMoney.toLocaleString()}/month`;
+    $("#hoursBarValue").textContent=roundedHours.toLocaleString()+"h";
+    $("#costBarValue").textContent="$"+roundedMoney.toLocaleString();
+    $("#hoursBar").style.width=Math.min(100,hours/160*100)+"%";
+    $("#costBar").style.width=Math.min(100,money/2500*100)+"%";
   }
   ["#calcLeads","#calcMinutes","#calcCost"].forEach(id=>$(id).addEventListener("input",calc));
   calc();

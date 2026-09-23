@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07120f" />
   <meta name="description" content="LeadFlow AI — interactive lead qualification, CRM routing and sales automation." />
+  <meta property="og:title" content="LeadFlow AI — Lead Qualification & CRM Automation" />
+  <meta property="og:description" content="Interactive lead qualification, CRM routing, workflow automation and sales handoff." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
   <title>LeadFlow AI — AI Lead Qualification & CRM Automation</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -231,12 +236,16 @@
           <small>POTENTIAL MONTHLY IMPACT</small>
           <div><strong id="hoursSaved">67</strong><span>hours/month<br>potentially automated</span></div>
           <div class="cost-row"><span>Estimated manual cost</span><b id="manualCost">$1,005/month</b></div>
+          <div class="roi-visual" aria-label="Monthly workload visualization">
+            <div class="roi-track-row"><div><span>Manual workload</span><b id="hoursBarValue">67h</b></div><div class="roi-track"><i id="hoursBar"></i></div><small>0–160h scale</small></div>
+            <div class="roi-track-row"><div><span>Labor spend</span><b id="costBarValue">$1,005</b></div><div class="roi-track cost"><i id="costBar"></i></div><small>$0–$2,500 scale</small></div>
+          </div>
           <p>Estimate assumes the entered manual handling time is fully automatable. Real savings depend on workflow design and exceptions.</p>
         </div>
       </div>
     </section>
 
-    <section class="section ai-demo-section">
+    <section id="blueprint" class="section ai-demo-section">
       <div class="shell">
         <div class="section-head">
           <div><p class="tag">AUTOMATION BLUEPRINT</p><h2>Describe the manual process. Get a suggested workflow.</h2></div>
@@ -288,6 +297,12 @@
       <div class="stack">
         <span>n8n</span><span>OpenAI API</span><span>HubSpot / Pipedrive</span><span>Webhooks</span><span>JavaScript</span><span>REST APIs</span><span>Postgres / Supabase</span>
       </div>
+      <div class="implementation-proof">
+        <article><small>01 · INTAKE</small><b>Webhook validation</b><p>Normalize payloads, validate required fields and attach an idempotency key before orchestration.</p></article>
+        <article><small>02 · DECISION</small><b>Structured qualification</b><p>Combine structured model output with deterministic score thresholds and routing guardrails.</p></article>
+        <article><small>03 · DATA</small><b>CRM upsert</b><p>Deduplicate identities, create or update the contact, then preserve workflow state against the CRM record.</p></article>
+        <article><small>04 · DELIVERY</small><b>Resilient handoff</b><p>Queue follow-up and sales alerts with retry handling while credentials remain server-side.</p></article>
+      </div>
     </section>
 
     <section class="section case-section">
@@ -311,8 +326,11 @@
 
     <section class="section shell">
       <div class="final-cta">
-        <div><p class="tag">CONNECTED OPERATIONS</p><h2>Forms, qualification, CRM and follow-up working as one flow.</h2></div>
-        <a class="primary-btn" href="#demo">Test the workflow again <span>↑</span></a>
+        <div><p class="tag">CONNECTED OPERATIONS</p><h2>Have a manual lead workflow? Map the automation before you build it.</h2><p class="final-cta-copy">Describe the process, shape the workflow, then run the live qualification path and inspect the resulting CRM record.</p></div>
+        <div class="final-cta-actions">
+          <a class="primary-btn" href="#blueprint">Map your workflow <span>↗</span></a>
+          <a class="secondary-btn" href="#demo">Run live workflow</a>
+        </div>
       </div>
     </section>
   </main>
