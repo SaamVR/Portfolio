@@ -34,8 +34,8 @@ def test_mobile_and_reduced_motion_are_authored():
 
 def test_stage_controls_layer_above_interactive_canvas():
     compact = css.replace(" ", "").replace("\n", "")
-    assert ".stage{position:relative;overflow:clip}" in compact
-    assert ".stage{position:relative;z-index:3;overflow:clip}" not in compact
+    assert ".stage{position:relative;overflow:clip;background:transparent!important}" in compact
+    assert ".stage{position:relative;z-index:3;" not in compact
 
 
 def test_stage_geometry_matches_global_timeline():
