@@ -99,4 +99,7 @@ for(const p of commercialOpenSamples){
   assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
 }
 
+const behindTheme=sampleTimeline(.985,'desktop');
+assert.equal(behindTheme.ui.dark,true,'behind chapter should use dark navigation theme');
+
 console.log('timeline_contract: PASS');
