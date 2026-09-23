@@ -136,3 +136,15 @@ assert.ok(designDetailMobile.camera.position[2] < 5.35, `Mobile Design should ga
 assert.ok(Math.abs(designDetailMobile.product.yaw) < Math.abs(designDetail.product.yaw), 'Mobile detail yaw should be shallower than desktop');
 assert.ok(Math.abs(designDetailMobile.product.pitch) < Math.abs(designDetail.product.pitch), 'Mobile detail pitch should be shallower than desktop');
 
+// Manual visual QA guard: dominant desktop product must stay right of left-aligned Hero/Design copy.
+for (const [p,minOffset,label] of [
+  [.02,.20,'Hero opening'],
+  [.10,.20,'Hero resolved'],
+  [.18,.28,'Design close pass'],
+  [.20,.30,'Design peak detail']
+]) {
+  const state=sampleTimeline(p,'desktop');
+  const lateralOffset=state.product.position[0]-state.camera.target[0];
+  assert.ok(lateralOffset >= minOffset, `${label} must preserve headline separation while staying large; lateral offset=${lateralOffset}`);
+}
+
