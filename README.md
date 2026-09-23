@@ -22,7 +22,7 @@ Policy-aware hotel automation and operations layer for independent hotels.
 
 **Live:** https://staypilot-hotel-os.pages.dev/  
 **Source:** https://github.com/SaamVR/staypilot-hotel-os  
-**Verified application release:** `eaa2795f`
+**Verified application release:** `145b6fde`
 
 Highlights:
 - 12 hotel automation workflows
@@ -35,6 +35,7 @@ Highlights:
 - Fail-closed production backend foundation with RLS, HMAC event ingestion and readiness health checks
 - Dormant durable event worker with atomic claims, retries/dead-lettering and Event-ID-safe effects
 - Durable outbound webhook outbox with endpoint/Event-ID dedupe for optional external automation consumers
+- Safe verified-host outbound dispatcher with exact HTTPS allowlisting, HMAC signatures and bounded retry/dead-letter handling
 - Fail-closed production backend boundary with RLS schema, signed event intake and explicit not-configured state
 - Booking-derived channel mix and reservation-bound refund approvals
 - Stateful Expense/Maintenance approval effects and exact 100% channel-share rounding
