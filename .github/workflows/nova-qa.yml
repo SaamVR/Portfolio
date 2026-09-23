@@ -118,6 +118,30 @@ jobs:
             return captures;
           }
 
+          async function designHotspotAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,prefix+'-hotspots');
+            await scrollProgress(page,.20);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const state=await page.evaluate(()=>{
+              const pick=id=>{
+                const el=document.querySelector('[data-hotspot="'+id+'"]');
+                const r=el.getBoundingClientRect();
+                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
+              };
+              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight};
+            });
+            const minY=prefix==='mobile' ? state.height*.25 : state.height*.34;
+            const maxY=prefix==='mobile' ? state.height*.50 : state.height*.62;
+            for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
+              if(point.y<minY || point.y>maxY){
+                throw new Error(prefix+' '+id+' hotspot detached from earcup band '+JSON.stringify({point,minY,maxY,state}));
+              }
+            }
+            await page.screenshot({path:'nova-qa/'+prefix+'_hotspots.png'});
+            await context.close();
+          }
+
           async function desktopInteractions(){
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'desktop-interactions');
@@ -227,6 +251,9 @@ jobs:
             await page.screenshot({path:'nova-qa/model_fallback.png'});
             await context.close();
           }
+
+          await designHotspotAudit({width:1440,height:1000},'desktop');
+          await designHotspotAudit({width:390,height:844},'mobile');
 
           const desktop=await captureJourney({width:1440,height:1000},'desktop');
           const tablet=await captureJourney({width:1024,height:768},'tablet');
