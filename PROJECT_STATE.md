@@ -42,11 +42,18 @@ Updated: 2026-09-23
 - Added SVG favicon and Open Graph / social metadata
 - Regression QA: no JavaScript errors, no missing resources, no horizontal overflow at 390px
 
-## Next implementation checkpoint
-1. Optional: connect CRM settings/toggles to actual execution behavior
-2. Optional: add shareable workflow state / URL serialization
-3. Optional: add production backend integration when credentials/services are selected
-4. Keep verified changes committed here before/with deployment
+## Completed Upwork credibility checkpoint
+- Durable rollback branch: backup/pre-upwork-upgrades-2026-09-23
+- Real Cloudflare Pages Function at POST /api/qualify
+- Server-side payload validation and deterministic qualification contract
+- Live server trace surfaced in the UI with browser fallback
+- Configurable lead-source / CRM / notification stack switcher
+- Reliability lab for duplicate prevention, CRM timeout retry, and low-confidence human review
+- Expandable API contract / production safeguards panel
+- Production QA: Sarah returns 92 / hot from the server, 15 event-stream events including api.qualify
+- Production QA: no browser errors, no failed resources, no mobile overflow at 390px
 
-## Operating rule
-From this checkpoint forward, production changes should be committed to this repository after verification and before/with deployment so the repository remains the durable source of truth.
+## Next implementation checkpoint
+1. Add concise Problem → System → Result business framing
+2. Add guided walkthrough mode for clients who do not explore manually
+3. Keep all verified changes committed before/with deployment

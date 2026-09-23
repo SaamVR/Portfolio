@@ -133,6 +133,11 @@
           <div><p class="tag">LIVE EXPERIENCE</p><h2>Submit a lead. Watch the automation execute.</h2></div>
           <p>Run a lead through the complete qualification flow, then inspect the resulting CRM record.</p>
         </div>
+        <div class="backend-proof" id="backendProof">
+          <span class="backend-dot"></span>
+          <div><b id="backendStatus">SERVER-BACKED QUALIFICATION</b><small>POST /api/qualify · deterministic scoring · browser fallback available</small></div>
+          <em id="backendTrace">ready</em>
+        </div>
 
         <div class="demo-layout">
           <form id="leadForm" class="lead-form" novalidate>
@@ -297,12 +302,54 @@
       <div class="stack">
         <span>n8n</span><span>OpenAI API</span><span>HubSpot / Pipedrive</span><span>Webhooks</span><span>JavaScript</span><span>REST APIs</span><span>Postgres / Supabase</span>
       </div>
+
+      <div class="stack-configurator">
+        <div class="stack-config-copy"><small>ADAPT THE STACK</small><b>Same workflow, different client tools.</b><p>Switch the source, CRM and notification channel to see how the implementation adapts without changing the core orchestration.</p></div>
+        <div class="stack-config-controls">
+          <label>Lead source<select id="stackSource"><option>Meta Lead Ads</option><option>Website Form</option><option>Typeform</option><option>WhatsApp</option></select></label>
+          <label>CRM<select id="stackCrm"><option>HubSpot</option><option>Pipedrive</option><option>Salesforce</option><option>Supabase CRM</option></select></label>
+          <label>Notification<select id="stackNotify"><option>Slack</option><option>Email</option><option>WhatsApp</option><option>Microsoft Teams</option></select></label>
+        </div>
+        <div class="stack-config-flow"><span id="stackFlowSource">Meta Lead Ads</span><i>→</i><span>Validation + Qualification</span><i>→</i><span id="stackFlowCrm">HubSpot</span><i>→</i><span id="stackFlowNotify">Slack</span></div>
+      </div>
       <div class="implementation-proof">
         <article><small>01 · INTAKE</small><b>Webhook validation</b><p>Normalize payloads, validate required fields and attach an idempotency key before orchestration.</p></article>
         <article><small>02 · DECISION</small><b>Structured qualification</b><p>Combine structured model output with deterministic score thresholds and routing guardrails.</p></article>
         <article><small>03 · DATA</small><b>CRM upsert</b><p>Deduplicate identities, create or update the contact, then preserve workflow state against the CRM record.</p></article>
         <article><small>04 · DELIVERY</small><b>Resilient handoff</b><p>Queue follow-up and sales alerts with retry handling while credentials remain server-side.</p></article>
       </div>
+
+      <div class="reliability-lab">
+        <div class="reliability-copy"><small>RELIABILITY LAB</small><b>Test how the system handles failure.</b><p>Production automations need retries, fallbacks and human-review paths—not only happy-path demos.</p></div>
+        <div class="reliability-actions">
+          <button type="button" data-edge="duplicate">Duplicate lead</button>
+          <button type="button" data-edge="timeout">CRM timeout</button>
+          <button type="button" data-edge="confidence">Low-confidence result</button>
+        </div>
+        <div class="reliability-log" id="reliabilityLog"><div><code>system.ready</code><span>Select an edge case to inspect the recovery path.</span></div></div>
+      </div>
+
+      <details class="engineering-proof">
+        <summary><span>UNDER THE HOOD</span><b>Inspect the API contract and production safeguards</b><i>＋</i></summary>
+        <div class="engineering-grid">
+          <div><small>REQUEST</small><pre>POST /api/qualify
+{
+  "name": "Sarah",
+  "company": "Acme Dental",
+  "budget": 5000,
+  "timeline": "asap"
+}</pre></div>
+          <div><small>RESPONSE</small><pre>{
+  "ok": true,
+  "qualification": {
+    "score": 92,
+    "status": "hot"
+  },
+  "traceId": "..."
+}</pre></div>
+          <div class="engineering-guards"><small>PRODUCTION GUARDS</small><span>✓ server-side validation</span><span>✓ no-store API responses</span><span>✓ structured JSON contract</span><span>✓ deterministic fallback</span><span>✓ retry / review architecture</span></div>
+        </div>
+      </details>
     </section>
 
     <section class="section case-section">

@@ -115,6 +115,35 @@
     return {score,intent,budgetFit,urgency,status};
   }
 
+  async function qualifyOnServer(data){
+    const proof=$("#backendProof");
+    const status=$("#backendStatus");
+    const trace=$("#backendTrace");
+    try{
+      proof?.classList.add("checking");
+      status.textContent="CONTACTING SERVER";
+      trace.textContent="POST /api/qualify";
+      const response=await fetch("/api/qualify",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify(data)
+      });
+      const payload=await response.json();
+      if(!response.ok||!payload.ok||!payload.qualification) throw new Error(payload.error||"server_error");
+      proof?.classList.remove("checking","fallback");
+      proof?.classList.add("live");
+      status.textContent="LIVE SERVER RESPONSE";
+      trace.textContent="trace "+String(payload.traceId||"").slice(0,8);
+      return payload.qualification;
+    }catch{
+      proof?.classList.remove("checking","live");
+      proof?.classList.add("fallback");
+      status.textContent="BROWSER FALLBACK ACTIVE";
+      trace.textContent="server unavailable";
+      return null;
+    }
+  }
+
   function businessType(company, need){
     const t=(company+" "+need).toLowerCase();
     if(t.includes("dental")||t.includes("clinic")) return "Dental clinic";
@@ -254,7 +283,8 @@
     resetEventLog(data);
 
     const duplicate = leads.find(l => l.name.toLowerCase()===data.name.toLowerCase() && l.company.toLowerCase()===data.company.toLowerCase());
-    const qual = scoreLead(data);
+    let qual = scoreLead(data);
+    const serverQualification=qualifyOnServer(data);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const startedAt=workflowStartedAt;
     const timerId=setInterval(()=>{
@@ -271,7 +301,21 @@
     ];
 
     try{
-      for(let i=0;i<stages.length;i++) await runStage(stages[i],i,reduced);
+      for(let i=0;i<stages.length;i++){
+        if(i===2){
+          const serverResult=await serverQualification;
+          if(serverResult){
+            qual=serverResult;
+            stages[2].doneMessage=`Server qualification complete · ${qual.score}/100`;
+            stages[2].eventState=qual.status==="hot"?"hot":"ok";
+            stages[5].doneMessage=qual.status==="hot"?"Hot lead routed to sales":"Lead routed to the correct queue";
+            logEvent("api.qualify","Structured qualification returned from /api/qualify","ok");
+          }else{
+            logEvent("api.fallback","Server path unavailable · deterministic browser fallback used","info");
+          }
+        }
+        await runStage(stages[i],i,reduced);
+      }
     } finally {
       clearInterval(timerId);
     }
@@ -461,6 +505,45 @@
     selectedBpIndex=Math.min(selectedBpIndex,blueprintSteps.length-1);
     renderBlueprint(true);
   });
+
+  const stackEls={source:$("#stackSource"),crm:$("#stackCrm"),notify:$("#stackNotify")};
+  function syncStackConfigurator(){
+    $("#stackFlowSource").textContent=stackEls.source.value;
+    $("#stackFlowCrm").textContent=stackEls.crm.value;
+    $("#stackFlowNotify").textContent=stackEls.notify.value;
+    document.querySelector(".stack-configurator")?.classList.remove("stack-pulse");
+    requestAnimationFrame(()=>document.querySelector(".stack-configurator")?.classList.add("stack-pulse"));
+    setTimeout(()=>document.querySelector(".stack-configurator")?.classList.remove("stack-pulse"),520);
+  }
+  Object.values(stackEls).forEach(el=>el.addEventListener("change",syncStackConfigurator));
+
+  const edgeCases={
+    duplicate:[
+      ["duplicate.search","Matching identity found in CRM","info"],
+      ["duplicate.match","Existing contact + opportunity linked","info"],
+      ["crm.upsert","Existing CRM record updated instead of duplicated","ok"],
+      ["workflow.complete","Duplicate prevented · workflow continued safely","ok"]
+    ],
+    timeout:[
+      ["crm.upsert","CRM request exceeded timeout threshold","warn"],
+      ["retry.schedule","Retry 1/3 queued with backoff","info"],
+      ["retry.success","CRM responded on retry","ok"],
+      ["workflow.resume","Follow-up and alert resumed without duplicate send","ok"]
+    ],
+    confidence:[
+      ["qualification.score","Confidence below auto-route threshold","warn"],
+      ["routing.guardrail","Automatic sales alert suppressed","info"],
+      ["review.queue","Lead sent to human review with model context","ok"],
+      ["workflow.complete","No destructive action taken automatically","ok"]
+    ]
+  };
+  $$("[data-edge]").forEach(btn=>btn.addEventListener("click",()=>{
+    $$("[data-edge]").forEach(b=>b.classList.toggle("active",b===btn));
+    const rows=edgeCases[btn.dataset.edge]||[];
+    $("#reliabilityLog").innerHTML=rows.map(([code,message,state],i)=>
+      `<div class="${state}" style="--edge-i:${i}"><code>${escapeHtml(code)}</code><span>${escapeHtml(message)}</span></div>`
+    ).join("");
+  }));
 
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 
