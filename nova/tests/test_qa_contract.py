@@ -2,7 +2,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 qa = (ROOT / ".github/workflows/nova-qa.yml").read_text()
-build = (ROOT / ".github/workflows/nova-build.yml").read_text()\npublic_qa = (ROOT / ".github/workflows/nova-public-preview-qa.yml").read_text()
+build = (ROOT / ".github/workflows/nova-build.yml").read_text()
+public_qa = (ROOT / ".github/workflows/nova-public-preview-qa.yml").read_text()
 hotspot_qa = (ROOT / ".github/workflows/nova-hotspot-qa.yml").read_text()
 
 def test_visual_qa_targets_v2_integration_and_progress_boundaries():
