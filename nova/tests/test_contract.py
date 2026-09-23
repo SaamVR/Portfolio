@@ -62,3 +62,10 @@ def test_v2_integration_wires_product_interactions():
     assert "createInspectionController(" in js
     assert "createHotspotController(" in js
     assert "createModeController(" in js
+
+
+def test_v2_hotspot_anchor_offsets_are_component_calibrated():
+    # Animated bone origins are not the visible component centers; keep local-space offsets.
+    assert "offset:[0,-.43,-1.23]" in js
+    assert "offset:[0,-1.20,-.95]" in js
+    assert "offset:[-.12,-.12,0]" in js
