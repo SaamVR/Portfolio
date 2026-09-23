@@ -127,3 +127,40 @@ Core principles:
 7. Commit source + state to `SaamVR/Portfolio/nova/`.
 8. Deploy only after the local browser audit passes.
 9. Never overwrite the current production site with an unverified build.
+
+
+## NOVA V2 current state — 2026-09-23
+
+The historical sections above remain recovery context. The active implementation is now NOVA V2 on branch `nova/v2-integration`.
+
+Current verified source:
+`265c033a5d229ad9141d26040545621ea1336cc2`
+
+Current V2 behavior:
+- premium fictional headphone product landing page first
+- technical portfolio proof only after the commercial journey
+- continuous global scroll choreography
+- real GLTF skeletal Fold/Open interaction
+- Spatial/Focus/Ambient visual modes
+- Adaptive/Transparency visual modes
+- constrained desktop drag and mobile swipe inspection
+- animated 3D hotspots attached to actual product components
+- product-resolution CTA and visible Notify concept panel
+- responsive desktop/tablet/mobile compositions
+- reduced-motion mode and WebGL/GLTF fallback
+
+Current verification:
+- contracts green
+- focused hotspot QA green
+- full V2 browser QA green
+- production bundle green
+- exact production artifact SHA-256: `566a18e53bd2c0f850ee9a380f4ff6851af50ebfba4fc484e1cf60345a9238a4`
+
+Rollback remains:
+`backup/nova-interactive-v1-2026-09-23`
+
+Next checkpoint:
+1. deploy exact V2 artifact to Cloudflare preview using samvr only
+2. verify public preview from GPT runtime
+3. keep existing production untouched until preview acceptance
+4. after acceptance, merge/promote V2 and deploy exact verified artifact to production
