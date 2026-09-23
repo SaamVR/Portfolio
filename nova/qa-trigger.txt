@@ -1,1 +1,1 @@
-Run NOVA visual QA after exact index checkpoint repair.\n
+Run NOVA visual QA with FBX signature validation.\n
