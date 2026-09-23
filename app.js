@@ -305,6 +305,10 @@
     const crmSettings=guided?{...DEFAULT_CRM_SETTINGS}:readCrmSettings();
     if(!automationState.qualification){
       $("#formError").textContent="Lead Qualification is disabled in CRM → Automations. Re-enable it to run this workflow.";
+      $(".execution-card").classList.remove("running","complete");
+      $("#execStatus").textContent="DISABLED";
+      $("#execMessage").textContent="Lead Qualification workflow is turned off";
+      $("#runAutomation").innerHTML='Run automation <span>↯</span>';
       return;
     }
     $("#formError").textContent="";

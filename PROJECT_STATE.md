@@ -62,9 +62,9 @@ Updated: 2026-09-23
 - LeadFlow deployments now use a clean staging directory so the shared Portfolio/NOVA workspace is not bundled into Cloudflare Pages
 
 ## Next implementation checkpoint
-1. Optional: connect CRM settings and automation toggles to actual execution behavior
-2. Optional: add shareable workflow state / URL serialization
-3. Optional: connect external CRM / AI credentials when a production service is selected
+1. Optional: add shareable workflow state / URL serialization
+2. Optional: connect external CRM / AI credentials when a production service is selected
+3. Prepare a concise Upwork media pack: cover image, 5–7 screenshots and a 60–90 second demo recording
 4. Keep verified changes committed before/with deployment
 
 ## Finished product checkpoint

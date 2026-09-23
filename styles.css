@@ -997,3 +997,5 @@ html[data-theme="light"] .engineering-proof{box-shadow:0 10px 28px rgba(43,68,56
   .crm-shell{box-shadow:none}
 }
 @media(prefers-reduced-motion:reduce){.tour-status:after,.score-history-item i{transition:none}}
+
+html[data-theme="light"] #architecture{overflow:clip}
