@@ -110,3 +110,29 @@ const behindTheme=sampleTimeline(.985,'desktop');
 assert.equal(behindTheme.ui.dark,true,'behind chapter should use dark navigation theme');
 
 console.log('timeline_contract: PASS');
+
+// V2 refinement: product-dominant authored detail passes.
+const heroDetail=sampleTimeline(.02,'desktop');
+assert.ok(heroDetail.camera.position[2] < 4.30, `Hero detail opening should dolly closer, got z=${heroDetail.camera.position[2]}`);
+assert.ok(heroDetail.camera.fov <= 26.5, `Hero detail opening should use a tighter FOV, got ${heroDetail.camera.fov}`);
+assert.ok(heroDetail.product.scale >= 1.03, `Hero detail opening should retain a physically dominant product scale, got ${heroDetail.product.scale}`);
+
+const designDetail=sampleTimeline(.18,'desktop');
+assert.ok(designDetail.camera.position[2] < 4.55, `Design detail pass should move into the earcup/cushion, got z=${designDetail.camera.position[2]}`);
+assert.ok(Math.abs(designDetail.product.yaw) >= .22, `Design detail pass should use a deliberate three-quarter yaw, got ${designDetail.product.yaw}`);
+assert.ok(Math.abs(designDetail.product.pitch) >= .025, `Design detail pass should expose physical depth with pitch, got ${designDetail.product.pitch}`);
+assert.ok(designDetail.product.scale >= 1.04, `Design detail pass should keep the product dominant, got ${designDetail.product.scale}`);
+
+const inspectStudy=sampleTimeline(.79,'desktop');
+assert.ok(inspectStudy.camera.position[2] < 4.60, `Inspection should be the closest controlled full-product study, got z=${inspectStudy.camera.position[2]}`);
+assert.ok(inspectStudy.camera.fov <= 27.5, `Inspection should use a tighter study FOV, got ${inspectStudy.camera.fov}`);
+
+const resolutionHero=sampleTimeline(.92,'desktop');
+assert.ok(resolutionHero.camera.position[2] < 4.95, `Resolution should return to a stronger hero framing, got z=${resolutionHero.camera.position[2]}`);
+assert.ok(resolutionHero.product.scale >= 1.02, `Resolution should not shrink the product before Behind NOVA, got ${resolutionHero.product.scale}`);
+
+const designDetailMobile=sampleTimeline(.18,'mobile');
+assert.ok(designDetailMobile.camera.position[2] < 5.35, `Mobile Design should gain presence without desktop-level crop, got z=${designDetailMobile.camera.position[2]}`);
+assert.ok(Math.abs(designDetailMobile.product.yaw) < Math.abs(designDetail.product.yaw), 'Mobile detail yaw should be shallower than desktop');
+assert.ok(Math.abs(designDetailMobile.product.pitch) < Math.abs(designDetail.product.pitch), 'Mobile detail pitch should be shallower than desktop');
+
