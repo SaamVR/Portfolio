@@ -107,3 +107,18 @@ Updated: 2026-09-23
 - Dashboard core is framed as a viewport-safe tour target
 - Responsive mobile table uses contained horizontal scrolling with no page overflow
 
+## Production verification — homepage realtime dashboard
+- Live deployment preview: https://8653fd97.leadflow-ai-bhy.pages.dev
+- Primary alias verified: https://leadflow-ai-bhy.pages.dev/
+- Dashboard initializes from the shared CRM lead store
+- Production demo injection: Nadia Rahman / Harbor Dental / Meta Lead Ads → 96/100 HOT
+- Dashboard input confirmed LIVE SERVER response through /api/qualify
+- Pipeline count, hot count, average score, source mix, score trend and activity feed update after injection
+- Streamed dashboard lead appears in the full CRM immediately
+- Existing main workflow also updates the homepage dashboard
+- Guided walkthrough verified across 5 stages including the operations dashboard
+- Dashboard tour target fits desktop viewport cleanly
+- Light mode verified after dashboard addition
+- Mobile production QA: 390px viewport / 390px document width, no horizontal page overflow
+- Production browser QA: no JavaScript errors and no failed resources
+
