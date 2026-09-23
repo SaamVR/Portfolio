@@ -1,0 +1,32 @@
+name: NOVA Vendor Bundle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-vendor.yml"
+      - "nova/vendor-trigger.txt"
+  workflow_dispatch:
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare Three.js browser modules
+        run: |
+          mkdir -p bundle/vendor/addons/{loaders,libs,curves,utils}
+          cd bundle
+          npm init -y >/dev/null 2>&1
+          npm install three@0.180.0 --no-audit --no-fund
+          cp node_modules/three/build/three.module.js vendor/
+          cp node_modules/three/examples/jsm/loaders/FBXLoader.js vendor/addons/loaders/
+          cp node_modules/three/examples/jsm/libs/fflate.module.js vendor/addons/libs/
+          cp node_modules/three/examples/jsm/curves/NURBSCurve.js vendor/addons/curves/
+          cp node_modules/three/examples/jsm/curves/NURBSUtils.js vendor/addons/curves/
+          cp node_modules/three/examples/jsm/utils/SkeletonUtils.js vendor/addons/utils/
+          tar -czf nova-three-vendor.tar.gz vendor
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nova-three-vendor
+          path: bundle/nova-three-vendor.tar.gz
+          retention-days: 7
