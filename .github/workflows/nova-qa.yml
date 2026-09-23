@@ -288,6 +288,24 @@ jobs:
           async function mobileInteractions(){
             const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
             const {page}=await readyPage(context,'mobile-interactions');
+
+            await scrollProgress(page,.18);
+            const hotspot=page.locator('[data-hotspot="cushion"]');
+            await page.waitForFunction(()=>document.querySelector('[data-hotspot="cushion"]')?.dataset.visible==='true');
+            await hotspot.tap();
+            await page.waitForFunction(()=>{
+              const el=document.querySelector('[data-hotspot="cushion"]');
+              const label=el?.querySelector('span');
+              return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
+            });
+            const expandedLabel=await hotspot.locator('span').evaluate(el=>({
+              display:getComputedStyle(el).display,
+              text:el.textContent?.trim()||''
+            }));
+            if(expandedLabel.display==='none'||!expandedLabel.text) throw new Error('expanded hotspot label missing '+JSON.stringify(expandedLabel));
+            await page.screenshot({path:'nova-qa/mobile_hotspot_detail.png'});
+            await hotspot.tap();
+
             await scrollProgress(page,.36);
             await page.getByRole('button',{name:/ambient/i}).tap();
             await page.waitForTimeout(520);
