@@ -377,6 +377,52 @@ jobs:
             await context.close();
           }
 
+          async function readabilityAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,prefix+'-readability');
+            await scrollProgress(page,.18);
+            const metrics=await page.evaluate(()=>{
+              const pick=selector=>{
+                const el=document.querySelector(selector);
+                const style=el?getComputedStyle(el):null;
+                return {selector,fontSize:style?parseFloat(style.fontSize):0,color:style?.color||'',lineHeight:style?.lineHeight||''};
+              };
+              return {
+                body:pick('.stage--design .copy>p:not(.eyebrow)'),
+                utility:pick('.stage--design .eyebrow'),
+                button:pick('.button'),
+                nav:pick('.masthead')
+              };
+            });
+            const minBody=prefix==='mobile'?14:16;
+            if(metrics.body.fontSize<minBody) throw new Error(prefix+' readability body copy too small '+JSON.stringify(metrics));
+            if(metrics.utility.fontSize<10||metrics.button.fontSize<10||metrics.nav.fontSize<10){
+              throw new Error(prefix+' readability utility copy too small '+JSON.stringify(metrics));
+            }
+            await page.screenshot({path:'nova-qa/'+prefix+'_readability.png'});
+            await context.close();
+          }
+
+          async function versionArchiveAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:4173/v1/',{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+            const result=await page.evaluate(()=>({
+              title:document.title,
+              hero:document.body.innerText.includes('Scroll-controlled product film'),
+              nova:document.body.innerText.includes('NOVA'),
+              model:document.body.dataset.modelState
+            }));
+            if(result.model!=='ready'||!result.hero||!result.nova||errors.length){
+              throw new Error(prefix+' V1 archive failed '+JSON.stringify({result,errors}));
+            }
+            await page.screenshot({path:'nova-qa/v1_'+prefix+'.png'});
+            await context.close();
+          }
+
           async function reducedMotionAudit(){
             const context=await browser.newContext({viewport:{width:1024,height:768},reducedMotion:'reduce'});
             const {page}=await readyPage(context,'reduced-motion');
@@ -423,6 +469,10 @@ jobs:
           await mobileInteractions();
           await caseStudyAudit({width:1440,height:1000},'desktop');
           await caseStudyAudit({width:390,height:844},'mobile');
+          await readabilityAudit({width:1440,height:1000},'desktop');
+          await readabilityAudit({width:390,height:844},'mobile');
+          await versionArchiveAudit({width:1440,height:1000},'desktop');
+          await versionArchiveAudit({width:390,height:844},'mobile');
           await reducedMotionAudit();
           await fallbackAudit();
 
