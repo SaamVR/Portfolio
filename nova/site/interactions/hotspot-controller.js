@@ -3,6 +3,7 @@ const clamp01=v=>Math.max(0,Math.min(1,v));
 export function createHotspotController({THREE,camera,anchors={},elements={}}={}){
   if(!THREE?.Vector3) throw new Error('hotspot controller requires THREE.Vector3');
   const world=new THREE.Vector3();
+  const boundsBox=THREE.Box3 ? new THREE.Box3() : null;
   let focused=null;
   let weight=0;
 
@@ -22,7 +23,9 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
       for(const [id,anchor] of Object.entries(anchors)){
         const el=getElement(id);
         if(!el) continue;
-        if(anchor.mesh?.getVertexPosition && Number.isInteger(anchor.vertexIndex)){
+        if(anchor.boundsObject && boundsBox){
+          boundsBox.setFromObject(anchor.boundsObject,true).getCenter(world);
+        }else if(anchor.mesh?.getVertexPosition && Number.isInteger(anchor.vertexIndex)){
           anchor.mesh.getVertexPosition(anchor.vertexIndex,world);
           anchor.mesh.localToWorld?.(world);
         }else if(anchor.object?.localToWorld){
