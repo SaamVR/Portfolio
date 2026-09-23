@@ -36,3 +36,20 @@ def test_stage_controls_layer_above_interactive_canvas():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".stage{position:relative;overflow:clip}" in compact
     assert ".stage{position:relative;z-index:3;overflow:clip}" not in compact
+
+
+def test_stage_geometry_matches_global_timeline():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage+.stage{margin-top:-100svh}" in compact
+    expected = {
+        "hero": "220svh",
+        "design": "260svh",
+        "sound": "270svh",
+        "control": "230svh",
+        "form": "240svh",
+        "inspect": "240svh",
+        "resolution": "200svh",
+        "behind": "140svh",
+    }
+    for name, height in expected.items():
+        assert f".stage--{name}{{min-height:{height}" in compact
