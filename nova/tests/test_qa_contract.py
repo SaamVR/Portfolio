@@ -149,3 +149,5 @@ def test_r12_visual_qa_covers_webgl_failure_mobile_nav_facts_and_named_views():
 def test_collision_audit_ignores_faint_environment_alpha():
     assert "alpha>96" in qa
     assert "result.ratio>.04" in qa
+
+# R12 final material-alpha verification trigger.
