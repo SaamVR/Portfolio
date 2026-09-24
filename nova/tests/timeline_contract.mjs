@@ -95,6 +95,10 @@ assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the 
 
 const designPose=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
+const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
+const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
+assert.ok(Math.abs(designClosePoseB-designClosePoseA) >= .06,
+  `Design close pass should visibly advance the source clip like V1; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
