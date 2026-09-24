@@ -153,3 +153,5 @@ jobs:
 # R10 exact-source hotspot verification for site source 15539d430a7184705bcdf5af2f5685cc1634f4ff
 
 # R10 post-label-fix focused verification for source 19ddcf2a0c7fc1d8eecbbd35b8579b4c9b51e36c
+
+# R12 focused hotspot verification for site source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc
