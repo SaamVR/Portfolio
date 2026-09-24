@@ -427,7 +427,8 @@ jobs:
             const {page}=await readyPage(context,'validation-evidence');
             await page.evaluate(()=>{
               const el=document.querySelector('#validation-evidence');
-              scrollTo(0,Math.max(0,el.offsetTop-innerHeight*.22));
+              const top=el.getBoundingClientRect().top+scrollY;
+              scrollTo(0,Math.max(0,top-innerHeight*.22));
             });
             await page.waitForFunction(()=>{
               const el=document.querySelector('#validation-evidence');
