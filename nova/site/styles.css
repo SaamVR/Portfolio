@@ -763,3 +763,16 @@ body[data-guided-tour="open"] .guided-tour{transform:none}
 @media (prefers-reduced-motion:reduce){
   .guided-tour,.tour-backdrop{transition:none!important}
 }
+
+
+/* R13 mobile hero: preserve proven product/headline framing with two compact actions. */
+@media (max-width:700px){
+  .stage--hero .hero-actions{
+    display:grid;
+    grid-template-columns:max-content max-content;
+    gap:8px;
+    align-items:center;
+  }
+  .stage--hero .hero-actions .gesture-hint{display:none}
+  .stage--hero .hero-actions .button{padding-left:14px;padding-right:14px}
+}
