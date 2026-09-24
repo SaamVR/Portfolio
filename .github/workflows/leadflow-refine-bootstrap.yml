@@ -1,0 +1,114 @@
+name: LeadFlow Refine Bootstrap
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".leadflow-refine/**"
+      - ".github/workflows/leadflow-refine-bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore refined LeadFlow sources
+        run: |
+          set -euo pipefail
+          gzip -dc .leadflow-refine/index.html.gz > index.html
+          gzip -dc .leadflow-refine/app.js.gz > app.js
+          gzip -dc .leadflow-refine/styles.css.gz > styles.css
+          gzip -dc .leadflow-refine/qualify.js.gz > functions/api/qualify.js
+
+      - name: Verify source contracts
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check functions/api/qualify.js
+          grep -q "LeadFlow — Lead Qualification" index.html
+          grep -q "Rules-based scoring" index.html
+          grep -q "DRAFT — NOT SENT" index.html
+          grep -q "deterministic-qualification-v2" functions/api/qualify.js
+          grep -q "v1/api/qualify" v1/app.js
+          test -f v1/index.html
+          test -f functions/v1/api/qualify.js
+
+      - name: Commit refined root
+        id: commit
+        run: |
+          set -euo pipefail
+          rm -rf .leadflow-refine
+          rm -f .github/workflows/leadflow-refine-bootstrap.yml
+          git config user.name "LeadFlow Refine Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "refine LeadFlow portfolio experience"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build clean deployment directory
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/leadflow-deploy
+          mkdir -p /tmp/leadflow-deploy
+          cp index.html app.js styles.css favicon.svg /tmp/leadflow-deploy/
+          cp -R v1 /tmp/leadflow-deploy/v1
+          cp -R functions /tmp/leadflow-deploy/functions
+
+      - name: Deploy Cloudflare Pages
+        id: deploy
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          cd /tmp/leadflow-deploy
+          npx wrangler@4 pages deploy . --project-name leadflow-ai --branch main --commit-hash "${{ steps.commit.outputs.sha }}" --commit-message "LeadFlow portfolio refinement" | tee /tmp/leadflow-deploy.log
+          url=$(grep -Eo 'https://[^ ]+\.pages\.dev' /tmp/leadflow-deploy.log | tail -1)
+          test -n "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed root and v1
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.url }}"
+          for i in 1 2 3 4 5; do
+            root=$(curl -fsSL "$url/" 2>/dev/null || true)
+            old=$(curl -fsSL "$url/v1/" 2>/dev/null || true)
+            api=$(curl -fsSL "$url/api/qualify" 2>/dev/null || true)
+            v1api=$(curl -fsSL "$url/v1/api/qualify" 2>/dev/null || true)
+            if echo "$root" | grep -q "LeadFlow — Lead Qualification" && echo "$old" | grep -q "LeadFlow AI" && echo "$api" | grep -q "deterministic-qualification-v2" && echo "$v1api" | grep -q "deterministic-qualification-v1"; then
+              echo "Root, /v1, and both qualification endpoints verified at $url"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Deployment verification failed" >&2
+          exit 1
+
+      - name: Capture deployed screenshots
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.url }}"
+          mkdir -p /tmp/leadflow-qa
+          if command -v google-chrome >/dev/null 2>&1; then
+            google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1200 --screenshot=/tmp/leadflow-qa/root-desktop.png "$url/"
+            google-chrome --headless --no-sandbox --hide-scrollbars --window-size=390,844 --screenshot=/tmp/leadflow-qa/root-mobile-390.png "$url/"
+            google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1200 --screenshot=/tmp/leadflow-qa/v1-desktop.png "$url/v1/"
+          else
+            echo "google-chrome unavailable; screenshot capture skipped" > /tmp/leadflow-qa/README.txt
+          fi
+
+      - name: Upload QA screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-refinement-qa
+          path: /tmp/leadflow-qa
+          if-no-files-found: error
