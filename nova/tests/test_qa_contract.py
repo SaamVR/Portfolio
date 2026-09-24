@@ -151,3 +151,17 @@ def test_collision_audit_ignores_faint_environment_alpha():
     assert "result.ratio>.04" in qa
 
 # R12 final material-alpha verification trigger.
+
+
+def test_r13_visual_qa_covers_guided_tour_compact_handoff_and_evidence():
+    for token in [
+        "guidedTourAudit",
+        "guided_tour_comfort.png",
+        "guided_tour_fold.png",
+        "guided_tour_controls.png",
+        "validationEvidenceAudit",
+        "validation_evidence.png",
+        "compactCaseStudyAudit",
+        "compact_case_study.png",
+    ]:
+        assert token in qa
