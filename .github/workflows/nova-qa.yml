@@ -483,7 +483,7 @@ jobs:
             }));
             if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
             await page.screenshot({path:'nova-qa/product_facts.png'});
-            await page.getByRole('button',{name:/close product facts/i}).click();
+            await page.locator('#productFactsPanel [data-facts-close]').click();
             await context.close();
           }
 
