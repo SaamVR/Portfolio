@@ -3,52 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#07120f" />
-  <meta name="description" content="LeadFlow AI — interactive lead qualification, CRM routing and sales automation." />
-  <meta property="og:title" content="LeadFlow AI — Lead Qualification & CRM Automation" />
-  <meta property="og:description" content="Interactive lead qualification, CRM routing, workflow automation and sales handoff." />
+  <meta name="theme-color" content="#0B1110" />
+  <meta name="description" content="LeadFlow — interactive lead qualification, demo CRM automation and workflow design case study." />
+  <meta property="og:title" content="LeadFlow — Lead Qualification & CRM Automation" />
+  <meta property="og:description" content="Interactive rules-based qualification, browser-local CRM routing and workflow automation case study." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
-  <title>LeadFlow AI — AI Lead Qualification & CRM Automation</title>
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <title>LeadFlow — Lead Qualification & CRM Automation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script>try{const t=localStorage.getItem("leadflow-theme");if(t)document.documentElement.dataset.theme=t}catch{}</script>
+  <script>try{const t=localStorage.getItem('leadflow-theme');if(t)document.documentElement.dataset.theme=t}catch{}</script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="ambient ambient-a"></div>
-  <div class="ambient ambient-b"></div>
-  <div class="grid"></div>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="grid"></div>
 
   <header class="nav shell">
-    <a class="brand" href="#home" aria-label="LeadFlow AI home">
-      <span class="brand-mark">LF</span>
-      <span>LeadFlow <b>AI</b></span>
-    </a>
+    <a class="brand" href="#home" aria-label="LeadFlow home"><span class="brand-mark">LF</span><span>LeadFlow</span></a>
     <nav class="desktop-nav" aria-label="Primary navigation">
-      <a href="#workflow">Workflow</a>
-      <a href="#demo">Live demo</a>
-      <a href="#live-dashboard">Dashboard</a>
-      <a href="#calculator">ROI calculator</a>
-      <a href="#architecture">Architecture</a>
+      <a href="#workflow">Workflow</a><a href="#demo">Interactive demo</a><a href="#workspace">CRM workspace</a><a href="#reliability">Reliability</a><a href="#architecture">Architecture</a><a href="#roi">ROI</a>
     </nav>
     <div class="nav-actions">
-      <button class="theme-toggle lamp-pull" id="themeToggle" type="button" aria-label="Switch to light mode" title="Pull the lamp cord to change lighting">
-        <span class="lamp-icon" aria-hidden="true">
-          <i class="lamp-shade"></i>
-          <i class="lamp-bulb"></i>
-          <i class="lamp-halo"></i>
-        </span>
-        <span class="pull-cord" aria-hidden="true">
-          <i class="cord-line"></i>
-          <i class="cord-bead bead-one"></i>
-          <i class="cord-bead bead-two"></i>
-          <i class="cord-grip"></i>
-        </span>
-        <span class="theme-hint" aria-hidden="true">PULL LIGHT</span>
-      </button>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch color theme"><span aria-hidden="true">◐</span><span>Theme</span></button>
       <button class="nav-cta" id="openCrmTop" type="button">Open CRM <span>↗</span></button>
     </div>
   </header>
@@ -56,648 +33,90 @@
   <main>
     <section id="home" class="hero shell">
       <div class="hero-copy">
-        <div class="eyebrow"><span class="live-dot"></span> LEAD AUTOMATION SYSTEM</div>
-        <h1>Automate the work that <span>slows your business down.</span></h1>
-        <p class="hero-lede">
-          An interactive lead-automation system that validates, checks duplicates,
-          qualifies opportunities, creates CRM records, drafts follow-up,
-          and routes high-intent leads to sales.
-        </p>
+        <div class="eyebrow">LEAD QUALIFICATION & CRM AUTOMATION</div>
+        <h1>Turn incoming leads into <span>qualified sales opportunities.</span></h1>
+        <p class="hero-lede">Capture an inquiry, assess its fit, update a demo CRM, and prepare the next action—all in one visible workflow.</p>
         <div class="hero-actions">
-          <a class="primary-btn" href="#demo">Run a lead through it <span>↓</span></a>
-          <button class="secondary-btn" id="openCrmHero" type="button">Explore CRM dashboard</button>
-          <button class="guided-demo-btn" id="guidedDemo" type="button"><span>▶</span> Guided walkthrough</button>
+          <a class="primary-btn" href="#demo">Run the interactive demo <span>↓</span></a>
+          <button class="secondary-btn" id="openCrmHero" type="button">Explore the CRM</button>
+          <button class="guided-btn" id="guidedDemo" type="button"><span>▶</span> Guided walkthrough</button>
         </div>
-        <div class="hero-proof">
-          <span>AI qualification</span><i></i>
-          <span>CRM workflow</span><i></i>
-          <span>API-ready</span><i></i>
-          <span>Responsive UI</span>
-        </div>
+        <div class="hero-proof"><span>Live API</span><i></i><span>Rules-based scoring</span><i></i><span>Demo CRM</span><i></i><span>Independent portfolio project</span></div>
       </div>
-
-      <div class="hero-visual" aria-label="LeadFlow automation visualization">
+      <div class="hero-visual" aria-label="LeadFlow workflow preview">
         <div class="glass-panel">
-          <div class="panel-top">
-            <span><i></i> automation/live</span>
-            <span class="healthy">SYSTEM HEALTHY</span>
-          </div>
-          <div class="flow-orbit">
-            <div class="flow-line"></div>
-            <div class="flow-node n1"><small>01</small><b>Lead</b><span>Captured</span></div>
-            <div class="flow-node n2"><small>02</small><b>AI</b><span>Qualified</span></div>
-            <div class="flow-node n3"><small>03</small><b>CRM</b><span>Created</span></div>
-            <div class="flow-node n4"><small>04</small><b>Sales</b><span>Alerted</span></div>
-            <div class="signal s1"></div><div class="signal s2"></div><div class="signal s3"></div>
-          </div>
-          <div class="mini-terminal">
-            <div><span>07:42:13</span><b>lead.received</b><em>200 OK</em></div>
-            <div><span>07:42:14</span><b>ai.qualification</b><em>score: 92</em></div>
-            <div><span>07:42:15</span><b>crm.contact.create</b><em>success</em></div>
-            <div><span>07:42:15</span><b>sales.notify</b><em>sent</em></div>
-          </div>
+          <div class="panel-top"><span><i></i> example workflow</span><span class="healthy">INTERACTIVE DEMO</span></div>
+          <div class="flow-orbit"><div class="flow-line"></div><div class="flow-node n1"><small>01</small><b>Lead</b><span>Captured</span></div><div class="flow-node n2"><small>02</small><b>Rules</b><span>Scored</span></div><div class="flow-node n3"><small>03</small><b>CRM</b><span>Updated</span></div><div class="flow-node n4"><small>04</small><b>Next</b><span>Action prepared</span></div><div class="signal s1"></div><div class="signal s2"></div><div class="signal s3"></div></div>
+          <div class="mini-terminal"><div><span>00:00.0</span><b>lead.received</b><em>example</em></div><div><span>00:00.4</span><b>rules.score</b><em>score: 92</em></div><div><span>00:01.0</span><b>demo.crm.upsert</b><em>stored locally</em></div><div><span>00:01.3</span><b>followup.draft</b><em>prepared</em></div></div>
         </div>
-        <div class="float-card fc-one"><small>HOT LEAD</small><b>92/100</b><span>Immediate intent</span></div>
-        <div class="float-card fc-two"><span class="spark">✦</span><div><small>AUTOMATION</small><b>Follow-up generated</b></div></div>
+        <div class="float-card fc-one"><small>EXAMPLE OUTCOME</small><b>92/100</b><span>High priority</span></div>
+        <div class="float-card fc-two"><span class="spark">✦</span><div><small>DRAFT ONLY</small><b>Follow-up prepared</b></div></div>
       </div>
     </section>
 
-    <section class="trust-band">
-      <div class="shell trust-grid">
-        <div><small>CONNECTED WORKFLOW</small><strong>From lead capture to sales handoff in one system.</strong></div>
-        <div class="capability"><span>01</span><b>Frontend</b><small>Responsive product UI</small></div>
-        <div class="capability"><span>02</span><b>Automation</b><small>Multi-step workflow</small></div>
-        <div class="capability"><span>03</span><b>AI</b><small>Qualification logic</small></div>
-        <div class="capability"><span>04</span><b>CRM</b><small>Operational dashboard</small></div>
-        <div class="capability"><span>05</span><b>UX</b><small>Visible system state</small></div>
+    <section class="trust-band"><div class="shell trust-grid"><div><small>PORTFOLIO CASE STUDY</small><strong>From lead capture to a clear next action in one visible flow.</strong></div><div class="capability"><span>01</span><b>Frontend</b><small>Responsive product UI</small></div><div class="capability"><span>02</span><b>Workflow</b><small>Observable execution states</small></div><div class="capability"><span>03</span><b>Rules</b><small>Deterministic qualification</small></div><div class="capability"><span>04</span><b>CRM</b><small>Browser-local demo workspace</small></div><div class="capability"><span>05</span><b>API</b><small>Cloudflare Pages Function</small></div></div></section>
+
+    <section class="section shell client-brief"><div class="section-head"><div><p class="tag">THE BUSINESS PROBLEM</p><h2>Less manual handling. A clearer next step for every lead.</h2></div><p>Inquiries often arrive across forms and campaigns, leaving teams to review details, copy records, and decide who to contact first. LeadFlow demonstrates how those steps can work together.</p></div><div class="brief-grid"><article><small>BEFORE</small><b>Manual review and copying</b><p>Review each inquiry, copy details into a CRM, and prepare the next response manually.</p><strong>Illustrative workflow scenario</strong></article><article><small>WITH LEADFLOW</small><b>One observable workflow</b><p>Validate the submission, calculate priority, update the demo lead record, and prepare the appropriate handoff.</p><strong>Each decision remains inspectable</strong></article><article><small>HUMAN OVERSIGHT</small><b>Keep exceptions visible</b><p>Review-path leads and demonstrated failures remain visible so a person can decide what happens next.</p><strong>No fabricated client performance claims</strong></article></div></section>
+
+    <section id="workflow" class="section shell"><div class="section-head"><div><p class="tag">WORKFLOW</p><h2>From inquiry to next action.</h2></div><p>The interface shows what happened at each stage instead of hiding the process behind a generic loading state.</p></div><div class="workflow-map"><article><span class="step-num">01</span><div class="icon">↳</div><h3>Capture</h3><p>Collect a lead from a form or adapted inbound source.</p></article><div class="connector"><i></i></div><article><span class="step-num">02</span><div class="icon">✓</div><h3>Validate</h3><p>Normalize required fields and reject incomplete submissions.</p></article><div class="connector"><i></i></div><article><span class="step-num">03</span><div class="icon">✦</div><h3>Qualify</h3><p>Apply transparent rules across budget, urgency, and intent terms.</p></article><div class="connector"><i></i></div><article><span class="step-num">04</span><div class="icon">⌘</div><h3>Prepare</h3><p>Update the demo CRM and prepare the review, nurture, or sales path.</p></article></div></section>
+
+    <section id="demo" class="section band"><div class="shell"><div class="section-head"><div><p class="tag">TRY THE WORKFLOW</p><h2>Submit a lead. Follow every decision.</h2></div><p>Start with an example or change the details. The workflow uses a live qualification endpoint when available and a deterministic browser fallback when it is not.</p></div>
+      <div class="backend-proof" id="backendProof"><span class="backend-dot"></span><div><b id="backendStatus">SERVER-BACKED QUALIFICATION</b><small>POST /api/qualify · deterministic scoring · browser fallback available</small></div><em id="backendTrace">ready</em></div>
+      <div class="demo-layout">
+        <form id="leadForm" class="lead-form" novalidate>
+          <div class="card-title"><span>01</span><div><b>Incoming lead</b><small>Use fictional information in this public demonstration.</small></div></div>
+          <div class="demo-presets" aria-label="Example lead presets"><button type="button" data-lead-preset="hot">High-priority lead</button><button type="button" data-lead-preset="review">Needs review</button><button type="button" data-lead-preset="nurture">Nurture lead</button></div>
+          <div class="field-grid"><label>Name<input id="leadName" name="name" value="Sarah" autocomplete="name" required /></label><label>Company<input id="leadCompany" name="company" value="Acme Dental" required /></label></div>
+          <div class="field-grid"><label>Budget<select id="leadBudget" name="budget"><option value="500">Under $1,000</option><option value="2000">$1,000–$3,000</option><option value="5000" selected>$3,000–$7,500</option><option value="12000">$7,500–$15,000</option><option value="25000">$15,000+</option></select></label><label>Timeline<select id="leadTimeline" name="timeline"><option value="exploring">Just exploring</option><option value="month">Within a month</option><option value="weeks">1–2 weeks</option><option value="asap" selected>ASAP</option></select></label></div>
+          <label>What do you need?<textarea id="leadNeed" name="need" rows="5" required>We need automated appointment lead follow-up</textarea></label>
+          <div id="formError" class="form-error" role="alert"></div><button class="primary-btn full" id="runAutomation" type="submit">Run automation <span>↯</span></button><p class="microcopy">Demo CRM records are stored only in this browser via local storage. Please use fictional data.</p>
+        </form>
+        <div class="execution-card"><div class="execution-head"><div><span class="status-light"></span><b>Workflow execution</b></div><span id="execStatus">READY</span></div><div class="execution-progress" aria-hidden="true"><div id="execProgressBar"></div><span id="execProgressPulse"></span></div><div class="execution-meta"><span id="execMessage">Waiting for a lead</span><span id="execRunId">run —</span><span id="execTimer">demo 0.0s</span></div><div id="steps" class="steps" aria-live="polite"><div class="exec-step" data-step="0"><span class="step-state">1</span><div><b>Validate</b><small>Check required fields and normalize input</small></div><em>Waiting</em></div><div class="exec-step" data-step="1"><span class="step-state">2</span><div><b>Duplicate check</b><small>Compare with browser-local CRM records</small></div><em>Waiting</em></div><div class="exec-step" data-step="2"><span class="step-state">3</span><div><b>Qualify lead</b><small>Apply deterministic scoring rules</small></div><em>Waiting</em></div><div class="exec-step" data-step="3"><span class="step-state">4</span><div><b>Update demo CRM</b><small>Create or update the browser-local record</small></div><em>Waiting</em></div><div class="exec-step" data-step="4"><span class="step-state">5</span><div><b>Prepare follow-up</b><small>Draft a next-step message; nothing is sent</small></div><em>Waiting</em></div><div class="exec-step" data-step="5"><span class="step-state">6</span><div><b>Route next action</b><small>Prepare the sales, review, or nurture path</small></div><em>Waiting</em></div></div><div class="event-console"><div class="event-console-head"><span>EVENT STREAM</span><b id="eventCount">0 events</b></div><div class="event-log" id="eventLog" aria-live="polite"><div class="event-empty">Run the workflow to inspect execution events.</div></div></div></div>
+        <aside class="result-card" id="resultCard"><div id="resultEmpty" class="result-empty"><div class="result-orb">✦</div><b>Qualification result</b><p>Your lead score, rationale, and next action will appear here.</p></div><div id="resultContent" class="result-content hidden" aria-live="polite"><div class="score-top"><div class="score-ring"><strong id="scoreValue">92</strong><span>/100</span></div><div><span id="temperature" class="temperature hot">HIGH PRIORITY</span><p id="resultLead">Sarah · Acme Dental</p></div></div><div class="signal-grid"><div><span>Intent</span><b id="intent">High</b></div><div><span>Budget fit</span><b id="budgetFit">Strong</b></div><div><span>Urgency</span><b id="urgency">Immediate</b></div></div><div class="ai-summary"><span>QUALIFICATION RATIONALE</span><p id="aiSummary">Acme Dental needs automated lead follow-up. The selected budget and timeline support a sales review.</p></div><div class="result-explain-grid"><div><span>SCORING FACTORS</span><div id="scoreFactors" class="factor-list"></div></div><div><span>ROUTING REASON</span><b id="routingReason">High score meets the sales-review threshold.</b><small id="resultAction">Next action: Sales review</small></div></div><div class="result-buttons"><button id="openCrmResult" class="primary-btn full" type="button">View lead in CRM <span>→</span></button><button id="showFollowup" class="secondary-btn full" type="button">View follow-up draft</button></div></div></aside>
       </div>
-    </section>
+    </div></section>
 
-    <section class="section shell client-brief">
-      <div class="section-head">
-        <div><p class="tag">CLIENT SCENARIO</p><h2>A realistic lead-ops brief, translated into a working system.</h2></div>
-        <p>The numbers below are modeled inputs for this demonstration—not invented client performance claims.</p>
-      </div>
-      <div class="brief-grid">
-        <article class="brief-problem"><small>01 · CURRENT STATE</small><b>500 inbound leads / month</b><p>Staff manually validates inquiries, enters CRM data, prepares follow-up and alerts sales.</p><strong>8 min / lead · ~67 hrs repetitive handling</strong></article>
-        <article class="brief-system"><small>02 · AUTOMATED SYSTEM</small><b>One observable workflow</b><p>Capture → validation → server qualification → CRM upsert → follow-up → sales routing.</p><strong>Every decision remains inspectable</strong></article>
-        <article class="brief-outcome"><small>03 · OPERATIONAL OUTCOME</small><b>People handle exceptions, not copying</b><p>Routine processing is mapped for automation while low-confidence and failed actions retain human review paths.</p><strong>Modeled impact, not a fabricated ROI claim</strong></article>
-      </div>
-    </section>
+    <section id="workspace" class="section shell"><div class="section-head"><div><p class="tag">CRM WORKSPACE PREVIEW</p><h2>A workspace for the next action.</h2></div><p>Review qualified leads, understand their priority, and inspect what the workflow prepared. This preview reads from the same demo CRM records created above.</p></div><div class="ops-dashboard"><aside class="ops-input-panel ops-sync-panel"><div class="ops-panel-kicker"><small>SHARED WORKFLOW STATE</small></div><h3>One submission. One workspace.</h3><p>The lead form above is the single input for this case study. Each completed run updates this workspace and the full demo CRM from the same browser-local record set.</p><div class="ops-sync-flow"><span>Lead form</span><i>→</i><span>Rules-based score</span><i>→</i><span>Demo CRM</span><i>→</i><span>Workspace</span></div><a class="secondary-btn full" href="#demo">Run another lead</a><div class="ops-input-status"><span class="ops-status-icon">i</span><div><b>Demo CRM</b><small>Records persist in this browser only.</small></div></div></aside><div class="ops-console"><header class="ops-console-top"><div class="ops-console-brand"><span>LF</span><div><b>Lead Operations</b><small>Qualification workspace</small></div></div><div class="ops-console-actions"><div class="ops-console-state"><span class="ops-live-dot"></span><b>DEMO</b><small id="opsLastSync">synced now</small></div><button id="opsOpenCrm" type="button">Open full CRM <span>↗</span></button></div></header><div class="ops-kpis"><article><span>Pipeline</span><strong id="opsTotal">0</strong><small>demo leads</small></article><article><span>High priority</span><strong id="opsHot">0</strong><small id="opsHotRate">0% of pipeline</small></article><article><span>Average score</span><strong id="opsAverage">0</strong><small>lead priority score</small></article><article><span>Immediate</span><strong id="opsImmediate">0</strong><small>ASAP timeline</small></article></div><div class="ops-main-grid"><section class="ops-panel"><div class="ops-panel-head"><div><small>QUALIFICATION TREND</small><b>Recent lead scores</b></div><span>0–100</span></div><div class="ops-score-chart" id="opsScoreChart"></div></section><section class="ops-panel"><div class="ops-panel-head"><div><small>LEAD SOURCES</small><b>Inbound mix</b></div><span id="opsSourceCount">0 sources</span></div><div class="ops-source-list" id="opsSourceList"></div></section></div><section class="ops-panel ops-pipeline-panel"><div class="ops-panel-head"><div><small>DEMO PIPELINE</small><b>Latest qualified leads</b></div><span id="opsPipelineCount">0 records</span></div><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>Lead</th><th>Source</th><th>Score</th><th>Status</th><th>Timeline</th></tr></thead><tbody id="opsPipelineRows"></tbody></table></div></section><section class="ops-panel ops-activity-panel"><div class="ops-panel-head"><div><small>WORKFLOW ACTIVITY</small><b>Latest demo events</b></div><span><i class="ops-live-dot"></i> local state</span></div><div class="ops-activity-feed" id="opsActivityFeed"></div></section></div></div></section>
 
-    <section id="workflow" class="section shell">
-      <div class="section-head">
-        <div><p class="tag">WORKFLOW</p><h2>From raw inquiry to sales-ready lead.</h2></div>
-        <p>Every stage exposes what happened instead of hiding the automation behind a spinner.</p>
-      </div>
-      <div class="workflow-map">
-        <article><span class="step-num">01</span><div class="icon">↳</div><h3>Capture</h3><p>Collect a lead from a form, ad, chat, or webhook.</p></article>
-        <div class="connector"><i></i></div>
-        <article><span class="step-num">02</span><div class="icon">✓</div><h3>Validate</h3><p>Normalize required fields and reject incomplete data.</p></article>
-        <div class="connector"><i></i></div>
-        <article><span class="step-num">03</span><div class="icon">✦</div><h3>Qualify</h3><p>Score budget, urgency, fit, and buying intent.</p></article>
-        <div class="connector"><i></i></div>
-        <article><span class="step-num">04</span><div class="icon">⌘</div><h3>Route</h3><p>Create CRM data, follow-up, and sales notification.</p></article>
-      </div>
-    </section>
+    <section id="reliability" class="section band"><div class="shell"><div class="section-head"><div><p class="tag">WHEN SOMETHING GOES WRONG</p><h2>Make exceptions visible and recoverable.</h2></div><p>Explore duplicate handling, a simulated external-CRM timeout, and the rules-based human-review path.</p></div><div class="reliability-lab"><div class="reliability-copy"><small>SCENARIO DETAILS</small><b>Actual behavior and simulations are labeled separately.</b><p>Duplicate handling uses the running demo. Timeout recovery is illustrative only. Human review is driven by score thresholds, not model confidence.</p></div><div class="reliability-actions"><button type="button" data-edge="duplicate">Duplicate lead · implemented</button><button type="button" data-edge="timeout">CRM timeout · simulated</button><button type="button" data-edge="review">Needs human review · implemented</button></div><div class="reliability-log" id="reliabilityLog"><div><code>scenario.ready</code><span>Select a scenario to inspect what happened, what the demo does, and what remains pending.</span></div></div></div></div></section>
 
-    <section id="demo" class="section demo-section">
-      <div class="shell">
-        <div class="section-head">
-          <div><p class="tag">LIVE EXPERIENCE</p><h2>Submit a lead. Watch the automation execute.</h2></div>
-          <p>Run a lead through the complete qualification flow, then inspect the resulting CRM record.</p>
-        </div>
-        <div class="backend-proof" id="backendProof">
-          <span class="backend-dot"></span>
-          <div><b id="backendStatus">SERVER-BACKED QUALIFICATION</b><small>POST /api/qualify · deterministic scoring · browser fallback available</small></div>
-          <em id="backendTrace">ready</em>
-        </div>
-
-        <div class="demo-layout">
-          <form id="leadForm" class="lead-form" novalidate>
-            <div class="card-title"><span>01</span><div><b>Incoming lead</b><small>Try the Sarah / Acme Dental example or enter your own.</small></div></div>
-            <div class="field-grid">
-              <label>Name<input id="leadName" name="name" value="Sarah" autocomplete="name" required /></label>
-              <label>Company<input id="leadCompany" name="company" value="Acme Dental" required /></label>
-            </div>
-            <div class="field-grid">
-              <label>Budget
-                <select id="leadBudget" name="budget">
-                  <option value="500">Under $1,000</option>
-                  <option value="2000">$1,000–$3,000</option>
-                  <option value="5000" selected>$3,000–$7,500</option>
-                  <option value="12000">$7,500–$15,000</option>
-                  <option value="25000">$15,000+</option>
-                </select>
-              </label>
-              <label>Timeline
-                <select id="leadTimeline" name="timeline">
-                  <option value="exploring">Just exploring</option>
-                  <option value="month">Within a month</option>
-                  <option value="weeks">1–2 weeks</option>
-                  <option value="asap" selected>ASAP</option>
-                </select>
-              </label>
-            </div>
-            <label>What do you need?
-              <textarea id="leadNeed" name="need" rows="5" required>We need automated appointment lead follow-up</textarea>
-            </label>
-            <div id="formError" class="form-error" role="alert"></div>
-            <button class="primary-btn full" id="runAutomation" type="submit">Run automation <span>↯</span></button>
-            <p class="microcopy">No account required. Your test entries remain available during this browser session.</p>
-          </form>
-
-          <div class="execution-card">
-            <div class="execution-head">
-              <div><span class="status-light"></span><b>Workflow execution</b></div>
-              <span id="execStatus">READY</span>
-            </div>
-            <div class="execution-progress" aria-hidden="true">
-              <div id="execProgressBar"></div>
-              <span id="execProgressPulse"></span>
-            </div>
-            <div class="execution-meta"><span id="execMessage">Waiting for a lead</span><span id="execTimer">0.0s</span></div>
-            <div id="steps" class="steps" aria-live="polite">
-              <div class="exec-step" data-step="0"><span class="step-state">1</span><div><b>Validate</b><small>Check required fields and normalize input</small></div><em>Waiting</em></div>
-              <div class="exec-step" data-step="1"><span class="step-state">2</span><div><b>Duplicate Check</b><small>Compare with existing CRM contacts</small></div><em>Waiting</em></div>
-              <div class="exec-step" data-step="2"><span class="step-state">3</span><div><b>AI Qualification</b><small>Analyze intent, budget fit and urgency</small></div><em>Waiting</em></div>
-              <div class="exec-step" data-step="3"><span class="step-state">4</span><div><b>CRM Record</b><small>Create or update the lead record</small></div><em>Waiting</em></div>
-              <div class="exec-step" data-step="4"><span class="step-state">5</span><div><b>Follow-up Generated</b><small>Draft personalized next-step message</small></div><em>Waiting</em></div>
-              <div class="exec-step" data-step="5"><span class="step-state">6</span><div><b>Sales Notification</b><small>Route based on lead temperature</small></div><em>Waiting</em></div>
-            </div>
-            <div class="event-console">
-              <div class="event-console-head"><span>EVENT STREAM</span><b id="eventCount">0 events</b></div>
-              <div class="event-log" id="eventLog" aria-live="polite">
-                <div class="event-empty">Run the workflow to inspect live events.</div>
-              </div>
-            </div>
-          </div>
-
-          <aside class="result-card" id="resultCard">
-            <div id="resultEmpty" class="result-empty">
-              <div class="result-orb">✦</div>
-              <b>Qualification result</b>
-              <p>Your lead score, intent analysis and generated summary will appear here.</p>
-            </div>
-            <div id="resultContent" class="result-content hidden" aria-live="polite">
-              <div class="score-top">
-                <div class="score-ring"><strong id="scoreValue">92</strong><span>/100</span></div>
-                <div><span id="temperature" class="temperature hot">HOT LEAD</span><p id="resultLead">Sarah · Acme Dental</p></div>
-              </div>
-              <div class="signal-grid">
-                <div><span>Intent</span><b id="intent">High</b></div>
-                <div><span>Budget Fit</span><b id="budgetFit">Strong</b></div>
-                <div><span>Urgency</span><b id="urgency">Immediate</b></div>
-              </div>
-              <div class="ai-summary"><span>AI SUMMARY</span><p id="aiSummary">Dental clinic seeking automated lead follow-up. Budget and timeline indicate strong purchase intent.</p></div>
-              <div class="result-buttons">
-                <button id="openCrmResult" class="primary-btn full" type="button">View lead in CRM <span>→</span></button>
-                <button id="showFollowup" class="secondary-btn full" type="button">View generated follow-up</button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-
-    <section id="live-dashboard" class="section shell live-dashboard-section">
-      <div class="section-head dashboard-section-head">
-        <div><p class="tag">LIVE OPERATIONS DASHBOARD</p><h2>The control room the client operates after handoff.</h2></div>
-        <p>Feed demo data into the same qualification logic and watch the operational dashboard update in real time.</p>
-      </div>
-
-      <div class="ops-dashboard">
-        <aside class="ops-input-panel">
-          <div class="ops-panel-kicker"><span class="ops-live-dot"></span><small>DEMO DATA INPUT</small></div>
-          <h3>Stream a lead into operations.</h3>
-          <p>Use the preset or change the fields. The dashboard will qualify the lead, update the pipeline and write the event into the activity feed.</p>
-          <form id="opsLeadForm" novalidate>
-            <div class="ops-field-pair">
-              <label>Name<input id="opsName" value="Nadia Rahman" required /></label>
-              <label>Company<input id="opsCompany" value="Harbor Dental" required /></label>
-            </div>
-            <label>Lead source
-              <select id="opsSource">
-                <option>Meta Lead Ads</option>
-                <option>Website Form</option>
-                <option>Typeform</option>
-                <option>WhatsApp</option>
-                <option>Referral</option>
-              </select>
-            </label>
-            <div class="ops-field-pair">
-              <label>Budget
-                <select id="opsBudget">
-                  <option value="500">Under $1,000</option>
-                  <option value="2000">$1,000–$3,000</option>
-                  <option value="5000" selected>$3,000–$7,500</option>
-                  <option value="12000">$7,500–$15,000</option>
-                  <option value="25000">$15,000+</option>
-                </select>
-              </label>
-              <label>Timeline
-                <select id="opsTimeline">
-                  <option value="exploring">Exploring</option>
-                  <option value="month">Within a month</option>
-                  <option value="weeks">1–2 weeks</option>
-                  <option value="asap" selected>ASAP</option>
-                </select>
-              </label>
-            </div>
-            <label>Need<input id="opsNeed" value="Automate appointment lead follow-up" required /></label>
-            <button class="primary-btn full ops-stream-btn" id="opsStreamLead" type="submit">Stream demo lead <span>→</span></button>
-          </form>
-          <div class="ops-input-status" id="opsInputStatus">
-            <span class="ops-status-icon">✓</span>
-            <div><b>Ready for input</b><small>Waiting for the next demo event</small></div>
-          </div>
-        </aside>
-
-        <div class="ops-console">
-          <header class="ops-console-top">
-            <div class="ops-console-brand"><span>LF</span><div><b>Lead Operations</b><small>Qualification workspace</small></div></div>
-            <div class="ops-console-actions">
-              <div class="ops-console-state"><span class="ops-live-dot"></span><b>LIVE</b><small id="opsLastSync">synced now</small></div>
-              <button id="opsOpenCrm" type="button">Open full CRM <span>↗</span></button>
-            </div>
-          </header>
-
-          <div class="ops-tour-frame">
-          <div class="ops-kpis">
-            <article><span>Pipeline</span><strong id="opsTotal">0</strong><small>active demo leads</small></article>
-            <article><span>Hot leads</span><strong id="opsHot">0</strong><small id="opsHotRate">0% of pipeline</small></article>
-            <article><span>Average score</span><strong id="opsAverage">0</strong><small>qualification quality</small></article>
-            <article><span>Immediate</span><strong id="opsImmediate">0</strong><small>ASAP timeline</small></article>
-          </div>
-
-          <div class="ops-main-grid">
-            <section class="ops-panel ops-trend-panel">
-              <div class="ops-panel-head"><div><small>QUALIFICATION TREND</small><b>Recent lead scores</b></div><span>0–100</span></div>
-              <div class="ops-score-chart" id="opsScoreChart" aria-label="Recent qualification scores"></div>
-            </section>
-
-            <section class="ops-panel ops-source-panel">
-              <div class="ops-panel-head"><div><small>LEAD SOURCES</small><b>Inbound mix</b></div><span id="opsSourceCount">0 sources</span></div>
-              <div class="ops-source-list" id="opsSourceList"></div>
-            </section>
-          </div>
-
-          <section class="ops-panel ops-pipeline-panel">
-            <div class="ops-panel-head"><div><small>LIVE PIPELINE</small><b>Latest qualified leads</b></div><span id="opsPipelineCount">0 records</span></div>
-            <div class="ops-table-wrap">
-              <table class="ops-table">
-                <thead><tr><th>Lead</th><th>Source</th><th>Score</th><th>Status</th><th>Timeline</th></tr></thead>
-                <tbody id="opsPipelineRows"></tbody>
-              </table>
-            </div>
-          </section>
-
-          </div>
-          <section class="ops-panel ops-activity-panel">
-            <div class="ops-panel-head"><div><small>REAL-TIME ACTIVITY</small><b>Automation events</b></div><span><i class="ops-live-dot"></i> streaming</span></div>
-            <div class="ops-activity-feed" id="opsActivityFeed"></div>
-          </section>
-        </div>
-      </div>
-    </section>
-
-    <section id="calculator" class="section shell">
-      <div class="section-head">
-        <div><p class="tag">ROI CALCULATOR</p><h2>How much repetitive work could automation remove?</h2></div>
-        <p>Estimate the operational time and labor currently tied up in manual lead handling.</p>
-      </div>
-      <div class="calculator">
-        <div class="calc-inputs">
-          <label>Leads per month <div class="number-field"><input id="calcLeads" type="number" min="0" max="100000" value="500"><span>leads</span></div></label>
-          <label>Manual minutes per lead <div class="number-field"><input id="calcMinutes" type="number" min="0" max="240" value="8"><span>min</span></div></label>
-          <label>Hourly labor cost <div class="number-field"><span>$</span><input id="calcCost" type="number" min="0" max="1000" step="0.5" value="15"><span>/hr</span></div></label>
-        </div>
-        <div class="calc-result">
-          <small>POTENTIAL MONTHLY IMPACT</small>
-          <div><strong id="hoursSaved">67</strong><span>hours/month<br>potentially automated</span></div>
-          <div class="cost-row"><span>Estimated manual cost</span><b id="manualCost">$1,005/month</b></div>
-          <div class="roi-visual" aria-label="Monthly workload visualization">
-            <div class="roi-track-row"><div><span>Manual workload</span><b id="hoursBarValue">67h</b></div><div class="roi-track"><i id="hoursBar"></i></div><small>0–160h scale</small></div>
-            <div class="roi-track-row"><div><span>Labor spend</span><b id="costBarValue">$1,005</b></div><div class="roi-track cost"><i id="costBar"></i></div><small>$0–$2,500 scale</small></div>
-          </div>
-          <p>Estimate assumes the entered manual handling time is fully automatable. Real savings depend on workflow design and exceptions.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="blueprint" class="section ai-demo-section">
-      <div class="shell">
-        <div class="section-head">
-          <div><p class="tag">AUTOMATION BLUEPRINT</p><h2>Describe the manual process. Get a suggested workflow.</h2></div>
-          <p>Describe a manual lead process and turn it into a structured automation sequence.</p>
-        </div>
-        <div class="blueprint-layout">
-          <div class="blueprint-input">
-            <label for="processText">Describe your process</label>
-            <textarea id="processText" rows="6">We receive Facebook leads and manually put them into HubSpot.</textarea>
-            <button id="generateBlueprint" class="primary-btn" type="button">Generate suggested automation <span>✦</span></button>
-          </div>
-          <div class="blueprint-output">
-            <div class="bp-head"><span>Suggested automation</span><small id="blueprintConfidence">Ready</small></div>
-            <div id="blueprintFlow" class="blueprint-flow" aria-label="Editable automation workflow"></div>
-            <div class="blueprint-editor">
-              <div class="blueprint-editor-head"><span>EDIT WORKFLOW</span><small id="bpEditorHint">Select a step to configure it</small></div>
-              <div class="blueprint-editor-controls">
-                <input id="bpNodeLabel" type="text" aria-label="Selected workflow step name" placeholder="Step name" />
-                <button id="bpRename" type="button">Apply</button>
-                <button id="bpMoveLeft" type="button" aria-label="Move selected step left">←</button>
-                <button id="bpMoveRight" type="button" aria-label="Move selected step right">→</button>
-                <button id="bpAdd" type="button">+ Step</button>
-                <button id="bpRemove" type="button" class="bp-remove">Remove</button>
-              </div>
-            </div>
-            <p id="blueprintNote">Designed to remove manual data entry while preserving a sales handoff for qualified leads.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="architecture" class="section shell">
-      <div class="section-head">
-        <div><p class="tag">ARCHITECTURE</p><h2>An event-driven workflow built around real integration patterns.</h2></div>
-        <p>Webhook intake, qualification logic, CRM synchronization and outbound actions remain cleanly separated and extensible.</p>
-      </div>
-      <div class="architecture">
-        <div class="arch-source"><small>TRIGGERS</small><b>Meta · Web Form · Chat</b><span>Webhook / form submission</span></div>
-        <div class="arch-arrow">POST →</div>
-        <div class="arch-core"><small>ORCHESTRATION</small><b>n8n / API Layer</b><span>Validation · retries · workflow state</span></div>
-        <div class="arch-arrow">JSON →</div>
-        <div class="arch-column">
-          <div><small>AI</small><b>OpenAI</b><span>Structured qualification</span></div>
-          <div><small>RULES</small><b>Scoring</b><span>Deterministic guardrails</span></div>
-        </div>
-        <div class="arch-arrow">UPSERT →</div>
-        <div class="arch-source"><small>ACTIONS</small><b>CRM · Email · Slack</b><span>Record · follow-up · alert</span></div>
-      </div>
-      <div class="stack">
-        <span>n8n</span><span>OpenAI API</span><span>HubSpot / Pipedrive</span><span>Webhooks</span><span>JavaScript</span><span>REST APIs</span><span>Postgres / Supabase</span>
-      </div>
-
-      <div class="stack-configurator">
-        <div class="stack-config-copy"><small>ADAPT THE STACK</small><b>Same workflow, different client tools.</b><p>Switch the source, CRM and notification channel to see how the implementation adapts without changing the core orchestration.</p></div>
-        <div class="stack-config-controls">
-          <label>Lead source<select id="stackSource"><option>Meta Lead Ads</option><option>Website Form</option><option>Typeform</option><option>WhatsApp</option></select></label>
-          <label>CRM<select id="stackCrm"><option>HubSpot</option><option>Pipedrive</option><option>Salesforce</option><option>Supabase CRM</option></select></label>
-          <label>Notification<select id="stackNotify"><option>Slack</option><option>Email</option><option>WhatsApp</option><option>Microsoft Teams</option></select></label>
-        </div>
-        <div class="stack-config-flow"><span id="stackFlowSource">Meta Lead Ads</span><i>→</i><span>Validation + Qualification</span><i>→</i><span id="stackFlowCrm">HubSpot</span><i>→</i><span id="stackFlowNotify">Slack</span></div>
-      </div>
-      <div class="implementation-proof">
-        <article><small>01 · INTAKE</small><b>Webhook validation</b><p>Normalize payloads, validate required fields and attach an idempotency key before orchestration.</p></article>
-        <article><small>02 · DECISION</small><b>Structured qualification</b><p>Combine structured model output with deterministic score thresholds and routing guardrails.</p></article>
-        <article><small>03 · DATA</small><b>CRM upsert</b><p>Deduplicate identities, create or update the contact, then preserve workflow state against the CRM record.</p></article>
-        <article><small>04 · DELIVERY</small><b>Resilient handoff</b><p>Queue follow-up and sales alerts with retry handling while credentials remain server-side.</p></article>
-      </div>
-
-      <div class="reliability-lab">
-        <div class="reliability-copy"><small>RELIABILITY LAB</small><b>Test how the system handles failure.</b><p>Production automations need retries, fallbacks and human-review paths—not only happy-path demos.</p></div>
-        <div class="reliability-actions">
-          <button type="button" data-edge="duplicate">Duplicate lead</button>
-          <button type="button" data-edge="timeout">CRM timeout</button>
-          <button type="button" data-edge="confidence">Low-confidence result</button>
-        </div>
-        <div class="reliability-log" id="reliabilityLog"><div><code>system.ready</code><span>Select an edge case to inspect the recovery path.</span></div></div>
-      </div>
-
-      <details class="engineering-proof">
-        <summary><span>UNDER THE HOOD</span><b>Inspect the API contract and production safeguards</b><i>＋</i></summary>
-        <div class="engineering-grid">
-          <div><small>REQUEST</small><pre>POST /api/qualify
+    <section id="architecture" class="section shell"><div class="section-head"><div><p class="tag">HOW IT WORKS</p><h2>A clear path from input to action.</h2></div><p>Each stage has a defined responsibility, making the workflow easier to inspect and adapt.</p></div><div class="architecture"><div class="arch-source"><small>INPUT</small><b>Lead form</b><span>Structured browser submission</span></div><div class="arch-arrow">POST →</div><div class="arch-core"><small>LIVE API</small><b>Cloudflare Pages Function</b><span>Validation · trace ID · no-store response</span></div><div class="arch-arrow">JSON →</div><div class="arch-column"><div><small>RULES</small><b>Qualification scoring</b><span>Budget · timeline · intent terms</span></div><div><small>STORAGE</small><b>Demo CRM</b><span>Browser localStorage</span></div></div><div class="arch-arrow">STATE →</div><div class="arch-source"><small>NEXT ACTION</small><b>Draft · review · nurture</b><span>Prepared in the demo; no outbound delivery</span></div></div><div class="stack implemented-stack"><span>Implemented: HTML / CSS / JavaScript</span><span>Cloudflare Pages Function</span><span>REST JSON</span><span>localStorage demo CRM</span></div><div class="stack-configurator"><div class="stack-config-copy"><small>EXPLORE INTEGRATION OPTIONS</small><b>See how the workflow could fit another toolset.</b><p>These selections are illustrative. They change the diagram only and do not connect accounts or configure external services.</p></div><div class="stack-config-controls"><label>Lead source<select id="stackSource"><option>Meta Lead Ads</option><option>Website Form</option><option>Typeform</option><option>WhatsApp</option></select></label><label>CRM<select id="stackCrm"><option>HubSpot</option><option>Pipedrive</option><option>Salesforce</option><option>Supabase CRM</option></select></label><label>Notification<select id="stackNotify"><option>Slack</option><option>Email</option><option>WhatsApp</option><option>Microsoft Teams</option></select></label></div><div class="stack-config-flow"><span id="stackFlowSource">Meta Lead Ads</span><i>→</i><span>Validation + rules</span><i>→</i><span id="stackFlowCrm">HubSpot</span><i>→</i><span id="stackFlowNotify">Slack</span></div></div><div class="implementation-proof"><article><small>01 · IMPLEMENTED</small><b>Server-side validation</b><p>The Pages Function validates required fields and returns a structured, non-cached JSON response with a trace ID.</p></article><article><small>02 · IMPLEMENTED</small><b>Rules-based qualification</b><p>Budget, timeline and explicit intent terms contribute to a deterministic score and routing category.</p></article><article><small>03 · IMPLEMENTED</small><b>Browser-local demo CRM</b><p>Runs create or update records in local storage. Duplicate matching uses normalized name plus company.</p></article><article><small>04 · SIMULATED DELIVERY</small><b>Next-action preparation</b><p>Follow-up and sales-review states are prepared for demonstration. This public build does not send email, Slack, or CRM messages.</p></article></div><details class="engineering-proof"><summary><span>UNDER THE HOOD</span><b>Inspect the API contract and verified demo safeguards</b><i>＋</i></summary><div class="engineering-grid"><div><small>REQUEST</small><pre>POST /api/qualify
 {
   "name": "Sarah",
   "company": "Acme Dental",
   "budget": 5000,
   "timeline": "asap"
-}</pre></div>
-          <div><small>RESPONSE</small><pre>{
+}</pre></div><div><small>RESPONSE</small><pre>{
   "ok": true,
   "qualification": {
     "score": 92,
     "status": "hot"
   },
   "traceId": "..."
-}</pre></div>
-          <div class="engineering-guards"><small>PRODUCTION GUARDS</small><span>✓ server-side validation</span><span>✓ no-store API responses</span><span>✓ structured JSON contract</span><span>✓ deterministic fallback</span><span>✓ retry / review architecture</span></div>
-        </div>
-      </details>
-    </section>
+}</pre></div><div class="engineering-guards"><small>VERIFIED DEMO SAFEGUARDS</small><span>✓ server-side validation</span><span>✓ no-store API responses</span><span>✓ structured JSON contract</span><span>✓ trace identifier</span><span>✓ deterministic browser fallback</span></div></div></details></section>
 
-    <section class="section case-section">
-      <div class="shell case-grid">
-        <div>
-          <p class="tag">IMPLEMENTATION SCOPE</p>
-          <h2>One connected system across workflow automation, CRM operations and intelligent qualification.</h2>
-        </div>
-        <div class="case-copy">
-          <p>The workflow is visible from end to end: capture a lead, observe each operation, review the qualification decision, and inspect the resulting CRM record.</p>
-          <div class="case-list">
-            <span><b>01</b> Frontend product experience</span>
-            <span><b>02</b> Automation workflow design</span>
-            <span><b>03</b> AI qualification logic</span>
-            <span><b>04</b> CRM data modeling</span>
-            <span><b>05</b> Conversion-focused UX</span>
-          </div>
-        </div>
-      </div>
-    </section>
+    <section id="roi" class="section shell"><div class="section-head"><div><p class="tag">ROI ESTIMATOR</p><h2>Estimate the time your workflow could save.</h2></div><p>Adjust the assumptions to explore potential savings from repetitive lead handling.</p></div><div class="calculator"><div class="calc-inputs"><label>Leads per month<div class="number-field"><input id="calcLeads" type="number" min="0" max="100000" value="500"><span>leads</span></div></label><label>Current manual minutes per lead<div class="number-field"><input id="calcMinutes" type="number" min="0" max="240" value="8"><span>min</span></div></label><label>Share of work automated<div class="number-field"><input id="calcAutomation" type="number" min="0" max="100" value="75"><span>%</span></div></label><label>Additional review minutes per lead<div class="number-field"><input id="calcReview" type="number" min="0" max="240" value="1"><span>min</span></div></label><label>Hourly labor cost<div class="number-field"><span>$</span><input id="calcCost" type="number" min="0" max="1000" step="0.5" value="15"><span>/hr</span></div></label><label>Monthly operating cost<div class="number-field"><span>$</span><input id="calcOperating" type="number" min="0" max="100000" value="100"><span>/mo</span></div></label></div><div class="calc-result"><small>SCENARIO ESTIMATE</small><div class="roi-primary"><strong id="hoursSaved">42</strong><span>Estimated net<br>time saved (hours)</span></div><div class="roi-output-grid"><div><span>Estimated net monthly value</span><b id="netMonthlyValue">$525</b></div><div><span>Baseline workload</span><b id="baselineHours">67h</b></div><div><span>Post-automation workload</span><b id="postHours">25h</b></div></div><div class="roi-visual"><div class="roi-track-row"><div><span>Baseline workload</span><b id="hoursBarValue">67h</b></div><div class="roi-track"><i id="hoursBar"></i></div></div><div class="roi-track-row"><div><span>Post-automation</span><b id="postBarValue">25h</b></div><div class="roi-track cost"><i id="costBar"></i></div></div></div><p>Review time is additional work not included in the remaining manual share. Scenario estimate based on your inputs, not measured client results.</p></div></div></section>
 
-    <section class="section shell portfolio-next">
-      <div class="portfolio-next-card">
-        <div class="portfolio-next-copy">
-          <p class="tag">PORTFOLIO WORK 02</p>
-          <span class="portfolio-next-eyebrow">STAYPILOT · HOTEL AUTOMATION OS</span>
-          <h2>Turn routine hotel operations into policy-aware automation.</h2>
-          <p>StayPilot connects reservations, rooms, housekeeping, guest requests, supplies, approvals and distribution through one event-driven hotel state. Routine work executes automatically; sensitive actions stay behind explicit Owner limits and approvals.</p>
-          <div class="portfolio-next-tags">
-            <span>12 hotel workflows</span>
-            <span>Human-in-the-loop approvals</span>
-            <span>Owner / Manager authority</span>
-            <span>Idempotent webhook replay</span>
-            <span>Auditable run traces</span>
-            <span>Fail-closed server boundary</span>
-            <span>State-driven channel + folio</span>
-            <span>Approval → ledger + tasks</span>
-            <span>Durable worker contract</span>
-            <span>Durable webhook outbox</span>
-            <span>Signed safe webhook dispatcher</span>
-            <span>Owner-verified webhook onboarding</span>
-            <span>Double-gated scheduler contract</span>
-            <span>Secure tenant bootstrap</span>
-          </div>
-          <div class="portfolio-next-actions">
-            <a class="primary-btn" href="https://github.com/SaamVR/staypilot-hotel-os" target="_blank" rel="noreferrer">Inspect verified source <span>↗</span></a>
-            <a class="secondary-btn" href="https://staypilot-hotel-os.pages.dev/" target="_blank" rel="noreferrer">Open Cloudflare demo</a>
-          </div>
-        </div>
-        <div class="portfolio-next-system" aria-label="StayPilot automation architecture summary">
-          <div class="portfolio-next-top"><span><i></i> staypilot/automation</span><em>WORK 02</em></div>
-          <div class="portfolio-next-metric"><small>WORKFLOWS</small><b>12</b><span>reservation · turnover · guest · revenue · inventory</span></div>
-          <div class="portfolio-next-flow">
-            <span>Hotel event</span><i>→</i><span>Policy check</span><i>→</i><span>Action</span><i>→</i><span>Audit</span>
-          </div>
-          <div class="portfolio-next-grid">
-            <div><small>OWNER</small><b>Exceptions first</b><span>approvals · ROI · failures</span></div>
-            <div><small>MANAGER</small><b>Shift execution</b><span>rooms · guests · tasks</span></div>
-            <div><small>INTEGRATIONS</small><b>Bridge, don’t replace</b><span>PMS · WhatsApp · accounting</span></div>
-            <div><small>CONTROL</small><b>Auto / Policy / Approval</b><span>authority per workflow</span></div>
-          </div>
-          <div class="portfolio-next-foot"><span>React · Vite · event-driven state</span><b>Verified release · 0ba97313</b></div>
-        </div>
-      </div>
-    </section>
+    <section id="blueprint" class="section band"><div class="shell"><div class="section-head"><div><p class="tag">ILLUSTRATIVE WORKFLOW</p><h2>Sketch a workflow before implementation.</h2></div><p>Use this planning aid to explore a possible sequence. Editing this diagram does not change the running demo.</p></div><div class="blueprint-layout"><div class="blueprint-input"><label for="processText">Describe your process</label><textarea id="processText" rows="6">We receive Facebook leads and manually put them into HubSpot.</textarea><button id="generateBlueprint" class="primary-btn" type="button">Sketch a workflow <span>✦</span></button></div><div class="blueprint-output"><div class="bp-head"><span>Suggested workflow</span><small id="blueprintConfidence">Ready</small></div><div id="blueprintFlow" class="blueprint-flow"></div><div class="blueprint-editor"><div class="blueprint-editor-head"><span>EDIT WORKFLOW</span><small id="bpEditorHint">Select a step to configure it</small></div><div class="blueprint-editor-controls"><input id="bpNodeLabel" type="text" aria-label="Selected workflow step name" placeholder="Step name" /><button id="bpRename" type="button">Apply</button><button id="bpMoveLeft" type="button">←</button><button id="bpMoveRight" type="button">→</button><button id="bpAdd" type="button">+ Step</button><button id="bpRemove" class="bp-remove" type="button">Remove</button></div></div><p id="blueprintNote">Planning aid only — edits here do not change the executable qualification workflow.</p></div></div></div></section>
 
-    <section class="section shell">
-      <div class="final-cta">
-        <div><p class="tag">CONNECTED OPERATIONS</p><h2>Have a manual lead workflow? Map the automation before you build it.</h2><p class="final-cta-copy">Describe the process, shape the workflow, then run the live qualification path and inspect the resulting CRM record.</p></div>
-        <div class="final-cta-actions">
-          <a class="primary-btn" href="#blueprint">Map your workflow <span>↗</span></a>
-          <a class="secondary-btn" href="#demo">Run live workflow</a>
-        </div>
-      </div>
-    </section>
+    <section class="section case-section"><div class="shell case-grid"><div><p class="tag">PROJECT CONTRIBUTION</p><h2>Designed as a complete product experience.</h2><p class="project-meta">Independent portfolio project · Interactive demonstration</p></div><div class="case-copy"><p>I designed and built LeadFlow to demonstrate how a business workflow can become an understandable, interactive product—from the first input to the final operational record.</p><div class="case-list"><span><b>01</b> Interface and interaction design</span><span><b>02</b> Responsive frontend development</span><span><b>03</b> Workflow and browser state management</span><span><b>04</b> Server-side deterministic qualification</span><span><b>05</b> Demo CRM data model and exception visibility</span></div><p class="project-stack"><b>Verified stack:</b> HTML · CSS · JavaScript · Cloudflare Pages · Pages Functions · localStorage</p></div></div></section>
+
+    <section class="section shell portfolio-next"><div class="portfolio-next-card"><div class="portfolio-next-copy"><p class="tag">EXPLORE ANOTHER AUTOMATION PROJECT</p><span class="portfolio-next-eyebrow">STAYPILOT · HOTEL OPERATIONS & WORKFLOW AUTOMATION</span><h2>Policy-aware hotel operations in one interactive prototype.</h2><p>A related portfolio project covering hotel workflows, role-based approvals, execution traces, and production-oriented integration boundaries.</p><div class="portfolio-next-tags"><span>12 workflows</span><span>Human approvals</span><span>Auditable traces</span><span>Integration boundaries</span></div><div class="portfolio-next-actions"><a class="primary-btn" href="https://staypilot-hotel-os.pages.dev/" target="_blank" rel="noreferrer">View project <span>↗</span></a><a class="secondary-btn" href="https://github.com/SaamVR/staypilot-hotel-os" target="_blank" rel="noreferrer">Inspect source</a></div></div></div></section>
+
+    <section class="section shell"><div class="final-cta"><div><p class="tag">NEXT PROJECT</p><h2>Have a lead workflow that needs less manual work?</h2><p>This project demonstrates how intake, qualification, CRM updates, and follow-up can be designed as one connected experience.</p></div><div class="final-cta-actions"><a class="primary-btn" href="#demo">Run another example <span>↗</span></a><button class="secondary-btn" id="openCrmFinal" type="button">Explore the CRM</button></div></div></section>
   </main>
 
-  <footer class="footer shell">
-    <div class="brand"><span class="brand-mark">LF</span><span>LeadFlow <b>AI</b></span></div>
-    <p>Interactive Prototyping of lead automation byShusmoy</p>
-    <a href="#home">Back to top ↑</a>
-  </footer>
+  <footer class="footer shell"><div class="brand"><span class="brand-mark">LF</span><span>LeadFlow</span></div><p>Independent automation and interface design project.</p><a href="#home">Back to top ↑</a></footer>
 
-  <div class="crm-modal" id="crmModal" aria-hidden="true">
-    <div class="crm-shell" role="dialog" aria-modal="true" aria-label="LeadFlow CRM dashboard">
-      <div class="crm-sidebar">
-        <div class="crm-logo">LF</div>
-        <button class="active crm-nav-btn" data-crm-view="leads" type="button" aria-label="Leads" title="Leads">⌁</button>
-        <button class="crm-nav-btn" data-crm-view="analytics" type="button" aria-label="Analytics" title="Analytics">⌗</button>
-        <button class="crm-nav-btn" data-crm-view="automations" type="button" aria-label="Automations" title="Automations">↯</button>
-        <button class="crm-nav-btn" data-crm-view="settings" type="button" aria-label="Settings" title="Settings">⚙</button>
-        <button class="crm-exit" id="closeCrm" type="button" aria-label="Close CRM">×</button>
-      </div>
-      <div class="crm-main">
-        <div class="crm-topbar">
-          <div><small>LEADFLOW CRM</small><h3 id="crmViewTitle">Qualification Pipeline</h3></div>
-          <div class="crm-top-actions"><span class="sync-dot"></span><span>Synced just now</span><button id="closeCrmTop" type="button">Close</button></div>
-        </div>
+  <div class="crm-modal" id="crmModal" aria-hidden="true"><div class="crm-shell" role="dialog" aria-modal="true" aria-label="LeadFlow demo CRM"><div class="crm-sidebar"><div class="crm-logo">LF</div><button class="active crm-nav-btn" data-crm-view="leads" type="button" aria-label="Leads">⌁</button><button class="crm-nav-btn" data-crm-view="analytics" type="button" aria-label="Analytics">⌗</button><button class="crm-nav-btn" data-crm-view="automations" type="button" aria-label="Automations">↯</button><button class="crm-nav-btn" data-crm-view="settings" type="button" aria-label="Settings">⚙</button><button class="crm-exit" id="closeCrm" type="button" aria-label="Close CRM">×</button></div><div class="crm-main"><div class="crm-topbar"><div><small>LEADFLOW DEMO CRM</small><h3 id="crmViewTitle">Qualification Pipeline</h3></div><div class="crm-top-actions"><span class="sync-dot"></span><span>Browser-local state</span><button id="closeCrmTop" type="button">Close</button></div></div>
+    <section class="crm-view active" data-crm-panel="leads"><div class="crm-metrics"><div><span>Total leads</span><b id="crmTotal">0</b><small>in demo pipeline</small></div><div><span>High priority</span><b id="crmHot">0</b><small id="crmHotRule">score 80+</small></div><div><span>Needs review</span><b id="crmReview">0</b><small id="crmReviewRule">score 55–79</small></div><div><span>Nurture</span><b id="crmNurture">0</b><small id="crmNurtureRule">score below 55</small></div></div><div class="crm-toolbar"><div class="search-wrap"><span>⌕</span><input id="crmSearch" placeholder="Search name or company…" /></div><select id="crmFilter"><option value="all">All leads</option><option value="hot">High priority</option><option value="review">Review</option><option value="nurture">Nurture</option></select></div><div class="crm-table-wrap"><table class="crm-table"><thead><tr><th>Lead</th><th>Company</th><th>Score</th><th>Status</th><th>Intent</th><th>Timeline</th><th>Created</th></tr></thead><tbody id="crmRows"></tbody></table></div><div class="crm-empty" id="crmEmpty">No leads match this view.</div></section>
+    <section class="crm-view" data-crm-panel="analytics"><div class="analytics-summary"><article><span>Average score</span><strong id="analyticsAvg">0</strong><small>across current pipeline</small></article><article><span>High intent</span><strong id="analyticsIntent">0%</strong><small>of all leads</small></article><article><span>Immediate timeline</span><strong id="analyticsUrgent">0%</strong><small>ASAP requests</small></article></div><div class="analytics-grid"><div class="crm-panel-card"><div class="crm-panel-head"><div><small>PIPELINE MIX</small><b>Qualification distribution</b></div><span id="analyticsTotal">0 leads</span></div><div class="distribution-chart"><div class="distribution-row"><span>High</span><div><i id="barHot"></i></div><b id="barHotValue">0</b></div><div class="distribution-row"><span>Review</span><div><i id="barReview"></i></div><b id="barReviewValue">0</b></div><div class="distribution-row"><span>Nurture</span><div><i id="barNurture"></i></div><b id="barNurtureValue">0</b></div></div></div><div class="crm-panel-card"><div class="crm-panel-head"><div><small>SCORE RANGE</small><b>Lead priority snapshot</b></div><span>0–100</span></div><div class="score-band"><i id="scoreBandFill"></i><span id="scoreBandMarker"></span></div><div class="score-band-labels"><span>Low</span><span>Review</span><span>High</span></div><p class="panel-copy" id="analyticsInsight">Qualification insight will update as leads enter the pipeline.</p></div></div></section>
+    <section class="crm-view" data-crm-panel="automations"><div class="automation-header"><div><small>DEMO CONTROLS</small><h4>Lead operations</h4></div><span>3 controls</span></div><div class="automation-list"><article class="automation-card enabled" data-automation="qualification"><div class="automation-icon">✦</div><div class="automation-copy"><b>Lead Qualification</b><p>Validate → duplicate check → score → route</p><small>Trigger: new demo lead</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article><article class="automation-card enabled" data-automation="followup"><div class="automation-icon">↗</div><div class="automation-copy"><b>Follow-up Draft</b><p>Prepare a contextual next-step message after qualification.</p><small>Demo state only · nothing sent</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article><article class="automation-card enabled" data-automation="sales-alert"><div class="automation-icon">↯</div><div class="automation-copy"><b>Sales Review Route</b><p>Prepare high-priority opportunities for the sales-review path.</p><small>Demo state only · no outbound delivery</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article></div><div class="run-history"><div class="crm-panel-head"><div><small>RECENT ACTIVITY</small><b>Workflow runs</b></div><span id="runHistoryCount">0 runs</span></div><div id="runHistoryRows" class="run-history-rows"></div></div></section>
+    <section class="crm-view" data-crm-panel="settings"><div class="settings-grid"><div class="crm-panel-card"><div class="crm-panel-head"><div><small>QUALIFICATION</small><b>Routing thresholds</b></div><span>Rules</span></div><label class="setting-field">High-priority threshold<div><input id="hotThreshold" type="range" min="70" max="95" value="80"><output id="hotThresholdValue">80</output></div></label><label class="setting-field">Review threshold<div><input id="reviewThreshold" type="range" min="35" max="75" value="55"><output id="reviewThresholdValue">55</output></div></label><label class="setting-select">Default sales owner<select id="salesOwner"><option>Growth Team</option><option>Inbound Sales</option><option>Account Executive</option></select></label></div><div class="crm-panel-card"><div class="crm-panel-head"><div><small>ROUTING</small><b>Demo preferences</b></div><span>Local only</span></div><label class="setting-switch"><span><b>Priority route</b><small>Prepare the sales-review state for a high-priority lead.</small></span><input id="priorityAlert" type="checkbox" checked><i></i></label><label class="setting-switch"><span><b>Follow-up draft</b><small>Prepare a message after every qualification.</small></span><input id="autoFollowup" type="checkbox" checked><i></i></label><label class="setting-switch"><span><b>Review queue</b><small>Keep medium-score leads for human review.</small></span><input id="reviewQueue" type="checkbox" checked><i></i></label></div></div><div class="integration-row"><div><span class="integration-mark">L</span><p><b>Demo CRM</b><small>Browser-local record storage</small></p><em class="connected">Local</em></div><div><span class="integration-mark">R</span><p><b>Qualification Engine</b><small>Deterministic scoring rules</small></p><em class="connected">Active</em></div><div><span class="integration-mark">↯</span><p><b>Outbound Delivery</b><small>Email / Slack / external CRM</small></p><em>Simulated</em></div></div><div class="settings-actions"><span id="settingsSaved"></span><button id="saveCrmSettings" class="primary-btn" type="button">Save settings</button></div></section></div><aside class="lead-drawer" id="leadDrawer"><button id="closeDrawer" type="button" class="drawer-close">×</button><small>CRM RECORD</small><h3 id="drawerName">Sarah</h3><p id="drawerCompany">Acme Dental</p><div class="drawer-score"><strong id="drawerScore">92</strong><span>/100</span><em id="drawerStatus">HIGH PRIORITY</em></div><div class="drawer-fields"><div><span>Need</span><b id="drawerNeed"></b></div><div><span>Budget</span><b id="drawerBudget"></b></div><div><span>Timeline</span><b id="drawerTimeline"></b></div><div><span>Qualification rationale</span><b id="drawerSummary"></b></div></div><div class="drawer-followup"><span>DRAFT — NOT SENT</span><p id="drawerFollowup"></p></div></aside></div></div>
 
-        <section class="crm-view active" data-crm-panel="leads">
-          <div class="crm-metrics">
-            <div><span>Total leads</span><b id="crmTotal">0</b><small>in pipeline</small></div>
-            <div><span>Hot leads</span><b id="crmHot">0</b><small id="crmHotRule">score 80+</small></div>
-            <div><span>Needs review</span><b id="crmReview">0</b><small id="crmReviewRule">score 55–79</small></div>
-            <div><span>Nurture</span><b id="crmNurture">0</b><small id="crmNurtureRule">score below 55</small></div>
-          </div>
-          <div class="crm-toolbar">
-            <div class="search-wrap"><span>⌕</span><input id="crmSearch" placeholder="Search name or company…" /></div>
-            <select id="crmFilter" aria-label="Filter leads">
-              <option value="all">All leads</option>
-              <option value="hot">Hot leads</option>
-              <option value="review">Review</option>
-              <option value="nurture">Nurture</option>
-            </select>
-          </div>
-          <div class="crm-table-wrap">
-            <table class="crm-table">
-              <thead><tr><th>Lead</th><th>Company</th><th>Score</th><th>Status</th><th>Intent</th><th>Timeline</th><th>Created</th></tr></thead>
-              <tbody id="crmRows"></tbody>
-            </table>
-          </div>
-          <div class="crm-empty" id="crmEmpty">No leads match this view.</div>
-        </section>
+  <div class="followup-modal" id="followupModal" aria-hidden="true"><div class="followup-dialog" role="dialog" aria-modal="true" aria-label="Follow-up draft"><button id="closeFollowup" class="drawer-close" type="button">×</button><p class="tag">DRAFT — NOT SENT</p><h3 id="followupTitle">Follow-up draft</h3><div class="message-preview"><small>SUBJECT</small><b id="followupSubject"></b><small>MESSAGE</small><p id="followupBody"></p></div><p class="microcopy">Prepared from the lead context and qualification result. This public demo does not send messages.</p></div></div>
 
-        <section class="crm-view" data-crm-panel="analytics">
-          <div class="analytics-summary">
-            <article><span>Average score</span><strong id="analyticsAvg">0</strong><small>across current pipeline</small></article>
-            <article><span>High intent</span><strong id="analyticsIntent">0%</strong><small>of all leads</small></article>
-            <article><span>Immediate timeline</span><strong id="analyticsUrgent">0%</strong><small>ASAP requests</small></article>
-          </div>
-          <div class="analytics-grid">
-            <div class="crm-panel-card">
-              <div class="crm-panel-head"><div><small>PIPELINE MIX</small><b>Qualification distribution</b></div><span id="analyticsTotal">0 leads</span></div>
-              <div class="distribution-chart">
-                <div class="distribution-row"><span>Hot</span><div><i id="barHot"></i></div><b id="barHotValue">0</b></div>
-                <div class="distribution-row"><span>Review</span><div><i id="barReview"></i></div><b id="barReviewValue">0</b></div>
-                <div class="distribution-row"><span>Nurture</span><div><i id="barNurture"></i></div><b id="barNurtureValue">0</b></div>
-              </div>
-            </div>
-            <div class="crm-panel-card">
-              <div class="crm-panel-head"><div><small>SCORE RANGE</small><b>Lead quality snapshot</b></div><span>0–100</span></div>
-              <div class="score-band"><i id="scoreBandFill"></i><span id="scoreBandMarker"></span></div>
-              <div class="score-band-labels"><span>Low</span><span>Review</span><span>Hot</span></div>
-              <p class="panel-copy" id="analyticsInsight">Qualification insight will update as leads enter the pipeline.</p>
-            </div>
-          </div>
-          <div class="crm-panel-card analytics-activity">
-            <div class="crm-panel-head"><div><small>RECENT SCORE ACTIVITY</small><b>Lead quality over the latest runs</b></div><span>0–100</span></div>
-            <div class="score-history" id="scoreHistory" aria-label="Recent lead score chart"></div>
-          </div>
-        </section>
-
-        <section class="crm-view" data-crm-panel="automations">
-          <div class="automation-header"><div><small>ACTIVE WORKFLOWS</small><h4>Lead operations</h4></div><span>3 workflows</span></div>
-          <div class="automation-list">
-            <article class="automation-card enabled" data-automation="qualification">
-              <div class="automation-icon">✦</div><div class="automation-copy"><b>Lead Qualification</b><p>Validate → duplicate check → score → route</p><small>Trigger: new inbound lead</small></div>
-              <button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button>
-            </article>
-            <article class="automation-card enabled" data-automation="followup">
-              <div class="automation-icon">↗</div><div class="automation-copy"><b>Follow-up Generator</b><p>Prepare a contextual next-step message after qualification.</p><small>Trigger: qualification complete</small></div>
-              <button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button>
-            </article>
-            <article class="automation-card enabled" data-automation="sales-alert">
-              <div class="automation-icon">↯</div><div class="automation-copy"><b>Hot Lead Alert</b><p>Send high-priority opportunities directly to the sales queue.</p><small>Trigger: score reaches hot threshold</small></div>
-              <button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button>
-            </article>
-          </div>
-          <div class="run-history">
-            <div class="crm-panel-head"><div><small>RECENT ACTIVITY</small><b>Workflow runs</b></div><span id="runHistoryCount">0 runs</span></div>
-            <div id="runHistoryRows" class="run-history-rows"></div>
-          </div>
-        </section>
-
-        <section class="crm-view" data-crm-panel="settings">
-          <div class="settings-grid">
-            <div class="crm-panel-card">
-              <div class="crm-panel-head"><div><small>QUALIFICATION</small><b>Routing thresholds</b></div><span>Rules</span></div>
-              <label class="setting-field">Hot lead threshold <div><input id="hotThreshold" type="range" min="70" max="95" value="80"><output id="hotThresholdValue">80</output></div></label>
-              <label class="setting-field">Review threshold <div><input id="reviewThreshold" type="range" min="35" max="75" value="55"><output id="reviewThresholdValue">55</output></div></label>
-              <label class="setting-select">Default sales owner<select id="salesOwner"><option>Growth Team</option><option>Inbound Sales</option><option>Account Executive</option></select></label>
-            </div>
-            <div class="crm-panel-card">
-              <div class="crm-panel-head"><div><small>NOTIFICATIONS</small><b>Sales handoff</b></div><span>Preferences</span></div>
-              <label class="setting-switch"><span><b>Priority alert</b><small>Alert sales when a lead becomes hot.</small></span><input id="priorityAlert" type="checkbox" checked><i></i></label>
-              <label class="setting-switch"><span><b>Follow-up draft</b><small>Prepare a message after every qualification.</small></span><input id="autoFollowup" type="checkbox" checked><i></i></label>
-              <label class="setting-switch"><span><b>Review queue</b><small>Keep medium-score leads for human review.</small></span><input id="reviewQueue" type="checkbox" checked><i></i></label>
-            </div>
-          </div>
-          <div class="integration-row">
-            <div><span class="integration-mark">H</span><p><b>CRM Connection</b><small>Contact and opportunity sync</small></p><em class="connected">Connected</em></div>
-            <div><span class="integration-mark">✦</span><p><b>Qualification Engine</b><small>Structured lead analysis</small></p><em class="connected">Active</em></div>
-            <div><span class="integration-mark">↯</span><p><b>Sales Alerts</b><small>Priority routing channel</small></p><em class="connected">Active</em></div>
-          </div>
-          <div class="settings-actions"><span id="settingsSaved" aria-live="polite"></span><button id="saveCrmSettings" class="primary-btn" type="button">Save settings</button></div>
-        </section>
-      </div>
-      <aside class="lead-drawer" id="leadDrawer">
-        <button id="closeDrawer" type="button" class="drawer-close">×</button>
-        <small>CRM RECORD</small>
-        <h3 id="drawerName">Sarah</h3>
-        <p id="drawerCompany">Acme Dental</p>
-        <div class="drawer-score"><strong id="drawerScore">92</strong><span>/100</span><em id="drawerStatus">HOT LEAD</em></div>
-        <div class="drawer-fields">
-          <div><span>Need</span><b id="drawerNeed"></b></div>
-          <div><span>Budget</span><b id="drawerBudget"></b></div>
-          <div><span>Timeline</span><b id="drawerTimeline"></b></div>
-          <div><span>AI Summary</span><b id="drawerSummary"></b></div>
-        </div>
-        <div class="drawer-followup"><span>GENERATED FOLLOW-UP</span><p id="drawerFollowup"></p></div>
-      </aside>
-    </div>
-  </div>
-
-  <div class="followup-modal" id="followupModal" aria-hidden="true">
-    <div class="followup-dialog" role="dialog" aria-modal="true" aria-label="Generated follow-up">
-      <button id="closeFollowup" class="drawer-close" type="button">×</button>
-      <p class="tag">GENERATED FOLLOW-UP</p>
-      <h3 id="followupTitle">Follow-up for Sarah</h3>
-      <div class="message-preview">
-        <small>SUBJECT</small><b id="followupSubject">Re: Automating lead follow-up at Acme Dental</b>
-        <small>MESSAGE</small><p id="followupBody"></p>
-      </div>
-      <p class="microcopy">Prepared from the lead context and qualification result.</p>
-    </div>
-  </div>
-
-  <div class="tour-status" id="tourStatus" aria-live="polite" aria-hidden="true">
-    <span id="tourIndex">1 / 5</span>
-    <b id="tourLabel">Preparing guided walkthrough…</b>
-    <button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button>
-  </div>
-
+  <div class="tour-status" id="tourStatus" aria-hidden="true"><span id="tourIndex">1 / 4</span><b id="tourLabel">Preparing walkthrough…</b><button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button></div>
   <script src="./app.js"></script>
 </body>
 </html>
