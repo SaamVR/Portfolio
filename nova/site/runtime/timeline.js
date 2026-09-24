@@ -120,11 +120,6 @@ function viewportAdjusted(state, viewportClass){
     state.camera.target[1] -= .14;
     state.product.position[0] *= .12;
     state.product.position[1] += .30;
-    if(state.range === 'resolution'){
-      state.product.position[0] += .30;
-      state.product.position[1] -= .68;
-      state.camera.position[2] += .10;
-    }
     state.product.yaw *= .62;
     state.product.pitch *= .58;
     state.camera.position[2] += .72;
