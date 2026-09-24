@@ -12,3 +12,5 @@ Final R11 safe-inset preview verification for source 62dc4d8aad433460a7f1b5cd607
 R11 f482 synchronized V2 public preview verification.
 
 R12 deployed source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc public preview verification.
+
+R12 deployed preview verification for exact site source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc.
