@@ -142,3 +142,5 @@ def test_r12_visual_qa_covers_webgl_failure_mobile_nav_facts_and_named_views():
         "inspection_rear.png",
     ]:
         assert token in qa
+
+# R12 complete-head GREEN verification trigger.
