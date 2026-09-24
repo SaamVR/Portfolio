@@ -73,7 +73,7 @@ const PRODUCT_POSE_KEYFRAMES = [
   // V1-style source-clip choreography: keep the physical product legible while the
   // authored GLTF pose continues to evolve underneath V2's camera and UI layers.
   [0.000,.240],[0.045,.285],[0.090,.320],[0.120,.300],
-  [0.160,.270],[0.200,.220],[0.240,.260],[0.280,.240],
+  [0.160,.270],[0.180,.285],[0.200,.205],[0.240,.270],[0.280,.240],
   [0.300,.460],[0.320,.700],
   [0.360,.760],[0.410,.710],[0.450,.740],
   [0.490,.700],[0.540,.760],[0.580,.720],
