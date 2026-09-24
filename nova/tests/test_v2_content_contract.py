@@ -222,3 +222,8 @@ def test_r12_mobile_resolution_uses_single_row_feature_rail():
     assert ".stage--resolution.feature-strip{flex-wrap:nowrap" in compact
     assert "overflow-x:auto" in compact
     assert ".stage--resolution.feature-stripspan{flex:00auto}" in compact
+
+
+def test_r12_mobile_resolution_copy_sits_below_proven_product_frame():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--resolution.stage-inner{padding-bottom:3svh}" in compact
