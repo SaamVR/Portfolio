@@ -160,5 +160,5 @@ assert.ok(behindMobileR10.product.scale < .56, `Behind handoff should make the p
 
 
 const r12MobileResolution=sampleTimeline(.92,'mobile');
-assert.ok(r12MobileResolution.product.position[0] > .15, `R12 mobile Resolution product should shift right of copy safe area, got x=${r12MobileResolution.product.position[0]}`);
-assert.ok(r12MobileResolution.product.position[1] < .12, `R12 mobile Resolution product must move upward on screen by reducing authored Y, got y=${r12MobileResolution.product.position[1]}`);
+assert.ok(r12MobileResolution.product.position[0] > .24, `R12 mobile Resolution product should shift right of copy safe area, got x=${r12MobileResolution.product.position[0]}`);
+assert.ok(r12MobileResolution.product.position[1] < -.25, `R12 mobile Resolution product must clear the expanded headline by moving upward, got y=${r12MobileResolution.product.position[1]}`);
