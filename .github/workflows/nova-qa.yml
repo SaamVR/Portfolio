@@ -335,8 +335,8 @@ jobs:
             await page.getByRole('button',{name:/preview notify flow/i}).tap();
             await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
             await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.getByRole('button',{name:/continue exploring/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed');
+            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
+            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
 
             await context.close();
           }
