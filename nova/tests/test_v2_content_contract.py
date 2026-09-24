@@ -288,3 +288,10 @@ def test_r13_mobile_hero_fast_path_does_not_add_a_third_text_row():
 def test_r13_behind_transition_keeps_padding_inside_viewport_height():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
+
+
+def test_r13_compact_behind_parent_does_not_add_padding_outside_sticky_child():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
+    assert "color:#eee8de;padding:0}" in compact
+    assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
