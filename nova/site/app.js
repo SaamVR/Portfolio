@@ -307,7 +307,7 @@ function publishState(state){
     listeningMode,
     noiseMode,
     foldState,
-    inspectionView
+    inspectionView:interactionState.inspection?.view || inspectionView
   };
   updateProductUI(state);
 }
