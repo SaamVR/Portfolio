@@ -121,8 +121,8 @@ function viewportAdjusted(state, viewportClass){
     state.product.position[0] *= .12;
     state.product.position[1] += .30;
     if(state.range === 'resolution'){
-      state.product.position[0] += .22;
-      state.product.position[1] += .42;
+      state.product.position[0] += .24;
+      state.product.position[1] -= .30;
       state.camera.position[2] += .10;
     }
     state.product.yaw *= .62;
