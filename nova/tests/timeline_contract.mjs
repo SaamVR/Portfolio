@@ -157,3 +157,8 @@ const behindDesktopR10=sampleTimeline(.985,'desktop');
 assert.ok(behindDesktopR10.product.scale < .62, `Behind handoff should make the product clearly secondary on desktop, got ${behindDesktopR10.product.scale}`);
 const behindMobileR10=sampleTimeline(.985,'mobile');
 assert.ok(behindMobileR10.product.scale < .56, `Behind handoff should make the product clearly secondary on mobile, got ${behindMobileR10.product.scale}`);
+
+
+const r12MobileResolution=sampleTimeline(.92,'mobile');
+assert.ok(r12MobileResolution.product.position[0] > .15, `R12 mobile Resolution product should shift right of copy safe area, got x=${r12MobileResolution.product.position[0]}`);
+assert.ok(r12MobileResolution.product.position[1] > .65, `R12 mobile Resolution product should lift above readable copy, got y=${r12MobileResolution.product.position[1]}`);
