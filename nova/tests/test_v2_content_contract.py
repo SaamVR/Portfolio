@@ -276,3 +276,10 @@ def test_r13_client_cta_is_more_explicit():
 def test_r13_compact_handoff_counts_padding_inside_110svh():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
+
+
+def test_r13_mobile_hero_fast_path_does_not_add_a_third_text_row():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'aria-label="Three product moments guided tour">Guided tour<' in html
+    assert ".stage--hero.hero-actions{display:grid;grid-template-columns:max-contentmax-content" in compact
+    assert ".stage--hero.hero-actions.gesture-hint{display:none}" in compact
