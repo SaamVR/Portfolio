@@ -5,8 +5,8 @@ css = (ROOT/"styles.css").read_text()
 
 def test_product_story_precedes_technical_story():
     assert "Hear beyond" in html
-    assert "Behind NOVA" in html
-    assert html.index("Hear beyond") < html.index("Behind NOVA")
+    assert "Designed like a launch." in html
+    assert html.index("Hear beyond") < html.index("Designed like a launch.")
 
 def test_required_product_controls_are_semantic_buttons():
     for value in ["spatial","focus","ambient"]:
@@ -23,8 +23,8 @@ def test_no_fake_numeric_product_specs():
     assert not any(term.lower() in html.lower() for term in banned)
 
 def test_technical_facts_live_after_product_journey():
-    assert html.index("Behind NOVA") < html.index(">36<")
-    assert html.index("Behind NOVA") < html.index(">14<")
+    assert html.index("Designed like a launch.") < html.index(">36<")
+    assert html.index("Designed like a launch.") < html.index(">14<")
 
 def test_mobile_and_reduced_motion_are_authored():
     assert "@media (max-width: 700px)" in css
