@@ -267,3 +267,8 @@ def test_r13_validation_evidence_is_client_facing_and_measured_not_marketing():
 def test_r13_client_cta_is_more_explicit():
     assert "Discuss a 3D product website" in html
     assert "Copy a ready-to-send project brief" in html
+
+
+def test_r13_compact_handoff_counts_padding_inside_110svh():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
