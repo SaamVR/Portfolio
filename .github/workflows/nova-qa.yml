@@ -180,10 +180,10 @@ jobs:
                   rect:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom}
                 };
               },{label:check.label});
+              await page.screenshot({path:'nova-qa/'+prefix+'_collision_'+check.label+'.png'});
               if(!result.skipped && result.ratio>.04){
                 throw new Error(prefix+' headline/product collision at '+check.label+' '+JSON.stringify(result));
               }
-              await page.screenshot({path:'nova-qa/'+prefix+'_collision_'+check.label+'.png'});
             }
             await context.close();
           }
