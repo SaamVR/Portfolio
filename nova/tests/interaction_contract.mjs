@@ -152,3 +152,20 @@ edgeSafeHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:390,heigh
 assert.ok(String(edgeSafeElement.style.transform).includes('374px'),'mobile hotspot center must be clamped to a 16px safe inset');
 
 console.log('interaction_contract: PASS');
+
+
+inspect.setView('side');
+inspect.update(.3);
+i=inspect.getInfluence();
+assert.equal(i.view,'side');
+assert.ok(i.modelYaw>1,'side inspection view must rotate the product substantially');
+inspect.setView('rear');
+inspect.update(.5);
+i=inspect.getInfluence();
+assert.equal(i.view,'rear');
+assert.ok(i.modelYaw>2.5,'rear inspection view must reveal the back of the product');
+inspect.setView('front');
+inspect.update(.5);
+i=inspect.getInfluence();
+assert.equal(i.view,'front');
+assert.ok(Math.abs(i.modelYaw)<.2,'front inspection view must return toward the authored front');
