@@ -170,7 +170,7 @@ jobs:
                   for(let x=0;x<image.width;x+=stride){
                     const alpha=image.data[(y*image.width+x)*4+3];
                     sampled++;
-                    if(alpha>20) occupied++;
+                    if(alpha>96) occupied++;
                   }
                 }
                 return {
