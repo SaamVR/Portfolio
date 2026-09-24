@@ -640,3 +640,9 @@ body[data-product-facts="open"] .facts-panel{transform:none}
   .stage--resolution .feature-strip::-webkit-scrollbar{display:none}
   .stage--resolution .feature-strip span{flex:0 0 auto}
 }
+
+
+/* R12 mobile product-summary clearance: move content, preserve proven product framing. */
+@media (max-width:700px){
+  .stage--resolution .stage-inner{padding-bottom:3svh}
+}
