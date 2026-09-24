@@ -4,7 +4,7 @@ import { getGlobalProgress, getRangeState, sampleTimeline } from './runtime/time
 import { createInteractionState, composeVisualState } from './runtime/composer.js';
 import { createRenderAdapter } from './runtime/render-adapter.js';
 import { createEnvironment } from './runtime/environment.js';
-import { bindProductUI, updateProductUI } from './ui/product-ui.js';
+import { bindProductUI, updateProductUI, set3dAvailability } from './ui/product-ui.js';
 import { createFoldController } from './interactions/fold-controller.js';
 import { createInspectionController } from './interactions/inspection-controller.js';
 import { createHotspotController } from './interactions/hotspot-controller.js';
@@ -26,6 +26,7 @@ const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
 const poseOverrideRaw = query.get('pose');
 const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, Number(poseOverrideRaw)));
+const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
@@ -38,16 +39,32 @@ let currentComposedState = null;
 let listeningMode = 'spatial';
 let noiseMode = 'adaptive';
 let foldState = 'open';
+let inspectionView = 'front';
 let scrollActivityUntil = 0;
 
-const renderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth <= 700 ? 1.35 : 1.6));
-renderer.setSize(innerWidth,innerHeight,false);
-renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.08;
-renderer.shadowMap.enabled=false;
-renderer.setClearColor(0x000000,0);
+let renderer=null;
+let rendererAvailable=false;
+try{
+  if(forceStatic) throw new Error('forced static fallback');
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth <= 700 ? 1.35 : 1.6));
+  renderer.setSize(innerWidth,innerHeight,false);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.08;
+  renderer.shadowMap.enabled=false;
+  renderer.setClearColor(0x000000,0);
+  rendererAvailable=true;
+  document.body.dataset.threeDAvailable='true';
+}catch(error){
+  rendererAvailable=false;
+  document.body.dataset.modelState='fallback';
+  document.body.dataset.threeDAvailable='false';
+  canvas.hidden=true;
+  set3dAvailability(false);
+  if(runtimeState) runtimeState.textContent='STATIC MODE / 3D UNAVAILABLE';
+  console.warn('NOVA WebGL renderer unavailable; continuing with static product experience.',error);
+}
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(30,innerWidth/innerHeight,.01,100);
@@ -83,9 +100,9 @@ let mixer=null;
 let clip=null;
 let clipDuration=27.70833;
 let primaryProductBounds=null;
-let adapter=createRenderAdapter({
+let adapter=rendererAvailable?createRenderAdapter({
   THREE,camera,presentation,mixer:null,clipDuration,renderer,lights,environment,orientationX
-});
+}):null;
 let lastTime=performance.now();
 
 const REDUCED_SETTLED={
@@ -191,12 +208,18 @@ function hideHotspots(){
 }
 
 function rebuildAdapter(){
+  if(!rendererAvailable) return;
   adapter=createRenderAdapter({
     THREE,camera,presentation,mixer,clipDuration,renderer,lights,environment,orientationX
   });
 }
 
 function loadModel(){
+  if(!rendererAvailable){
+    hideHotspots();
+    set3dAvailability(false);
+    return;
+  }
   const loader=new GLTFLoader();
   loader.load('./assets/headphones-web.gltf',gltf=>{
     model=gltf.scene;
@@ -229,11 +252,13 @@ function loadModel(){
     buildHotspotController(size);
     rebuildAdapter();
     document.body.dataset.modelState='ready';
+    set3dAvailability(true);
     if(runtimeState) runtimeState.textContent=`${clip?.name || 'GLTF'} / ${clipDuration.toFixed(2)} SEC / LIVE`;
   },xhr=>{
     if(xhr.total && runtimeState) runtimeState.textContent=`LOADING NOVA / ${Math.round(xhr.loaded/xhr.total*100)}%`;
   },error=>{
     document.body.dataset.modelState='error';
+    set3dAvailability(false);
     hideHotspots();
     if(runtimeState) runtimeState.textContent='3D MODEL UNAVAILABLE';
     console.error('NOVA GLTF load failed',error);
@@ -241,8 +266,10 @@ function loadModel(){
 }
 
 function resize(){
-  renderer.setSize(innerWidth,innerHeight,false);
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1,innerWidth<=700?1.35:1.6));
+  if(rendererAvailable){
+    renderer.setSize(innerWidth,innerHeight,false);
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1,innerWidth<=700?1.35:1.6));
+  }
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   environment.resize(innerWidth,innerHeight);
@@ -279,7 +306,8 @@ function publishState(state){
   state.interaction={
     listeningMode,
     noiseMode,
-    foldState
+    foldState,
+    inspectionView:interactionState.inspection?.view || inspectionView
   };
   updateProductUI(state);
 }
@@ -336,8 +364,10 @@ function render(now=performance.now()){
   const composed=composeVisualState(base,interactionState);
   currentComposedState=composed;
   publishState(composed);
-  adapter.apply(composed,dt);
-  renderer.render(scene,camera);
+  if(rendererAvailable && adapter){
+    adapter.apply(composed,dt);
+    renderer.render(scene,camera);
+  }
   requestAnimationFrame(render);
 }
 
@@ -360,7 +390,13 @@ const actions={
   clearHotspot(){
     hotspotController?.clear();
   },
+  setInspectionView(view){
+    inspectionView=view;
+    inspectionController.setView(view);
+    hotspotController?.clear();
+  },
   resetInspection(){
+    inspectionView='front';
     inspectionController.reset();
     hotspotController?.clear();
   },
@@ -370,6 +406,7 @@ const actions={
 };
 
 bindProductUI(actions);
+set3dAvailability(rendererAvailable);
 
 window.addEventListener('pointermove',event=>{
   pointer.tx=(event.clientX/Math.max(1,innerWidth)-.5)*2;

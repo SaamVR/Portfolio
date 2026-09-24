@@ -128,3 +128,19 @@ def test_build_validates_v1_archive_payload():
         assert path in build
 
 # R11 GREEN verification trigger.
+
+
+def test_r12_visual_qa_covers_webgl_failure_mobile_nav_facts_and_named_views():
+    for token in [
+        "rendererFailureAudit",
+        "mobileNavAudit",
+        "productFactsAudit",
+        "inspectionViewsAudit",
+        "STATIC MODE / 3D UNAVAILABLE",
+        "mobile_nav.png",
+        "product_facts.png",
+        "inspection_rear.png",
+    ]:
+        assert token in qa
+
+# R12 complete-head GREEN verification trigger.

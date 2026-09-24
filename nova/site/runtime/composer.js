@@ -4,7 +4,7 @@ const lerp = (a,b,t) => a + (b-a) * t;
 export function createInteractionState(){
   return {
     fold:{weight:0,targetPose:0,active:false},
-    inspection:{weight:0,yaw:0,pitch:0,active:false},
+    inspection:{weight:0,yaw:0,pitch:0,modelYaw:0,view:'front',active:false},
     hotspot:{weight:0,id:null,cameraOffset:[0,0,0],targetOffset:[0,0,0]},
     listening:{mode:'spatial',weight:0},
     noise:{mode:'adaptive',weight:0},
@@ -34,6 +34,7 @@ export function composeVisualState(baseState, interactionState=createInteraction
   if(iw > 0){
     out.camera.position[0] += (inspection.yaw || 0) * 1.05 * iw;
     out.camera.position[1] += (inspection.pitch || 0) * .72 * iw;
+    out.product.yaw += (inspection.modelYaw || 0) * iw;
   }
 
   const hotspot = interactionState.hotspot || {};

@@ -276,7 +276,7 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/notify me/i}).click();
+            await page.getByRole('button',{name:/preview notify flow/i}).click();
             await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
             await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
             await page.keyboard.press('Escape');
@@ -332,7 +332,7 @@ jobs:
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/notify me/i}).tap();
+            await page.getByRole('button',{name:/preview notify flow/i}).tap();
             await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
             await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
             await page.getByRole('button',{name:/continue exploring/i}).tap();
@@ -394,9 +394,9 @@ jobs:
                 nav:pick('.masthead')
               };
             });
-            const minBody=prefix==='mobile'?14:16;
+            const minBody=prefix==='mobile'?16:16;
             if(metrics.body.fontSize<minBody) throw new Error(prefix+' readability body copy too small '+JSON.stringify(metrics));
-            if(metrics.utility.fontSize<10||metrics.button.fontSize<10||metrics.nav.fontSize<10){
+            if(metrics.utility.fontSize<11||metrics.button.fontSize<12||metrics.nav.fontSize<12){
               throw new Error(prefix+' readability utility copy too small '+JSON.stringify(metrics));
             }
             await page.screenshot({path:'nova-qa/'+prefix+'_readability.png'});
@@ -420,6 +420,86 @@ jobs:
               throw new Error(prefix+' V1 archive failed '+JSON.stringify({result,errors}));
             }
             await page.screenshot({path:'nova-qa/v1_'+prefix+'.png'});
+            await context.close();
+          }
+
+          async function rendererFailureAudit(){
+            const context=await browser.newContext({viewport:{width:1280,height:900}});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:4173/?static=1',{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='fallback' && document.body.dataset.uiReady==='true');
+            const focus=page.getByRole('button',{name:/focus/i});
+            await focus.click();
+            const facts=page.getByRole('button',{name:/product facts/i});
+            await facts.click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            const result=await page.evaluate(()=>({
+              state:document.body.dataset.modelState,
+              runtime:document.querySelector('#runtimeState')?.textContent||'',
+              posterOpacity:Number(getComputedStyle(document.querySelector('.product-poster')).opacity),
+              focusPressed:document.querySelector('[data-listening-mode="focus"]')?.getAttribute('aria-pressed'),
+              foldDisabled:Boolean(document.querySelector('[data-fold-state="fold"]')?.disabled),
+              factsOpen:document.body.dataset.productFacts,
+              headline:document.body.innerText.includes('Hear beyond')
+            }));
+            if(result.state!=='fallback'||!result.runtime.includes('STATIC MODE / 3D UNAVAILABLE')||result.posterOpacity<.9||result.focusPressed!=='true'||!result.foldDisabled||result.factsOpen!=='open'||!result.headline){
+              throw new Error('renderer fallback incomplete '+JSON.stringify(result));
+            }
+            if(errors.length) throw new Error('renderer fallback pageerror '+errors.join(' | '));
+            await page.screenshot({path:'nova-qa/static_fallback.png'});
+            await context.close();
+          }
+
+          async function mobileNavAudit(){
+            const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+            const {page}=await readyPage(context,'mobile-nav');
+            await page.getByRole('button',{name:/menu/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.mobileNav==='open');
+            const state=await page.evaluate(()=>({
+              open:document.body.dataset.mobileNav,
+              hidden:document.querySelector('#mobileNavPanel')?.getAttribute('aria-hidden'),
+              links:document.querySelectorAll('#mobileNavPanel a').length
+            }));
+            if(state.open!=='open'||state.hidden!=='false'||state.links<5) throw new Error('mobile navigation incomplete '+JSON.stringify(state));
+            await page.screenshot({path:'nova-qa/mobile_nav.png'});
+            await page.keyboard.press('Escape');
+            await page.waitForFunction(()=>document.body.dataset.mobileNav==='closed');
+            await context.close();
+          }
+
+          async function productFactsAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'product-facts');
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            const state=await page.evaluate(()=>({
+              open:document.body.dataset.productFacts,
+              panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
+              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
+              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+            }));
+            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
+            await page.screenshot({path:'nova-qa/product_facts.png'});
+            await page.getByRole('button',{name:/close product facts/i}).click();
+            await context.close();
+          }
+
+          async function inspectionViewsAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'inspection-views');
+            await scrollProgress(page,.79);
+            await page.getByRole('button',{name:'Side',exact:true}).click();
+            await page.waitForTimeout(520);
+            if(await page.getByRole('button',{name:'Side',exact:true}).getAttribute('aria-pressed')!=='true') throw new Error('side inspection view did not activate');
+            await page.getByRole('button',{name:'Rear',exact:true}).click();
+            await page.waitForTimeout(680);
+            if(await page.getByRole('button',{name:'Rear',exact:true}).getAttribute('aria-pressed')!=='true') throw new Error('rear inspection view did not activate');
+            await page.screenshot({path:'nova-qa/inspection_rear.png'});
+            await page.getByRole('button',{name:'Front',exact:true}).click();
+            await page.waitForTimeout(520);
             await context.close();
           }
 
@@ -471,6 +551,10 @@ jobs:
           await caseStudyAudit({width:390,height:844},'mobile');
           await readabilityAudit({width:1440,height:1000},'desktop');
           await readabilityAudit({width:390,height:844},'mobile');
+          await rendererFailureAudit();
+          await mobileNavAudit();
+          await productFactsAudit();
+          await inspectionViewsAudit();
           await versionArchiveAudit({width:1440,height:1000},'desktop');
           await versionArchiveAudit({width:390,height:844},'mobile');
           await reducedMotionAudit();

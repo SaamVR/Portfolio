@@ -6,6 +6,11 @@
   <meta name="theme-color" content="#eee8dc" />
   <title>NOVA — Hear beyond.</title>
   <meta name="description" content="NOVA is a fictional premium wireless headphone concept presented as an interactive 3D product experience." />
+  <meta property="og:title" content="NOVA — Hear beyond." />
+  <meta property="og:description" content="A fictional premium headphone launch built as a responsive real-time 3D product experience." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nova-interactive-portfolio.pages.dev/" />
+  <meta name="twitter:card" content="summary" />
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
   {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
@@ -13,7 +18,11 @@
 </head>
 <body data-model-state="loading" data-range="hero" data-theme="light">
   <canvas id="webgl" aria-label="Interactive 3D NOVA headphone"></canvas>
-  <div class="fallback-object" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="product-poster" aria-hidden="true">
+    <div class="product-poster__halo"></div>
+    <div class="fallback-object"><i></i><i></i><i></i></div>
+    <div class="product-poster__meta"><span>NOVA</span><span>Static product view</span></div>
+  </div>
   <div class="grain" aria-hidden="true"></div>
 
   <header class="masthead">
@@ -24,15 +33,25 @@
       <a href="#control">Control</a>
       <a href="#experience">Experience</a>
     </nav>
-    <a class="masthead-cta" href="#discover">Explore NOVA ↗</a>
+    <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-controls="mobileNavPanel" aria-expanded="false">Menu</button>
+    <a class="masthead-cta" href="#discover">Product summary ↗</a>
   </header>
+
+  <nav class="mobile-nav" id="mobileNavPanel" aria-label="NOVA mobile product navigation" aria-hidden="true">
+    <a href="#design">Design <span>01</span></a>
+    <a href="#sound">Sound <span>02</span></a>
+    <a href="#control">Control <span>03</span></a>
+    <a href="#form">Portability <span>04</span></a>
+    <a href="#experience">Inspect <span>05</span></a>
+    <a href="#discover">Product facts <span>06</span></a>
+  </nav>
 
   <div class="experience-progress" aria-hidden="true"><i id="experienceProgress"></i></div>
 
   <div class="hotspot-layer" aria-label="Product detail hotspots">
-    <button type="button" class="hotspot" data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
-    <button type="button" class="hotspot" data-hotspot="headband" aria-label="Explore articulated headband design"><i></i><span>Articulated fit</span></button>
-    <button type="button" class="hotspot" data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="headband" aria-label="Explore articulated headband design"><i></i><span>Articulated fit</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
   </div>
 
   <main id="top">
@@ -65,12 +84,13 @@
       <div class="stage-inner copy copy--center">
         <p class="eyebrow">Immersive audio</p>
         <h2>Your space becomes<br /><em>the soundstage.</em></h2>
-        <p>Choose the character of the experience. Each mode reshapes the visual field around NOVA while the product remains at the center.</p>
-        <div class="segmented" role="group" aria-label="Listening mode">
+        <p>These concept listening profiles demonstrate how the interface could communicate different listening intentions without inventing measured acoustic performance.</p>
+        <div class="segmented" role="group" aria-label="Concept listening profile">
           <button type="button" data-listening-mode="spatial" aria-pressed="true">Spatial</button>
           <button type="button" data-listening-mode="focus" aria-pressed="false">Focus</button>
           <button type="button" data-listening-mode="ambient" aria-pressed="false">Ambient</button>
         </div>
+        <p class="mode-description" id="listeningModeDescription" aria-live="polite">Spatial opens the presentation for a wider, more immersive listening feel. Focus reduces surrounding motion. Ambient keeps the visual field open to the world around you.</p>
       </div>
     </section>
 
@@ -78,11 +98,12 @@
       <div class="stage-inner copy copy--right">
         <p class="eyebrow">Adaptive listening</p>
         <h2>Silence,<br /><em>on your terms.</em></h2>
-        <p>Move between focused isolation and a more open connection to the space around you.</p>
-        <div class="segmented segmented--light" role="group" aria-label="Noise control mode">
+        <p>Move between two conceptual noise-control behaviors: one prioritizes isolation, while the other keeps awareness of the surrounding space.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Concept noise control mode">
           <button type="button" data-noise-mode="adaptive" aria-pressed="true">Adaptive</button>
           <button type="button" data-noise-mode="transparency" aria-pressed="false">Transparency</button>
         </div>
+        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite">Adaptive represents focused isolation. Transparency represents awareness and a more open connection to the environment.</p>
       </div>
       <div class="control-field" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
@@ -93,8 +114,8 @@
         <h2>Made to <em>move.</em></h2>
         <p>NOVA's folding geometry becomes part of the experience. Open it into its listening form or fold it down and continue the journey from there.</p>
         <div class="segmented segmented--light" role="group" aria-label="Headphone form">
-          <button type="button" data-fold-state="open" aria-pressed="true">Open</button>
-          <button type="button" data-fold-state="fold" aria-pressed="false">Fold</button>
+          <button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button>
+          <button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button>
         </div>
       </div>
     </section>
@@ -103,11 +124,16 @@
       <div class="stage-inner inspect-copy">
         <p class="eyebrow">Direct inspection</p>
         <h2>Look closer.</h2>
-        <p>Drag to move through a curated view of the product. NOVA stays art-directed while the camera responds to you.</p>
+        <p>Explore the cushions, hinge and earcup controls. Drag for a curated view, or jump to a named angle when you want to understand the whole form.</p>
+        <div class="inspection-views" role="group" aria-label="Inspection view">
+          <button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button>
+          <button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button>
+          <button type="button" data-requires-3d="true" data-inspection-view="rear" aria-pressed="false">Rear</button>
+        </div>
         <div class="inspect-meta">
-          <span class="desktop-only">DRAG HORIZONTALLY</span>
-          <span class="mobile-only">SWIPE HORIZONTALLY</span>
-          <button type="button" id="inspectionReset">Reset view</button>
+          <span class="desktop-only">DRAG TO FINE-TUNE</span>
+          <span class="mobile-only">SWIPE TO FINE-TUNE</span>
+          <button type="button" id="inspectionReset" data-requires-3d="true">Reset view</button>
         </div>
       </div>
     </section>
@@ -122,11 +148,12 @@
           <span>Adaptive Noise Control</span>
           <span>Transparency</span>
           <span>Multipoint</span>
-          <span>Premium Construction</span>
+          <span>Articulated Form</span>
         </div>
         <div class="resolution-actions">
-          <a class="button button--solid" href="#behind">Discover NOVA <span>↘</span></a>
-          <button type="button" class="button button--ghost" id="notifyConcept" aria-controls="notifyPanel" aria-expanded="false">Notify me</button>
+          <button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Product facts</button>
+          <a class="button button--ghost" href="#behind">Behind the experience <span>↘</span></a>
+          <button type="button" class="button button--ghost" id="notifyConcept" aria-controls="notifyPanel" aria-expanded="false">Preview notify flow</button>
         </div>
       </div>
     </section>
@@ -136,7 +163,7 @@
         <div class="behind-transition__copy">
           <p class="eyebrow">Portfolio case study / 01</p>
           <h2>Behind NOVA.</h2>
-          <p class="behind-lede">The cinematic product journey ends here. The build story continues below as a conventional case study, with the product stepping out of the way.</p>
+          <p class="behind-lede">Behind the experience: how the product story, interactions and real-time 3D system were designed to work together.</p>
           <a class="button button--outline" href="#case-study">View the build <span>↘</span></a>
         </div>
       </div>
@@ -196,12 +223,59 @@
           <span>NOVA / INTERACTIVE PRODUCT EXPERIENCE</span>
           <div class="project-footer__actions">
             <a href="/v1/" aria-label="Open NOVA version 1 archive">V1 archive ↗</a>
+            <a href="#services">Client capabilities ↘</a>
             <button type="button" id="replay">Replay experience ↗</button>
           </div>
         </footer>
       </div>
     </section>
+
+    <section id="services" class="services" aria-labelledby="servicesTitle">
+      <div class="services__inner">
+        <p class="eyebrow">For client work</p>
+        <h2 id="servicesTitle">Turn a product into<br /><em>an experience.</em></h2>
+        <p class="services__lede">NOVA demonstrates a workflow that can be adapted to real products, campaign launches and commerce experiences.</p>
+        <div class="services__grid">
+          <article><span>01</span><h3>Interactive product launches</h3><p>Scroll-led launch pages that combine product storytelling, motion and responsive interaction.</p></article>
+          <article><span>02</span><h3>Product configurators</h3><p>Commercial interfaces for exploring options, details and product states when credible source assets are available.</p></article>
+          <article><span>03</span><h3>Responsive 3D integration</h3><p>Real-time product presentation designed around desktop, tablet, mobile, reduced motion and graceful fallback.</p></article>
+          <article><span>04</span><h3>Campaign experiences</h3><p>High-impact microsites that connect brand direction, interaction design and production-ready front-end systems.</p></article>
+        </div>
+        <div class="services__cta">
+          <div><span class="case-index">PROJECT STARTER</span><p>Use this one-line brief when messaging me from the portfolio platform where you found this project.</p></div>
+          <button type="button" class="button button--solid" id="copyProjectBrief">Copy project brief</button>
+          <span id="projectBriefStatus" class="services__status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <div class="facts-shell" aria-hidden="true">
+    <button class="facts-backdrop" type="button" data-facts-close aria-label="Close product facts"></button>
+    <aside id="productFactsPanel" class="facts-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="productFactsTitle" tabindex="-1">
+      <div class="interest-panel__meta">
+        <span>NOVA / CONCEPT PRODUCT FACTS</span>
+        <button type="button" data-facts-close aria-label="Close product facts">Close ×</button>
+      </div>
+      <div class="facts-panel__body">
+        <p class="eyebrow">Concept product facts</p>
+        <h2 id="productFactsTitle">What the demo<br /><em>actually represents.</em></h2>
+        <dl class="concept-facts">
+          <div><dt>Format</dt><dd>Over-ear wireless headphone concept with an articulated folding form.</dd></div>
+          <div><dt>Listening profiles</dt><dd>Spatial, Focus and Ambient are visual concept profiles—not measured acoustic claims.</dd></div>
+          <div><dt>Noise control</dt><dd>Adaptive and Transparency are conceptual interaction states demonstrated through the environment.</dd></div>
+          <div><dt>Controls</dt><dd>The 3D model exposes a physical earcup control surface through a product hotspot.</dd></div>
+          <div><dt>Multipoint</dt><dd>Multipoint is part of the concept feature set; protocol, compatibility and implementation are not specified.</dd></div>
+          <div><dt>Dimensions / weight / battery</dt><dd>Not specified in this fictional concept. No invented performance numbers are presented.</dd></div>
+        </dl>
+        <div class="concept-faq">
+          <details><summary>Is NOVA a real product?</summary><p>No. NOVA is a fictional product used to demonstrate an interactive product-launch experience.</p></details>
+          <details><summary>Are the acoustic claims measured?</summary><p>No. The site demonstrates interface and storytelling concepts, not verified acoustic or laboratory performance.</p></details>
+          <details><summary>What is genuinely interactive?</summary><p>The live 3D model, authored camera and lighting, folding state, named inspection views, hotspots and responsive choreography run in the browser.</p></details>
+        </div>
+      </div>
+    </aside>
+  </div>
 
   <div class="interest-shell" aria-hidden="true">
     <button class="interest-backdrop" type="button" data-notify-close aria-label="Close early access panel"></button>
@@ -235,6 +309,7 @@
     <i></i><span id="runtimeState">Loading NOVA</span>
   </div>
   <noscript><div class="noscript">NOVA's product story remains available, but JavaScript is required for the live 3D experience.</div></noscript>
+  <script type="module" src="./ui/ui-bootstrap.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

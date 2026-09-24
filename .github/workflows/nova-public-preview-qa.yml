@@ -125,9 +125,15 @@ jobs:
             await page.screenshot({path:'nova-public-qa/desktop_fold.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/notify me/i}).click();
+            await page.getByRole('button',{name:/preview notify flow/i}).click();
             await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
             await page.screenshot({path:'nova-public-qa/desktop_notify.png'});
+            await page.keyboard.press('Escape');
+            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed');
+            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-public-qa/desktop_product_facts.png'});
+            await page.getByRole('button',{name:/close product facts/i}).click();
             await context.close();
           }
 
@@ -159,7 +165,7 @@ jobs:
             await page.screenshot({path:'nova-public-qa/mobile_ambient.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/notify me/i}).tap();
+            await page.getByRole('button',{name:/preview notify flow/i}).tap();
             await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
             await page.screenshot({path:'nova-public-qa/mobile_notify.png'});
             await context.close();

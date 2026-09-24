@@ -1,13 +1,28 @@
 const LISTENING = new Set(['spatial','focus','ambient']);
 const NOISE = new Set(['adaptive','transparency']);
 const FOLD = new Set(['open','fold']);
+const INSPECTION = new Set(['front','side','rear']);
 const NAV_TARGET = {
   design:'#design',
   spatial:'#sound',
   adaptive:'#control',
-  form:'#experience',
-  inspect:'#experience'
+  form:'#form',
+  inspect:'#experience',
+  resolution:'#discover'
 };
+
+const LISTENING_COPY = {
+  spatial:'Spatial opens the presentation for a wider, more immersive listening feel.',
+  focus:'Focus reduces surrounding motion so attention stays tightly centered.',
+  ambient:'Ambient keeps the visual field open to the world around you.'
+};
+const NOISE_COPY = {
+  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
+  transparency:'Transparency represents awareness and a more open connection to the environment.'
+};
+
+const actions = {};
+let bound = false;
 
 function setPressed(selector,value,dataKey){
   document.querySelectorAll(selector).forEach(button => {
@@ -17,45 +32,119 @@ function setPressed(selector,value,dataKey){
   });
 }
 
-export function bindProductUI(actions){
+function setDescription(id,label,copy){
+  const el=document.querySelector(id);
+  if(el) el.innerHTML='<strong>'+label+'</strong> '+copy;
+}
+
+function setDialog({open,bodyKey,trigger,panel,shell,focusTarget}){
+  document.body.dataset[bodyKey]=open?'open':'closed';
+  trigger?.setAttribute('aria-expanded',String(open));
+  panel?.setAttribute('aria-hidden',String(!open));
+  shell?.setAttribute('aria-hidden',String(!open));
+  if(open) requestAnimationFrame(()=>focusTarget?.focus?.());
+  else trigger?.focus?.();
+}
+
+export function set3dAvailability(available){
+  const value=Boolean(available);
+  document.body.dataset.threeDAvailable=String(value);
+  document.querySelectorAll('[data-requires-3d="true"]').forEach(control=>{
+    if('disabled' in control) control.disabled=!value;
+    control.setAttribute('aria-disabled',String(!value));
+  });
+}
+
+export function bindProductUI(nextActions={}){
+  Object.assign(actions,nextActions);
+  if(bound) return;
+  bound=true;
+
+  document.body.dataset.mobileNav='closed';
+  document.body.dataset.notifyConcept='closed';
+  document.body.dataset.productFacts='closed';
+
   document.querySelectorAll('[data-listening-mode]').forEach(button => {
     button.addEventListener('click', () => {
       const mode=button.dataset.listeningMode;
-      if(LISTENING.has(mode)) actions.setListeningMode?.(mode);
+      if(!LISTENING.has(mode)) return;
+      setPressed('[data-listening-mode]',mode,'listeningMode');
+      setDescription('#listeningModeDescription',button.textContent.trim(),LISTENING_COPY[mode]);
+      actions.setListeningMode?.(mode);
     });
   });
+
   document.querySelectorAll('[data-noise-mode]').forEach(button => {
     button.addEventListener('click', () => {
       const mode=button.dataset.noiseMode;
-      if(NOISE.has(mode)) actions.setNoiseMode?.(mode);
+      if(!NOISE.has(mode)) return;
+      setPressed('[data-noise-mode]',mode,'noiseMode');
+      setDescription('#noiseModeDescription',button.textContent.trim(),NOISE_COPY[mode]);
+      actions.setNoiseMode?.(mode);
     });
   });
+
   document.querySelectorAll('[data-fold-state]').forEach(button => {
     button.addEventListener('click', () => {
       const state=button.dataset.foldState;
-      if(FOLD.has(state)) actions.setFoldState?.(state);
+      if(!FOLD.has(state) || button.disabled) return;
+      setPressed('[data-fold-state]',state,'foldState');
+      actions.setFoldState?.(state);
     });
   });
+
+  document.querySelectorAll('[data-inspection-view]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const view=button.dataset.inspectionView;
+      if(!INSPECTION.has(view) || button.disabled) return;
+      setPressed('[data-inspection-view]',view,'inspectionView');
+      actions.setInspectionView?.(view);
+    });
+  });
+
   document.querySelectorAll('[data-hotspot]').forEach(button => {
     button.addEventListener('click', () => {
+      if(button.disabled) return;
       const expanded=button.getAttribute('aria-expanded')==='true';
       if(expanded) actions.clearHotspot?.();
       else actions.focusHotspot?.(button.dataset.hotspot);
     });
   });
-  document.querySelector('#inspectionReset')?.addEventListener('click', () => actions.resetInspection?.());
+
+  document.querySelector('#inspectionReset')?.addEventListener('click', event => {
+    if(event.currentTarget.disabled) return;
+    setPressed('[data-inspection-view]','front','inspectionView');
+    actions.resetInspection?.();
+  });
   document.querySelector('#replay')?.addEventListener('click', () => actions.replay?.());
+
+  const mobileToggle=document.querySelector('#mobileNavToggle');
+  const mobilePanel=document.querySelector('#mobileNavPanel');
+  const setMobileNav=open=>{
+    document.body.dataset.mobileNav=open?'open':'closed';
+    mobileToggle?.setAttribute('aria-expanded',String(open));
+    mobilePanel?.setAttribute('aria-hidden',String(!open));
+  };
+  mobileToggle?.addEventListener('click',()=>setMobileNav(document.body.dataset.mobileNav!=='open'));
+  mobilePanel?.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>setMobileNav(false)));
+
+  const factsTrigger=document.querySelector('#productFactsTrigger');
+  const factsPanel=document.querySelector('#productFactsPanel');
+  const factsShell=document.querySelector('.facts-shell');
+  const setFactsOpen=open=>setDialog({
+    open,bodyKey:'productFacts',trigger:factsTrigger,panel:factsPanel,shell:factsShell,focusTarget:factsPanel
+  });
+  factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
+  document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
+
   const notifyTrigger=document.querySelector('#notifyConcept');
   const notifyPanel=document.querySelector('#notifyPanel');
-  const setNotifyOpen=open=>{
-    document.body.dataset.notifyConcept=open?'open':'closed';
-    notifyTrigger?.setAttribute('aria-expanded',String(open));
-    notifyPanel?.setAttribute('aria-hidden',String(!open));
-    document.querySelector('.interest-shell')?.setAttribute('aria-hidden',String(!open));
-    if(open) requestAnimationFrame(()=>notifyPanel?.focus());
-    else notifyTrigger?.focus();
-  };
+  const notifyShell=document.querySelector('.interest-shell');
+  const setNotifyOpen=open=>setDialog({
+    open,bodyKey:'notifyConcept',trigger:notifyTrigger,panel:notifyPanel,shell:notifyShell,focusTarget:notifyPanel
+  });
   notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
+
   const notifyForm=document.querySelector('#notifyDemoForm');
   const notifyStatus=document.querySelector('#notifyDemoStatus');
   notifyForm?.addEventListener('submit',event=>{
@@ -69,11 +158,25 @@ export function bindProductUI(actions){
     if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
     input.value='';
   });
-  document.querySelectorAll('[data-notify-close]').forEach(button=>{
-    button.addEventListener('click',()=>setNotifyOpen(false));
+  document.querySelectorAll('[data-notify-close]').forEach(button=>button.addEventListener('click',()=>setNotifyOpen(false)));
+
+  const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
+  const briefButton=document.querySelector('#copyProjectBrief');
+  const briefStatus=document.querySelector('#projectBriefStatus');
+  briefButton?.addEventListener('click',async()=>{
+    try{
+      await navigator.clipboard.writeText(projectBrief);
+      if(briefStatus) briefStatus.textContent='Project brief copied.';
+    }catch{
+      if(briefStatus) briefStatus.textContent=projectBrief;
+    }
   });
+
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape' && document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
+    if(event.key!=='Escape') return;
+    if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
+    if(document.body.dataset.productFacts==='open') setFactsOpen(false);
+    if(document.body.dataset.mobileNav==='open') setMobileNav(false);
   });
 }
 
@@ -83,7 +186,7 @@ export function updateProductUI(state){
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
   const activeTarget=NAV_TARGET[ui.range || state?.range] || null;
-  document.querySelectorAll('.product-nav a[href^="#"]').forEach(link=>{
+  document.querySelectorAll('.product-nav a[href^="#"],.mobile-nav a[href^="#"]').forEach(link=>{
     const active=Boolean(activeTarget && link.getAttribute('href')===activeTarget);
     link.classList.toggle('is-active',active);
     if(active) link.setAttribute('aria-current','page');
@@ -94,5 +197,6 @@ export function updateProductUI(state){
     setPressed('[data-listening-mode]',state.interaction.listeningMode,'listeningMode');
     setPressed('[data-noise-mode]',state.interaction.noiseMode,'noiseMode');
     setPressed('[data-fold-state]',state.interaction.foldState,'foldState');
+    setPressed('[data-inspection-view]',state.interaction.inspectionView || 'front','inspectionView');
   }
 }
