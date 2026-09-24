@@ -352,15 +352,12 @@ jobs:
             await page.waitForTimeout(700);
             const result=await page.evaluate(()=>{
               const section=document.querySelector('#case-study');
-              const heading=section?.querySelector('h2');
               const canvas=document.querySelector('#webgl');
               const canvasOpacity=Number(getComputedStyle(canvas).opacity);
-              const rect=heading?.getBoundingClientRect();
               return {
                 active:document.body.dataset.caseStudy,
                 range:document.body.dataset.range,
                 canvasOpacity,
-                headingVisible:Boolean(rect&&rect.bottom>0&&rect.top<innerHeight),
                 role:Boolean(section?.innerText.includes('Role')),
                 challenge:Boolean(section?.innerText.includes('Challenge')),
                 build:Boolean(section?.innerText.includes('What I built')),
@@ -370,10 +367,105 @@ jobs:
             if(result.active!=='true'||result.canvasOpacity>.08){
               throw new Error(prefix+' case-study product must yield '+JSON.stringify(result));
             }
-            if(result.range!=='behind'||!result.headingVisible||!result.role||!result.challenge||!result.build||!result.result){
+            if(result.range!=='behind'||!result.role||!result.challenge||!result.build||!result.result){
               throw new Error(prefix+' case-study handoff incomplete '+JSON.stringify(result));
             }
             await page.screenshot({path:'nova-qa/'+prefix+'_case_study.png',fullPage:false});
+            await context.close();
+          }
+
+          async function guidedTourAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'guided-tour');
+            await page.getByRole('button',{name:/three product moments/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.guidedTour==='open' && document.body.dataset.range==='design');
+            await page.waitForTimeout(850);
+            const comfort=await page.evaluate(()=>({
+              open:document.body.dataset.guidedTour,
+              range:document.body.dataset.range,
+              selected:document.querySelector('[data-tour-step="comfort"]')?.getAttribute('aria-pressed'),
+              hotspot:document.querySelector('[data-hotspot="cushion"]')?.getAttribute('aria-expanded')
+            }));
+            if(comfort.open!=='open'||comfort.range!=='design'||comfort.selected!=='true'){
+              throw new Error('guided comfort moment failed '+JSON.stringify(comfort));
+            }
+            await page.screenshot({path:'nova-qa/guided_tour_comfort.png'});
+
+            await page.locator('[data-tour-step="fold"]').click();
+            await page.waitForFunction(()=>document.body.dataset.range==='form');
+            await page.waitForTimeout(1150);
+            const fold=await page.evaluate(()=>({
+              selected:document.querySelector('[data-tour-step="fold"]')?.getAttribute('aria-pressed'),
+              fold:document.querySelector('[data-fold-state="fold"]')?.getAttribute('aria-pressed'),
+              range:document.body.dataset.range
+            }));
+            if(fold.selected!=='true'||fold.fold!=='true'||fold.range!=='form'){
+              throw new Error('guided fold moment failed '+JSON.stringify(fold));
+            }
+            await page.screenshot({path:'nova-qa/guided_tour_fold.png'});
+
+            await page.locator('[data-tour-step="controls"]').click();
+            await page.waitForFunction(()=>document.body.dataset.range==='inspect');
+            await page.waitForTimeout(1050);
+            const controls=await page.evaluate(()=>({
+              selected:document.querySelector('[data-tour-step="controls"]')?.getAttribute('aria-pressed'),
+              side:document.querySelector('[data-inspection-view="side"]')?.getAttribute('aria-pressed'),
+              hotspot:document.querySelector('[data-hotspot="controls"]')?.getAttribute('aria-expanded'),
+              range:document.body.dataset.range
+            }));
+            if(controls.selected!=='true'||controls.side!=='true'||controls.range!=='inspect'){
+              throw new Error('guided controls moment failed '+JSON.stringify(controls));
+            }
+            await page.screenshot({path:'nova-qa/guided_tour_controls.png'});
+            await page.keyboard.press('Escape');
+            await page.waitForFunction(()=>document.body.dataset.guidedTour==='closed');
+            await context.close();
+          }
+
+          async function validationEvidenceAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'validation-evidence');
+            await page.evaluate(()=>document.querySelector('#validation-evidence').scrollIntoView({block:'center'}));
+            await page.waitForTimeout(500);
+            const evidence=await page.evaluate(()=>{
+              const el=document.querySelector('#validation-evidence');
+              const r=el.getBoundingClientRect();
+              const text=el?.innerText||'';
+              return {
+                visible:r.top<innerHeight&&r.bottom>0,
+                desktop:text.includes('1440 × 1000'),
+                tablet:text.includes('1024 × 768'),
+                mobile:text.includes('390 × 844'),
+                fallback:text.includes('WebGL fallback'),
+                reduced:text.includes('Reduced motion'),
+                gltf:text.includes('GLTF failure')
+              };
+            });
+            if(!Object.values(evidence).every(Boolean)) throw new Error('validation evidence incomplete '+JSON.stringify(evidence));
+            await page.screenshot({path:'nova-qa/validation_evidence.png'});
+            await context.close();
+          }
+
+          async function compactCaseStudyAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'compact-case-study');
+            await scrollProgress(page,.985);
+            await page.waitForTimeout(500);
+            const state=await page.evaluate(()=>{
+              const behind=document.querySelector('#behind');
+              const caseStudy=document.querySelector('#case-study');
+              return {
+                range:document.body.dataset.range,
+                behindRatio:behind.getBoundingClientRect().height/innerHeight,
+                title:behind.innerText.includes('Designed like a launch.')&&behind.innerText.includes('Built like a product.'),
+                duplicate:caseStudy.innerText.includes('Designed like a launch.'),
+                caseTop:caseStudy.getBoundingClientRect().top
+              };
+            });
+            if(state.range!=='behind'||state.behindRatio>1.16||!state.title||state.duplicate){
+              throw new Error('compact case-study handoff failed '+JSON.stringify(state));
+            }
+            await page.screenshot({path:'nova-qa/compact_case_study.png'});
             await context.close();
           }
 
@@ -549,6 +641,9 @@ jobs:
           await mobileInteractions();
           await caseStudyAudit({width:1440,height:1000},'desktop');
           await caseStudyAudit({width:390,height:844},'mobile');
+          await guidedTourAudit();
+          await compactCaseStudyAudit();
+          await validationEvidenceAudit();
           await readabilityAudit({width:1440,height:1000},'desktop');
           await readabilityAudit({width:390,height:844},'mobile');
           await rendererFailureAudit();
