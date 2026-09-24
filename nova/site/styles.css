@@ -333,3 +333,12 @@ body[data-theme="dark"] .product-nav{color:#c0b8ac}
 @media (max-width:700px){
   .copy,.copy--compact,.copy--center,.inspect-copy,.resolution-copy{width:auto;margin-right:20px}
 }
+
+
+/* R11 collision correction: retain readable type while restoring Form/product clearance. */
+@media (min-width:1001px){
+  .stage--form .copy--left{
+    margin-left:4.1vw;
+    width:min(540px,40vw);
+  }
+}
