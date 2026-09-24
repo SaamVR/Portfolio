@@ -283,3 +283,8 @@ def test_r13_mobile_hero_fast_path_does_not_add_a_third_text_row():
     assert 'aria-label="Three product moments guided tour">Guided tour<' in html
     assert ".stage--hero.hero-actions{display:grid;grid-template-columns:max-contentmax-content" in compact
     assert ".stage--hero.hero-actions.gesture-hint{display:none}" in compact
+
+
+def test_r13_behind_transition_keeps_padding_inside_viewport_height():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
