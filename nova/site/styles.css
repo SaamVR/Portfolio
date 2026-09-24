@@ -615,3 +615,12 @@ body[data-product-facts="open"] .facts-panel{transform:none}
 @media (prefers-reduced-motion:reduce){
   .product-poster,.mobile-nav,.facts-panel,.facts-backdrop{transition:none!important}
 }
+
+
+/* R12 contrast corrections for scene-specific supporting text. */
+.services .eyebrow{color:#5d574f}
+.stage--control .mode-description--light{
+  color:#c8c0b4!important;
+  border-color:rgba(238,232,222,.18);
+}
+.stage--control .mode-description--light strong{color:#f0e9de}
