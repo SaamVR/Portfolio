@@ -624,3 +624,19 @@ body[data-product-facts="open"] .facts-panel{transform:none}
   border-color:rgba(238,232,222,.18);
 }
 .stage--control .mode-description--light strong{color:#f0e9de}
+
+
+/* R12 mobile Resolution: keep readable feature labels in one swipeable rail. */
+@media (max-width:700px){
+  .stage--resolution .feature-strip{
+    flex-wrap:nowrap;
+    width:calc(100vw - 22px);
+    max-width:none;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    padding:2px 22px 5px 0;
+  }
+  .stage--resolution .feature-strip::-webkit-scrollbar{display:none}
+  .stage--resolution .feature-strip span{flex:0 0 auto}
+}
