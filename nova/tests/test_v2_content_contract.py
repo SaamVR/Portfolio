@@ -215,3 +215,10 @@ def test_r12_named_inspection_views_and_client_capabilities_exist():
 def test_r12_social_metadata_is_present_without_fake_image():
     for prop in ['property="og:title"','property="og:description"','property="og:type"','property="og:url"','name="twitter:card"']:
         assert prop in html
+
+
+def test_r12_mobile_resolution_uses_single_row_feature_rail():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--resolution.feature-strip{flex-wrap:nowrap" in compact
+    assert "overflow-x:auto" in compact
+    assert ".stage--resolution.feature-stripspan{flex:00auto}" in compact
