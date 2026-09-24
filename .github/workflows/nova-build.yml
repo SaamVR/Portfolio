@@ -49,6 +49,7 @@ jobs:
           test -f nova/site/runtime/render-adapter.js
           test -f nova/site/runtime/environment.js
           test -f nova/site/ui/product-ui.js
+          test -f nova/site/ui/ui-bootstrap.js
           test -f nova/site/interactions/fold-controller.js
           test -f nova/site/interactions/inspection-controller.js
           test -f nova/site/interactions/hotspot-controller.js
