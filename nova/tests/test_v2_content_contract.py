@@ -52,7 +52,10 @@ def test_stage_geometry_matches_global_timeline():
         "behind": "110svh",
     }
     for name, height in expected.items():
-        assert f".stage--{name}{{min-height:{height}" in compact
+        if name == "behind":
+            assert ".stage--behind{" in compact and "min-height:110svh" in compact
+        else:
+            assert f".stage--{name}{{min-height:{height}" in compact
 
 
 def test_notify_concept_has_visible_accessible_panel():
@@ -242,7 +245,8 @@ def test_r13_case_study_uses_single_compact_transition():
     assert "Designed like a launch." in html
     assert "Built like a product." in html
     assert html.index("Designed like a launch.") < html.index('id="case-study"')
-    assert ".stage--behind{min-height:110svh" in compact
+    assert ".stage--behind{" in compact
+    assert "box-sizing:border-box;min-height:110svh" in compact
     assert ".case-study{position:relative;z-index:24;min-height:155svh;padding:9svh" in compact
 
 def test_r13_portability_copy_explains_product_benefit():
