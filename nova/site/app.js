@@ -26,6 +26,7 @@ const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
 const poseOverrideRaw = query.get('pose');
 const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, Number(poseOverrideRaw)));
+const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
@@ -44,6 +45,7 @@ let scrollActivityUntil = 0;
 let renderer=null;
 let rendererAvailable=false;
 try{
+  if(forceStatic) throw new Error('forced static fallback');
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth <= 700 ? 1.35 : 1.6));
   renderer.setSize(innerWidth,innerHeight,false);
