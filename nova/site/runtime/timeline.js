@@ -69,13 +69,31 @@ export function getRangeState(progress){
   return { range:'behind', progress:1 };
 }
 
+const PRODUCT_POSE_KEYFRAMES = [
+  // V1-style source-clip choreography: keep the physical product legible while the
+  // authored GLTF pose continues to evolve underneath V2's camera and UI layers.
+  [0.000,.240],[0.045,.285],[0.090,.320],[0.120,.300],
+  [0.160,.270],[0.200,.220],[0.240,.260],[0.280,.240],
+  [0.300,.460],[0.320,.700],
+  [0.360,.760],[0.410,.710],[0.450,.740],
+  [0.490,.700],[0.540,.760],[0.580,.720],
+  [0.620,.680],[0.670,.770],[0.720,.720],
+  [0.760,.680],[0.790,.740],[0.830,.700],[0.860,.730],
+  [0.900,.760],[0.945,.690],[0.960,.720],
+  [0.985,.670],[1.000,.640]
+];
+
 function sampleProductPose(progress){
   const p=clamp01(progress);
-  if(p<=.12) return lerp(.24,.30,smooth(p/.12));
-  if(p<=.28) return lerp(.30,.24,smooth((p-.12)/.16));
-  if(p<=.32) return lerp(.24,.72,smooth((p-.28)/.04));
-  if(p<=.96) return .72;
-  return lerp(.72,.64,smooth((p-.96)/.04));
+  for(let i=0;i<PRODUCT_POSE_KEYFRAMES.length-1;i++){
+    const [ap,av]=PRODUCT_POSE_KEYFRAMES[i];
+    const [bp,bv]=PRODUCT_POSE_KEYFRAMES[i+1];
+    if(p<=bp){
+      const t=smooth(clamp01((p-ap)/Math.max(.0001,bp-ap)));
+      return lerp(av,bv,t);
+    }
+  }
+  return PRODUCT_POSE_KEYFRAMES.at(-1)[1];
 }
 
 function segment(progress){

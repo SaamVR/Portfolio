@@ -179,3 +179,18 @@ assert.ok(Math.abs(r13AdaptiveEnd.product.yaw-r13AdaptiveStart.product.yaw) <= .
   'R13 Noise-control scene should keep the product calm during environmental transition');
 assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment.adaptiveAmount >= .20,
   'R13 Noise-control scene should communicate change through the environment');
+
+
+// R14 / V1-motion restoration: source animation must keep breathing through the
+// commercial chapters even when screen-space yaw/position remain intentionally calm.
+for(const [label,points,minSpan] of [
+  ['Sound',[.34,.36,.40,.44],.035],
+  ['Adaptive',[.47,.49,.54,.57],.045],
+  ['Form',[.60,.64,.67,.71],.055],
+  ['Inspect',[.74,.76,.79,.84],.045],
+  ['Resolution',[.87,.90,.93,.945],.055]
+]){
+  const poses=points.map(p=>sampleTimeline(p,'desktop').product.pose);
+  const span=Math.max(...poses)-Math.min(...poses);
+  assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
+}
