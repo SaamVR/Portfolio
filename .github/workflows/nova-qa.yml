@@ -425,8 +425,15 @@ jobs:
           async function validationEvidenceAudit(){
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'validation-evidence');
-            await page.evaluate(()=>document.querySelector('#validation-evidence').scrollIntoView({block:'center'}));
-            await page.waitForTimeout(500);
+            await page.evaluate(()=>{
+              const el=document.querySelector('#validation-evidence');
+              scrollTo(0,Math.max(0,el.offsetTop-innerHeight*.22));
+            });
+            await page.waitForFunction(()=>{
+              const el=document.querySelector('#validation-evidence');
+              const r=el?.getBoundingClientRect();
+              return Boolean(r&&r.top<innerHeight&&r.bottom>0);
+            });
             const evidence=await page.evaluate(()=>{
               const el=document.querySelector('#validation-evidence');
               const r=el.getBoundingClientRect();
