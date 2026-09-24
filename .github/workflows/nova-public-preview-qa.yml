@@ -133,7 +133,7 @@ jobs:
             await page.getByRole('button',{name:/product facts/i}).click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             await page.screenshot({path:'nova-public-qa/desktop_product_facts.png'});
-            await page.getByRole('button',{name:/close product facts/i}).click();
+            await page.locator('#productFactsPanel [data-facts-close]').click();
             await context.close();
           }
 
