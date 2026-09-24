@@ -49,11 +49,13 @@ jobs:
                 title:document.title,
                 model:document.body.dataset.modelState,
                 hasV1:Boolean(document.querySelector('a[href="/v1/"]')),
+                hasFacts:Boolean(document.querySelector('#productFactsTrigger')),
+                hasMobileMenu:Boolean(document.querySelector('#mobileNavToggle')),
                 bodySize
               };
             });
-            const min=prefix==='mobile'?14:16;
-            if(state.model!=='ready'||!state.title.includes('NOVA')||!state.hasV1||state.bodySize<min){
+            const min=prefix==='mobile'?16:16;
+            if(state.model!=='ready'||!state.title.includes('NOVA')||!state.hasV1||!state.hasFacts||!state.hasMobileMenu||state.bodySize<min){
               throw new Error(prefix+' production root invalid '+JSON.stringify(state));
             }
             await page.screenshot({path:'nova-production-qa/root_'+prefix+'.png'});
