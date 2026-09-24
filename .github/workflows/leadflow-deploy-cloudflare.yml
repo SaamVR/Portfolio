@@ -1,0 +1,81 @@
+name: LeadFlow Cloudflare Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check functions/api/qualify.js
+          grep -q "LeadFlow — Lead Qualification" index.html
+          grep -q "deterministic-qualification-v2" functions/api/qualify.js
+          grep -q "v1/api/qualify" v1/app.js
+          test -f functions/v1/api/qualify.js
+
+      - name: Require Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 2; }
+
+      - name: Build clean Pages payload
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/leadflow-deploy
+          mkdir -p /tmp/leadflow-deploy
+          cp index.html app.js styles.css favicon.svg /tmp/leadflow-deploy/
+          cp -R v1 /tmp/leadflow-deploy/v1
+          cp -R functions /tmp/leadflow-deploy/functions
+
+      - name: Deploy Cloudflare Pages
+        id: deploy
+        run: |
+          set -euo pipefail
+          cd /tmp/leadflow-deploy
+          npx wrangler@4 pages deploy . --project-name leadflow-ai --branch main --commit-hash "$GITHUB_SHA" --commit-message "LeadFlow refined portfolio + preserved v1" | tee /tmp/deploy.log
+          url=$(grep -Eo 'https://[^ ]+\.pages\.dev' /tmp/deploy.log | tail -1)
+          test -n "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test refined root and v1
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.url }}"
+          root=$(curl -fsSL "$url/")
+          old=$(curl -fsSL "$url/v1/")
+          api=$(curl -fsSL "$url/api/qualify")
+          v1api=$(curl -fsSL "$url/v1/api/qualify")
+          echo "$root" | grep -q "LeadFlow — Lead Qualification"
+          echo "$old" | grep -q "LeadFlow AI"
+          echo "$api" | grep -q "deterministic-qualification-v2"
+          echo "$v1api" | grep -q "deterministic-qualification-v1"
+
+      - name: Capture QA screenshots
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.url }}"
+          mkdir -p /tmp/leadflow-qa
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/root-desktop.png "$url/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=390,844 --screenshot=/tmp/leadflow-qa/root-mobile-390.png "$url/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v1-desktop.png "$url/v1/"
+
+      - name: Upload QA screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-cloudflare-qa
+          path: /tmp/leadflow-qa
+          if-no-files-found: error
