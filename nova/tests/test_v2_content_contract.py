@@ -156,3 +156,62 @@ def test_r11_form_copy_moves_left_to_preserve_product_clearance():
 def test_r11_mobile_copy_width_resets_after_desktop_readability_rule():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".copy,.copy--compact,.copy--center,.inspect-copy,.resolution-copy{width:auto;margin-right:20px}" in compact
+
+
+def test_r12_ui_bootstraps_before_3d_and_renderer_has_static_fallback():
+    app = (ROOT/"app.js").read_text()
+    assert './ui/ui-bootstrap.js' in html
+    assert html.index('./ui/ui-bootstrap.js') < html.index('./app.js')
+    assert "rendererAvailable" in app
+    assert "STATIC MODE / 3D UNAVAILABLE" in app
+    assert "dataset.modelState='fallback'" in app
+    assert 'body[data-model-state="fallback"]' in css
+    assert 'class="product-poster"' in html
+
+def test_r12_mobile_navigation_replaces_hidden_desktop_nav():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'id="mobileNavToggle"' in html
+    assert 'id="mobileNavPanel"' in html
+    assert 'aria-controls="mobileNavPanel"' in html
+    assert ".mobile-nav" in compact
+    assert 'body[data-mobile-nav="open"]' in css
+
+def test_r12_essential_text_visibility_is_increased():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert "--body-copy-mobile:16px" in compact
+    assert "--control-copy:12px" in compact
+    assert "--nav-copy:12px" in compact
+    assert "font-size:var(--control-copy)" in compact
+    assert "font-size:var(--nav-copy)" in compact
+
+def test_r12_product_copy_explains_benefit_and_mode_meaning():
+    for phrase in [
+        "concept listening profiles",
+        "Spatial opens the presentation",
+        "Focus reduces surrounding motion",
+        "Ambient keeps the visual field open",
+        "Adaptive represents focused isolation",
+        "Transparency represents awareness",
+        "Explore the cushions, hinge and earcup controls",
+    ]:
+        assert phrase in html
+
+def test_r12_product_facts_are_explicitly_conceptual_without_fake_specs():
+    assert 'id="productFactsPanel"' in html
+    assert "Concept product facts" in html
+    assert "Not specified in this fictional concept" in html
+    assert "Multipoint is part of the concept feature set" in html
+    assert "Are the acoustic claims measured?" in html
+
+def test_r12_named_inspection_views_and_client_capabilities_exist():
+    for view in ["front","side","rear"]:
+        assert f'data-inspection-view="{view}"' in html
+    assert 'id="services"' in html
+    assert "Interactive product launches" in html
+    assert "Product configurators" in html
+    assert "Responsive 3D integration" in html
+    assert 'id="copyProjectBrief"' in html
+
+def test_r12_social_metadata_is_present_without_fake_image():
+    for prop in ['property="og:title"','property="og:description"','property="og:type"','property="og:url"','name="twitter:card"']:
+        assert prop in html
