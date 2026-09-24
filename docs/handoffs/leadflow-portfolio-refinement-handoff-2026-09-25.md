@@ -133,3 +133,19 @@ Do not rebuild or re-audit the refinement from scratch.
    - `/v1/api/qualify` reports `deterministic-qualification-v1`
 
 Do not report production complete until those checks pass.
+
+
+## Production deployment update — samvr Cloudflare CLI
+
+- Deployment path: authenticated Wrangler CLI on device `samvr`.
+- Source deployed from clean Git worktree at GitHub `main` commit `d0b0d2aeb6121695a7f293cb83aacaf32e86bd0e`.
+- Cloudflare Pages project: `leadflow-ai`.
+- Immutable deployment URL: https://19180256.leadflow-ai-bhy.pages.dev
+- Canonical production URL: https://leadflow-ai-bhy.pages.dev/
+- Preserved legacy URL: https://leadflow-ai-bhy.pages.dev/v1/
+- Verified root serves refined LeadFlow build.
+- Verified `/v1/` serves legacy LeadFlow AI build.
+- Verified `/api/qualify` reports `deterministic-qualification-v2`.
+- Verified `/v1/api/qualify` reports `deterministic-qualification-v1`.
+- Verified canonical Sarah / Acme Dental live POST returns score 92 and Sales review.
+- GitHub Actions credential issue #24 remains an automation-only follow-up; it no longer blocks the live production deployment because samvr Wrangler OAuth was used.
