@@ -371,6 +371,16 @@ function render(now=performance.now()){
   requestAnimationFrame(render);
 }
 
+function scrollToProgress(progress){
+  const max=Math.max(1,cinematicTrackHeight()-innerHeight);
+  scrollTo({top:max*Math.max(0,Math.min(1,progress)),behavior:reducedMotion?'auto':'smooth'});
+}
+
+function scheduleTourDetail(callback){
+  const delay=reducedMotion?80:620;
+  window.setTimeout(callback,delay);
+}
+
 const actions={
   setListeningMode(mode){
     listeningMode=mode;
@@ -399,6 +409,38 @@ const actions={
     inspectionView='front';
     inspectionController.reset();
     hotspotController?.clear();
+  },
+  tourTo(step){
+    hotspotController?.clear();
+    if(step==='comfort'){
+      foldState='open';
+      foldController.begin('open',currentComposedState?.product.pose ?? .24);
+      inspectionView='front';
+      inspectionController.reset();
+      scrollToProgress(.20);
+      if(rendererAvailable) scheduleTourDetail(()=>hotspotController?.focus('cushion'));
+      return;
+    }
+    if(step==='fold'){
+      inspectionView='front';
+      inspectionController.reset();
+      scrollToProgress(.65);
+      if(rendererAvailable) scheduleTourDetail(()=>{
+        foldState='fold';
+        foldController.begin('fold',currentComposedState?.product.pose ?? .72);
+      });
+      return;
+    }
+    if(step==='controls'){
+      foldState='open';
+      foldController.begin('open',currentComposedState?.product.pose ?? .50);
+      scrollToProgress(.79);
+      if(rendererAvailable) scheduleTourDetail(()=>{
+        inspectionView='side';
+        inspectionController.setView('side');
+        hotspotController?.focus('controls');
+      });
+    }
   },
   replay(){
     scrollTo({top:0,behavior:reducedMotion?'auto':'smooth'});
