@@ -63,7 +63,8 @@
         <p class="lede">Immersive listening, adaptive quiet and effortless movement in one sculpted form.</p>
         <div class="hero-actions">
           <a class="button button--solid" href="#design">Explore NOVA <span>↘</span></a>
-          <span class="gesture-hint">Scroll to enter the experience</span>
+          <button type="button" class="button button--ghost" id="guidedTourStart" aria-controls="guidedTourPanel" aria-expanded="false">Three product moments</button>
+          <span class="gesture-hint">Scroll for the full experience or take the guided route</span>
         </div>
       </div>
       <div class="hero-index" aria-hidden="true"><span>01</span><span>PRODUCT / EXPERIENCE</span></div>
@@ -112,7 +113,8 @@
       <div class="stage-inner copy copy--left copy--compact">
         <p class="eyebrow">Articulated form</p>
         <h2>Made to <em>move.</em></h2>
-        <p>NOVA's folding geometry becomes part of the experience. Open it into its listening form or fold it down and continue the journey from there.</p>
+        <p>Fold the earcups inward for a more compact carry shape, then open NOVA back into its listening form without losing the product's sculpted silhouette.</p>
+        <p class="interaction-note">Hold the folded pose long enough to read the hinge, then reopen it when you are ready.</p>
         <div class="segmented segmented--light" role="group" aria-label="Headphone form">
           <button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button>
           <button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button>
@@ -157,25 +159,19 @@
       </div>
     </section>
 
-    <section id="behind" class="stage stage--behind" data-range-anchor="behind">
+    <section id="behind" class="stage stage--behind" data-range-anchor="behind" aria-labelledby="caseStudyTitle">
       <div class="behind-transition">
         <div class="behind-transition__copy">
-          <p class="eyebrow">Portfolio case study / 01</p>
-          <h2>Behind NOVA.</h2>
-          <p class="behind-lede">Behind the experience: how the product story, interactions and real-time 3D system were designed to work together.</p>
-          <a class="button button--outline" href="#case-study">View the build <span>↘</span></a>
+          <p class="eyebrow">Behind the experience / portfolio case study</p>
+          <h2 id="caseStudyTitle">Designed like a launch.<br /><em>Built like a product.</em></h2>
+          <p class="behind-lede">One live GLTF becomes the product story, responsive camera system, interaction layer and graceful fallback—without hiding behind pre-rendered video.</p>
+          <a class="button button--outline" href="#case-study">Role, challenge, build, result <span>↘</span></a>
         </div>
       </div>
     </section>
 
     <section id="case-study" class="case-study" aria-labelledby="caseStudyTitle">
       <div class="case-study__inner">
-        <header class="case-study__header">
-          <p class="eyebrow">NOVA / Interactive product experience</p>
-          <h2 id="caseStudyTitle">Designed like a launch.<br /><em>Built like a product.</em></h2>
-          <p>A fictional premium headphone campaign built around a live animated 3D asset—not a pre-rendered product video. The interface, camera, product motion and responsive behavior are all authored as one system.</p>
-        </header>
-
         <div class="case-study__grid">
           <article>
             <span class="case-index">01 / Role</span>
@@ -198,6 +194,22 @@
             <p>A portfolio piece that behaves like a launch experience first, then reveals the implementation decisions and technical constraints behind the presentation.</p>
           </article>
         </div>
+
+        <section id="validation-evidence" class="validation-evidence" aria-labelledby="validationEvidenceTitle">
+          <div class="validation-evidence__intro">
+            <p class="eyebrow">Verified browser QA</p>
+            <h3 id="validationEvidenceTitle">Built to survive<br /><em>real conditions.</em></h3>
+            <p>This portfolio build is checked as an experience, not only as a screenshot. The evidence below reflects the browser states actually covered by the automated release gates.</p>
+          </div>
+          <div class="validation-evidence__grid">
+            <div><strong>1440 × 1000</strong><span>desktop journey</span></div>
+            <div><strong>1024 × 768</strong><span>tablet journey</span></div>
+            <div><strong>390 × 844</strong><span>mobile journey</span></div>
+            <div><strong>WebGL fallback</strong><span>static product experience</span></div>
+            <div><strong>Reduced motion</strong><span>settled interaction states</span></div>
+            <div><strong>GLTF failure</strong><span>product story remains usable</span></div>
+          </div>
+        </section>
 
         <div class="case-study__technical">
           <div>
@@ -241,13 +253,42 @@
           <article><span>04</span><h3>Campaign experiences</h3><p>High-impact microsites that connect brand direction, interaction design and production-ready front-end systems.</p></article>
         </div>
         <div class="services__cta">
-          <div><span class="case-index">PROJECT STARTER</span><p>Use this one-line brief when messaging me from the portfolio platform where you found this project.</p></div>
+          <div>
+            <span class="case-index">Discuss a 3D product website</span>
+            <h3>Bring your real product, assets and conversion goal.</h3>
+            <p>Copy a ready-to-send project brief, then paste it into the portfolio platform where you found this project.</p>
+          </div>
           <button type="button" class="button button--solid" id="copyProjectBrief">Copy project brief</button>
           <span id="projectBriefStatus" class="services__status" aria-live="polite"></span>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="tour-shell" aria-hidden="true">
+    <button class="tour-backdrop" type="button" data-tour-close aria-label="Close guided product tour"></button>
+    <aside id="guidedTourPanel" class="guided-tour" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="guidedTourTitle" tabindex="-1">
+      <div class="interest-panel__meta">
+        <span>NOVA / THREE PRODUCT MOMENTS</span>
+        <button type="button" data-tour-close aria-label="Close guided product tour">Close ×</button>
+      </div>
+      <div class="guided-tour__body">
+        <p class="eyebrow">Optional fast path</p>
+        <h2 id="guidedTourTitle">Three product moments.</h2>
+        <p class="guided-tour__lede">A short route through comfort, portability and physical controls. You can leave the tour at any time and continue the full experience.</p>
+        <div class="guided-tour__steps">
+          <button type="button" data-tour-step="comfort" aria-pressed="true"><span>01</span><strong>Comfort</strong><small>Cushion depth and articulated fit.</small></button>
+          <button type="button" data-tour-step="fold" aria-pressed="false"><span>02</span><strong>Fold</strong><small>The hinge becomes the signature movement.</small></button>
+          <button type="button" data-tour-step="controls" aria-pressed="false"><span>03</span><strong>Controls</strong><small>Side view, earcup surface and direct inspection.</small></button>
+        </div>
+        <div class="guided-tour__actions">
+          <button type="button" class="button button--ghost" data-tour-prev>Previous</button>
+          <button type="button" class="button button--solid" data-tour-next>Next moment</button>
+        </div>
+        <p id="guidedTourStatus" class="guided-tour__status" aria-live="polite">Moment 1 of 3 / Comfort</p>
+      </div>
+    </aside>
+  </div>
 
   <div class="facts-shell" aria-hidden="true">
     <button class="facts-backdrop" type="button" data-facts-close aria-label="Close product facts"></button>

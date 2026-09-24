@@ -162,3 +162,20 @@ assert.ok(behindMobileR10.product.scale < .56, `Behind handoff should make the p
 const r12MobileResolution=sampleTimeline(.92,'mobile');
 assert.ok(r12MobileResolution.product.position[1]>.25 && r12MobileResolution.product.position[1]<.38,
   `R12 mobile Resolution should retain the proven baseline framing after compacting actions, got y=${r12MobileResolution.product.position[1]}`);
+
+
+const r13SpatialStart=sampleTimeline(.32,'desktop');
+const r13SpatialEnd=sampleTimeline(.45,'desktop');
+assert.ok(Math.abs(r13SpatialEnd.product.yaw-r13SpatialStart.product.yaw) <= .05,
+  `R13 Sound scene should keep product yaw calm while the field changes, delta=${Math.abs(r13SpatialEnd.product.yaw-r13SpatialStart.product.yaw)}`);
+assert.ok(Math.abs(r13SpatialEnd.product.position[0]-r13SpatialStart.product.position[0]) <= .025,
+  'R13 Sound scene should keep product laterally stable');
+assert.ok(r13SpatialEnd.environment.spatialAmount-r13SpatialStart.environment.spatialAmount >= .25,
+  'R13 Sound scene should communicate mode change through environment more than product motion');
+
+const r13AdaptiveStart=sampleTimeline(.49,'desktop');
+const r13AdaptiveEnd=sampleTimeline(.54,'desktop');
+assert.ok(Math.abs(r13AdaptiveEnd.product.yaw-r13AdaptiveStart.product.yaw) <= .04,
+  'R13 Noise-control scene should keep the product calm during environmental transition');
+assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment.adaptiveAmount >= .20,
+  'R13 Noise-control scene should communicate change through the environment');

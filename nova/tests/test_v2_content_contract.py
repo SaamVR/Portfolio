@@ -5,8 +5,8 @@ css = (ROOT/"styles.css").read_text()
 
 def test_product_story_precedes_technical_story():
     assert "Hear beyond" in html
-    assert "Behind NOVA" in html
-    assert html.index("Hear beyond") < html.index("Behind NOVA")
+    assert "Designed like a launch." in html
+    assert html.index("Hear beyond") < html.index("Designed like a launch.")
 
 def test_required_product_controls_are_semantic_buttons():
     for value in ["spatial","focus","ambient"]:
@@ -23,8 +23,8 @@ def test_no_fake_numeric_product_specs():
     assert not any(term.lower() in html.lower() for term in banned)
 
 def test_technical_facts_live_after_product_journey():
-    assert html.index("Behind NOVA") < html.index(">36<")
-    assert html.index("Behind NOVA") < html.index(">14<")
+    assert html.index("Designed like a launch.") < html.index(">36<")
+    assert html.index("Designed like a launch.") < html.index(">14<")
 
 def test_mobile_and_reduced_motion_are_authored():
     assert "@media (max-width: 700px)" in css
@@ -49,7 +49,7 @@ def test_stage_geometry_matches_global_timeline():
         "form": "240svh",
         "inspect": "240svh",
         "resolution": "200svh",
-        "behind": "140svh",
+        "behind": "110svh",
     }
     for name, height in expected.items():
         assert f".stage--{name}{{min-height:{height}" in compact
@@ -227,3 +227,43 @@ def test_r12_mobile_resolution_uses_single_row_feature_rail():
 def test_r12_mobile_resolution_copy_sits_below_proven_product_frame():
     compact = css.replace(" ", "").replace("\n", "")
     assert ".stage--resolution.stage-inner{padding-bottom:3svh}" in compact
+
+
+def test_r13_guided_tour_creates_fast_product_route():
+    assert 'id="guidedTourStart"' in html
+    assert 'id="guidedTourPanel"' in html
+    for step in ["comfort","fold","controls"]:
+        assert f'data-tour-step="{step}"' in html
+    assert "Three product moments" in html
+    assert 'body[data-guided-tour="open"]' in css
+
+def test_r13_case_study_uses_single_compact_transition():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert "Designed like a launch." in html
+    assert "Built like a product." in html
+    assert html.index("Designed like a launch.") < html.index('id="case-study"')
+    assert ".stage--behind{min-height:110svh" in compact
+    assert ".case-study{position:relative;z-index:24;min-height:155svh;padding:9svh" in compact
+
+def test_r13_portability_copy_explains_product_benefit():
+    assert "Fold the earcups inward for a more compact carry shape" in html
+    assert "Hold the folded pose" in html
+
+def test_r13_validation_evidence_is_client_facing_and_measured_not_marketing():
+    assert 'id="validation-evidence"' in html
+    for phrase in [
+        "1440 × 1000",
+        "1024 × 768",
+        "390 × 844",
+        "WebGL fallback",
+        "Reduced motion",
+        "GLTF failure",
+        "Verified browser QA",
+    ]:
+        assert phrase in html
+    assert "LCP ≤2.5s" not in html
+    assert "INP ≤200ms" not in html
+
+def test_r13_client_cta_is_more_explicit():
+    assert "Discuss a 3D product website" in html
+    assert "Copy a ready-to-send project brief" in html

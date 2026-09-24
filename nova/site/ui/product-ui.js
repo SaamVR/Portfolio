@@ -2,6 +2,7 @@ const LISTENING = new Set(['spatial','focus','ambient']);
 const NOISE = new Set(['adaptive','transparency']);
 const FOLD = new Set(['open','fold']);
 const INSPECTION = new Set(['front','side','rear']);
+const TOUR_ORDER = ['comfort','fold','controls'];
 const NAV_TARGET = {
   design:'#design',
   spatial:'#sound',
@@ -63,6 +64,7 @@ export function bindProductUI(nextActions={}){
   document.body.dataset.mobileNav='closed';
   document.body.dataset.notifyConcept='closed';
   document.body.dataset.productFacts='closed';
+  document.body.dataset.guidedTour='closed';
 
   document.querySelectorAll('[data-listening-mode]').forEach(button => {
     button.addEventListener('click', () => {
@@ -128,6 +130,52 @@ export function bindProductUI(nextActions={}){
   mobileToggle?.addEventListener('click',()=>setMobileNav(document.body.dataset.mobileNav!=='open'));
   mobilePanel?.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>setMobileNav(false)));
 
+  const tourTrigger=document.querySelector('#guidedTourStart');
+  const tourPanel=document.querySelector('#guidedTourPanel');
+  const tourShell=document.querySelector('.tour-shell');
+  const tourStatus=document.querySelector('#guidedTourStatus');
+  let tourIndex=0;
+  const setTourOpen=open=>setDialog({
+    open,bodyKey:'guidedTour',trigger:tourTrigger,panel:tourPanel,shell:tourShell,focusTarget:tourPanel
+  });
+  const activateTourStep=(step,{move=true}={})=>{
+    const index=TOUR_ORDER.indexOf(step);
+    if(index<0) return;
+    tourIndex=index;
+    document.querySelectorAll('[data-tour-step]').forEach(button=>{
+      const active=button.dataset.tourStep===step;
+      button.setAttribute('aria-pressed',String(active));
+      button.classList.toggle('is-active',active);
+    });
+    const next=document.querySelector('[data-tour-next]');
+    const prev=document.querySelector('[data-tour-prev]');
+    if(prev) prev.disabled=tourIndex===0;
+    if(next) next.textContent=tourIndex===TOUR_ORDER.length-1?'Finish tour':'Next moment';
+    if(tourStatus){
+      const label=document.querySelector('[data-tour-step="'+step+'"] strong')?.textContent || step;
+      tourStatus.textContent='Moment '+(tourIndex+1)+' of '+TOUR_ORDER.length+' / '+label;
+    }
+    if(move) actions.tourTo?.(step);
+  };
+  tourTrigger?.addEventListener('click',()=>{
+    setTourOpen(true);
+    activateTourStep('comfort');
+  });
+  document.querySelectorAll('[data-tour-step]').forEach(button=>button.addEventListener('click',()=>{
+    activateTourStep(button.dataset.tourStep);
+  }));
+  document.querySelector('[data-tour-prev]')?.addEventListener('click',()=>{
+    activateTourStep(TOUR_ORDER[Math.max(0,tourIndex-1)]);
+  });
+  document.querySelector('[data-tour-next]')?.addEventListener('click',()=>{
+    if(tourIndex>=TOUR_ORDER.length-1){
+      setTourOpen(false);
+      return;
+    }
+    activateTourStep(TOUR_ORDER[tourIndex+1]);
+  });
+  document.querySelectorAll('[data-tour-close]').forEach(button=>button.addEventListener('click',()=>setTourOpen(false)));
+
   const factsTrigger=document.querySelector('#productFactsTrigger');
   const factsPanel=document.querySelector('#productFactsPanel');
   const factsShell=document.querySelector('.facts-shell');
@@ -176,6 +224,7 @@ export function bindProductUI(nextActions={}){
     if(event.key!=='Escape') return;
     if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
+    if(document.body.dataset.guidedTour==='open') setTourOpen(false);
     if(document.body.dataset.mobileNav==='open') setMobileNav(false);
   });
 }
