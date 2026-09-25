@@ -25,8 +25,8 @@ const KEYFRAMES = [
 
   // Design deliberately studies the earcup/cushion in a close three-quarter pass before settling.
   {p:0.16, pose:.28, pos:[.20,.02,0], scale:1.06, yaw:.25, pitch:-.035, cam:[-.28,.10,4.36], target:[-.18,.04,0], fov:25.8, exposure:1.10, hemi:1.85, key:5.1, fill:1.18, rim:9.0, warm:4.9, keyColor:0xffead6, rimColor:0xce7648, keyPos:[3.0,4.0,4.7], tone:.10, spatial:.01, spread:.53, adaptive:0, openness:.74, motion:.21},
-  {p:0.20, pose:.26, pos:[.22,.01,0], scale:1.08, yaw:.32, pitch:-.045, cam:[-.42,.11,4.08], target:[-.20,.02,0], fov:25.2, exposure:1.11, hemi:1.75, key:5.35, fill:1.08, rim:9.6, warm:5.1, keyColor:0xffe8d1, rimColor:0xcb7143, keyPos:[2.8,3.9,4.5], tone:.13, spatial:.02, spread:.55, adaptive:0, openness:.75, motion:.24},
-  {p:0.24, pose:.24, pos:[.20,.00,0], scale:1.07, yaw:.24, pitch:-.02, cam:[-.34,.10,4.38], target:[-.16,.02,0], fov:26.0, exposure:1.10, hemi:1.82, key:5.0, fill:1.15, rim:9.0, warm:4.9, keyColor:0xffead6, rimColor:0xce7648, keyPos:[3.0,4.0,4.8], tone:.15, spatial:.04, spread:.57, adaptive:0, openness:.75, motion:.23},
+  {p:0.20, pose:.26, pos:[.22,.01,0], scale:1.08, yaw:.30, pitch:-.045, cam:[-.42,.11,4.08], target:[-.20,.02,0], fov:25.2, exposure:1.11, hemi:1.75, key:5.35, fill:1.08, rim:9.6, warm:5.1, keyColor:0xffe8d1, rimColor:0xcb7143, keyPos:[2.8,3.9,4.5], tone:.13, spatial:.02, spread:.55, adaptive:0, openness:.75, motion:.24},
+  {p:0.24, pose:.24, pos:[.20,.00,0], scale:1.07, yaw:.27, pitch:-.02, cam:[-.34,.10,4.38], target:[-.16,.02,0], fov:26.0, exposure:1.10, hemi:1.82, key:5.0, fill:1.15, rim:9.0, warm:4.9, keyColor:0xffead6, rimColor:0xce7648, keyPos:[3.0,4.0,4.8], tone:.15, spatial:.04, spread:.57, adaptive:0, openness:.75, motion:.23},
   {p:0.28, pose:.22, pos:[.16,.00,0], scale:1.05, yaw:.18, pitch:0, cam:[-.30,.10,4.65], target:[-.10,.02,0], fov:27.0, exposure:1.08, hemi:1.9, key:4.7, fill:1.25, rim:8.4, warm:4.8, keyColor:0xffead6, rimColor:0xce7648, keyPos:[3.2,4.0,5.0], tone:.18, spatial:.06, spread:.58, adaptive:0, openness:.76, motion:.22},
 
   // Spatial opens the field around an already large product instead of zooming it away.
