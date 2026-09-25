@@ -52,7 +52,7 @@ def test_collision_guard_covers_early_hero_and_design_at_strict_threshold():
 
 def test_hotspot_qa_tracks_authored_motion_not_legacy_fixed_screen_band():
     assert "hotspotMotionAudit" in qa
-    assert "hotspot should move with authored close pass" in qa
+    assert "hotspot motion exceeded bounded Design envelope" in qa
     assert "state.height*.34" not in qa
     assert "state.height*.62" not in qa
 # Trigger contracts for motion-aware hotspot QA implementation.
