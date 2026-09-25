@@ -30,3 +30,5 @@ jobs:
           if [ -f nova/tests/interaction_contract.mjs ]; then
             node nova/tests/interaction_contract.mjs
           fi
+
+# V3 factual-spec + rendered-pose GREEN verification.
