@@ -712,3 +712,46 @@ Treat `8efe9aaf... / 237287ed...` as the final LeadFlow V3 professional-product-
   - zero browser exceptions.
 
 Treat `6d9e49dd...` and immutable deployment `791be817...` as the final LeadFlow V3 product-presentation freeze. Future work should start from this state unless a new V4 is explicitly requested.
+
+## LeadFlow V3 visitor-arrival motion freeze — 2026-09-25
+
+Final application source:
+- `712c6f03b198fc65a09f3c0fc918b173f1767159` — `delay LeadFlow stories until visitor arrival`
+
+Production:
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Immutable: https://c2bbea78.leadflow-ai-bhy.pages.dev/
+- Cloudflare deployment ID: `c2bbea78-b0d0-41a4-a1d9-4f88d829d77c`
+- Cloudflare source: `712c6f0`
+
+Final visitor-arrival refinement:
+- Workflow, Lead Operations pending-impact story, and Architecture no longer start merely because the page has loaded or because a large section barely intersects the viewport.
+- Automatic story playback now uses a central viewport arrival band plus a deliberate dwell before starting.
+- Default arrival dwell is ~700ms; Workflow uses 720ms, Lead Operations uses 720ms, Architecture uses 760ms.
+- If the visitor leaves the arrival band before the dwell completes, the pending automatic start is cancelled.
+- Guided product story remains authoritative while running; arrival observers do not compete with it.
+- Manual Workflow/Architecture Replay still disconnects the one-shot arrival observer before replaying.
+- Hero CTA is now product-language: `Watch LeadFlow in action`.
+- Tour chapter/status copy uses product-story language such as `LEAD JOURNEY`, `QUALIFICATION`, `DECISION`, `OPERATIONS`, `RECOVERY`, and `SYSTEM TRACE`.
+
+Final verification:
+- Fresh Node suite: **80/80 PASS**.
+- `app.js`, `storytelling.js`, `dashboard.js` syntax: PASS.
+- `git diff --check`: PASS.
+- Canonical root assets match local `712c6f03...` byte-for-byte for `index.html`, `app.js`, `storytelling.js`, `dashboard.js`, `styles.css`, and `favicon.svg`.
+- Immutable `c2bbea78...` assets match local `712c6f03...` byte-for-byte for the same six root assets.
+- Public visitor-arrival audit:
+  - initial Workflow state: `idle`
+  - initial Architecture state: `idle`
+  - Workflow remains idle during the early arrival window, starts after dwell, settles to `SALES REVIEW / ready`
+  - Architecture remains idle during the early arrival window, starts after dwell, settles to `READY / ready`
+  - zero browser exceptions
+  - no visible demo / demonstration / showcase / simulated / illustrative / prototype terminology.
+- Existing professional-motion behavior remains intact:
+  - Workflow token transforms `NEW INQUIRY → VERIFIED → score/status → SALES REVIEW`
+  - Lead Operations infographic motion + pointer/keyboard emphasis
+  - Scenario Story interactive Trigger → Detection → Response → Final state scrubbing
+  - Architecture `REQUEST → VALID → SCORE + CRM STATE → READY`
+  - protected `/v2/` and `/v1/` remain unchanged.
+
+Treat `712c6f03... / c2bbea78...` as the final LeadFlow V3 professional-product-motion application freeze. Later documentation-only commits do not change deployed application bytes.
