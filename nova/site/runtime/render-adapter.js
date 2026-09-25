@@ -38,9 +38,9 @@ export function createRenderAdapter({
     setVec(presentation,'position',state.product.position);
     if(splitOrientation){
       presentation.rotation.x=0;
-      presentation.rotation.y=state.product.yaw;
+      presentation.rotation.y=state.product.inspectionYaw || 0;
       orientation.rotation.x=orientationX+state.product.pitch;
-      orientation.rotation.y=0;
+      orientation.rotation.y=state.product.yaw;
     }else{
       presentation.rotation.x=orientationX+state.product.pitch;
       presentation.rotation.y=state.product.yaw;
@@ -93,9 +93,9 @@ export function createRenderAdapter({
       presentation.position.z=damp(presentation.position.z,state.product.position[2],2.85,step);
       if(splitOrientation){
         presentation.rotation.x=damp(presentation.rotation.x,0,3.40,step);
-        presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+        presentation.rotation.y=damp(presentation.rotation.y,state.product.inspectionYaw || 0,3.00,step);
         orientation.rotation.x=damp(orientation.rotation.x,orientationX+state.product.pitch,3.40,step);
-        orientation.rotation.y=damp(orientation.rotation.y,0,3.00,step);
+        orientation.rotation.y=damp(orientation.rotation.y,state.product.yaw,3.00,step);
       }else{
         presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,3.40,step);
         presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
