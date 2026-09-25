@@ -2,11 +2,9 @@ name: NOVA Hotspot QA
 
 on:
   push:
-    branches: ["nova/v2-integration"]
+    branches: ["nova/v3-motion-polish"]
     paths:
-      - ".github/workflows/nova-hotspot-qa.yml"
-      - "nova/site/app.js"
-      - "nova/site/interactions/hotspot-controller.js"
+      - "nova/hotspot-qa-trigger.txt"
   workflow_dispatch:
 
 permissions:
@@ -43,11 +41,12 @@ jobs:
           npm install playwright@1.57.0 --no-audit --no-fund
           npx playwright install --with-deps chromium
 
-      - name: Create focused hotspot audit
+      - name: Create focused V3 hotspot audit
         run: |
           cat > nova/hotspot-qa.mjs <<'JS'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
+
           fs.mkdirSync('nova-hotspot-qa',{recursive:true});
           const browser=await chromium.launch({headless:true});
 
@@ -57,7 +56,7 @@ jobs:
             const errors=[];
             page.on('pageerror',e=>errors.push('pageerror: '+e.message));
             page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text());});
-            page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()));
+            page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||'')));
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
             await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
 
@@ -73,56 +72,78 @@ jobs:
                 const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
                 return Math.abs(scrollY/cinematicMax-value)<.003;
               },p,{timeout:3000});
-              await page.waitForTimeout(300);
+              await page.waitForTimeout(420);
             };
 
-            const readHotspots=()=>page.evaluate(()=>{
-              const pick=id=>{
+            const pointAt=async (progress,id)=>{
+              await scrollProgress(progress);
+              await page.waitForFunction(hotspot=>document.querySelector('[data-hotspot="'+hotspot+'"]')?.dataset.visible==='true',id,{timeout:5000});
+              return page.evaluate(async ({progress,id})=>{
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
-                const r=el.getBoundingClientRect();
-                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
-              };
-              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight,range:document.body.dataset.range};
-            });
-
-            const validate=state=>{
-              const margin=12;
-              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden '+JSON.stringify(state));
-                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
-                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
+                const read=()=>{
+                  const r=el.getBoundingClientRect();
+                  return {x:r.left+r.width/2,y:r.top+r.height/2};
+                };
+                let previous=read();
+                let stableFrames=0;
+                let frames=0;
+                while(frames<120 && stableFrames<5){
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  const next=read();
+                  const delta=Math.hypot(next.x-previous.x,next.y-previous.y);
+                  stableFrames=delta<=.6 ? stableFrames+1 : 0;
+                  previous=next;
+                  frames++;
                 }
-              }
-              const separation=Math.hypot(
-                state.cushion.x-state.controls.x,
-                state.cushion.y-state.controls.y
-              );
-              if(separation<Math.min(90,state.width*.16)){
-                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
+                const r=el.getBoundingClientRect();
+                return {
+                  progress,id,x:r.left+r.width/2,y:r.top+r.height/2,
+                  visible:el.dataset.visible,width:innerWidth,height:innerHeight,
+                  settled:stableFrames>=5,settleFrames:frames
+                };
+              },{progress,id});
+            };
+
+            const validatePoint=point=>{
+              if(!point.settled) throw new Error(prefix+' '+point.id+' hotspot did not settle before bounded-motion sample '+JSON.stringify(point));
+              if(point.visible!=='true') throw new Error(prefix+' '+point.id+' hotspot hidden during its Design detail '+JSON.stringify(point));
+              const margin=12;
+              if(point.x<margin||point.x>point.width-margin||point.y<margin||point.y>point.height-margin){
+                throw new Error(prefix+' '+point.id+' hotspot outside viewport '+JSON.stringify(point));
               }
             };
 
-            await scrollProgress(.18);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const first=await readHotspots();
-            validate(first);
+            const checks=[
+              {id:'cushion',from:.15,to:.17,expectMotion:true,maxMovement:150},
+              {id:'headband',from:.19,to:.22,expectMotion:false,maxMovement:24},
+              {id:'controls',from:.245,to:.265,expectMotion:true,maxMovement:90}
+            ];
 
-            await scrollProgress(.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const second=await readHotspots();
-            validate(second);
-
-            for(const id of ['cushion','controls']){
-              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
-              if(movement<4){
-                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
+            const samples=[];
+            for(const check of checks){
+              const first=await pointAt(check.from,check.id);
+              const second=await pointAt(check.to,check.id);
+              validatePoint(first);
+              validatePoint(second);
+              const movement=Math.hypot(second.x-first.x,second.y-first.y);
+              const margin=16.5;
+              const edgeClamped=[first,second].some(point=>
+                point.x<=margin||point.x>=point.width-margin||point.y<=margin||point.y>=point.height-margin
+              );
+              const viewportBound=Math.min(check.maxMovement,Math.max(24,first.width*.38));
+              if(movement>viewportBound){
+                throw new Error(prefix+' '+check.id+' hotspot motion exceeded bounded Design envelope '+JSON.stringify({movement,viewportBound,first,second}));
               }
+              if(check.expectMotion && !edgeClamped && movement<2){
+                throw new Error(prefix+' '+check.id+' hotspot should track authored Design motion '+JSON.stringify({movement,first,second}));
+              }
+              samples.push({id:check.id,movement,edgeClamped,expectMotion:check.expectMotion,viewportBound,first,second});
             }
 
             if(errors.length) throw new Error(prefix+' browser errors '+errors.join(' | '));
             await page.screenshot({path:'nova-hotspot-qa/'+prefix+'.png'});
             await context.close();
-            return {first,second};
+            return samples;
           }
 
           const desktop=await audit({width:1440,height:1000},'desktop');
@@ -146,16 +167,4 @@ jobs:
         with:
           name: nova-hotspot-qa
           path: nova-hotspot-qa
-          retention-days: 3
-
-# Trigger: NOVA V2 refined framing hotspot verification 2026-09-23
-
-# R10 exact-source hotspot verification for site source 15539d430a7184705bcdf5af2f5685cc1634f4ff
-
-# R10 post-label-fix focused verification for source 19ddcf2a0c7fc1d8eecbbd35b8579b4c9b51e36c
-
-# R12 focused hotspot verification for site source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc
-
-# R13 focused hotspot verification after compact cinematic-track correction e2abde270bb114f79da3d1d20652471e1dc6fe23
-
-# R13 exact-source hotspot verification for final motion source e39dc80ea88a62eb560403ee2e84c12b31ab00a6
+          retention-days: 7
