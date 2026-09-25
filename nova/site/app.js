@@ -277,10 +277,12 @@ function resize(){
 
 function measureProductFrame(){
   if(!rendererAvailable || !model) return null;
-  normalizationRoot.updateWorldMatrix(true,true);
-  model.updateWorldMatrix(true,true);
-  const box=new THREE.Box3().setFromObject(model,true);
-  if(box.isEmpty()) return null;
+  if(!primaryProductBounds || primaryProductBounds.isEmpty()) return null;
+  centerGroup.updateWorldMatrix(true,false);
+  // Use the cable-excluded product bounds captured at load, then transform that
+  // box through the live presentation hierarchy. This keeps the probe focused on
+  // the headphone rather than hidden GLTF helper/cable geometry.
+  const box=primaryProductBounds.clone().applyMatrix4(centerGroup.matrixWorld);
   const min=box.min, max=box.max;
   const corners=[
     [min.x,min.y,min.z],[min.x,min.y,max.z],[min.x,max.y,min.z],[min.x,max.y,max.z],
