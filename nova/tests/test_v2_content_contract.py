@@ -58,14 +58,14 @@ def test_stage_geometry_matches_global_timeline():
             assert f".stage--{name}{{min-height:{height}" in compact
 
 
-def test_notify_concept_has_visible_accessible_panel():
-    assert 'id="notifyConcept"' in html
-    assert 'id="notifyPanel"' in html
-    assert 'aria-controls="notifyPanel"' in html
-    assert 'role="dialog"' in html
-    assert 'aria-modal="true"' in html
-    assert 'id="notifyClose"' in html
-    assert 'body[data-notify-concept="open"] .interest-panel' in css
+def test_v3_specs_panel_replaces_notify_demo():
+    assert 'id="notifyConcept"' not in html
+    assert 'id="notifyPanel"' not in html
+    assert 'id="productFactsTrigger"' in html
+    assert 'id="productFactsPanel"' in html
+    assert 'aria-controls="productFactsPanel"' in html
+    assert 'id="includedTrigger"' in html
+    assert 'NOVA / TECHNICAL SPECIFICATIONS' in html
 
 
 def test_chapter_background_is_state_driven():
