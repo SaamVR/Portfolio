@@ -4,6 +4,7 @@ import { createInspectionController } from '../site/interactions/inspection-cont
 import { createModeController } from '../site/interactions/mode-controller.js';
 import { createHotspotController } from '../site/interactions/hotspot-controller.js';
 import { normalizeEnvironmentState, createEnvironment } from '../site/runtime/environment.js';
+import { composeVisualState, createInteractionState } from '../site/runtime/composer.js';
 
 const fold = createFoldController({ openPose:.20, foldedPose:.40, duration:.7 });
 fold.begin('fold', .24);
@@ -169,3 +170,47 @@ inspect.update(.5);
 i=inspect.getInfluence();
 assert.equal(i.view,'front');
 assert.ok(Math.abs(i.modelYaw)<.2,'front inspection view must return toward the authored front');
+
+
+const switchElements={
+  a:{dataset:{},style:{},setAttribute(){}},
+  b:{dataset:{},style:{},setAttribute(){}}
+};
+const switchingHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{
+    a:{point:[0,0,0],cameraOffset:[1,0,0],targetOffset:[.5,0,0]},
+    b:{point:[0,0,0],cameraOffset:[-1,0,0],targetOffset:[-.5,0,0]}
+  },
+  elements:switchElements
+});
+switchingHotspots.focus('a');
+for(let n=0;n<12;n++) switchingHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const beforeSwitch=switchingHotspots.getInfluence();
+assert.ok(beforeSwitch.cameraOffset[0]>0 && beforeSwitch.cameraOffset[0]<1,'detail focus offset should ease toward the first target');
+switchingHotspots.focus('b');
+switchingHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const afterSwitch=switchingHotspots.getInfluence();
+assert.ok(afterSwitch.cameraOffset[0]>-1 && afterSwitch.cameraOffset[0]<beforeSwitch.cameraOffset[0],
+  'switching detail focus must interpolate instead of snapping to the next camera offset');
+switchingHotspots.clear();
+switchingHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const afterClear=switchingHotspots.getInfluence();
+assert.ok(afterClear.weight>0,'clearing detail focus must decay ownership instead of hard-resetting weight');
+assert.ok(Math.abs(afterClear.cameraOffset[0])>0,'clearing detail focus must ease camera offset back to zero');
+
+const baseVisual={
+  product:{position:[0,0,0],scale:1,yaw:0,pitch:0,pose:.3},
+  camera:{position:[0,0,4],target:[0,0,0],fov:30},
+  lighting:{exposure:1,hemi:1,key:1,fill:1,rim:1,warm:1,keyColor:0xffffff,rimColor:0xffffff,keyPosition:[1,1,1]},
+  environment:{tone:0,spatialAmount:0,spatialSpread:0,adaptiveAmount:0,openness:0,motion:0},
+  ui:{}
+};
+const inspectionState=createInteractionState();
+inspectionState.inspection={weight:1,yaw:.2,pitch:0,modelYaw:1,view:'side',active:true};
+inspectionState.hotspot={weight:1,id:'controls',cameraOffset:[1,0,0],targetOffset:[1,0,0]};
+const inspected=composeVisualState(baseVisual,inspectionState);
+assert.ok(inspected.camera.position[0]<.5,
+  'direct inspection must suppress hotspot camera offsets so controllers do not fight');
+assert.equal(inspected.lighting.key,1.12,'hotspot lighting emphasis may remain during inspection');
