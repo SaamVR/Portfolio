@@ -5,6 +5,7 @@ on:
     branches:
       - leadflow/refine-brown-navy
       - leadflow/refine-neutral-canvas
+      - leadflow/refine-achromatic-canvas
   workflow_dispatch:
 
 permissions:
