@@ -40,7 +40,7 @@
   function createController(options={}){
     let globalEpoch=0;
     const storyEpoch=new Map();
-    const animations=new Set();
+    const animations=new Map();
 
     const nextStoryEpoch=story=>{
       const next=(storyEpoch.get(story)||0)+1;
@@ -50,9 +50,12 @@
 
     const isCancelled=(story,epoch,global)=>global!==globalEpoch||storyEpoch.get(story)!==epoch;
 
-    function cancelAnimations(){
-      animations.forEach(animation=>{try{animation.cancel()}catch{}});
-      animations.clear();
+    function cancelAnimations(story=null){
+      for(const [animation,owner] of animations){
+        if(story&&owner!==story)continue;
+        try{animation.cancel()}catch{}
+        animations.delete(animation);
+      }
     }
 
     function cancelAll(){
@@ -86,7 +89,7 @@
         return;
       }
       const animation=el.animate(keyframes,timing);
-      animations.add(animation);
+      animations.set(animation,context.story);
       try{await animation.finished}catch{}
       animations.delete(animation);
     }
@@ -399,6 +402,7 @@
     };
 
     async function run(story,storyOptions={}){
+      cancelAnimations(story);
       const epoch=nextStoryEpoch(story);
       const global=globalEpoch;
       const reducedMotion=storyOptions.reducedMotion??prefersReducedMotion();

@@ -83,3 +83,55 @@ test("base story CSS hooks exist",()=>{
   }
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)[\s\S]*\.story-packet/);
 });
+
+
+test("replaying the same story cancels its in-flight Web Animation",async()=>{
+  const code=fs.readFileSync(path.join(root,"storytelling.js"),"utf8");
+  let cancelCount=0;
+  const pending=[];
+  function animatedElement(){
+    const el=fakeElement();
+    el.animate=()=>{
+      let resolve;
+      const finished=new Promise(r=>{resolve=r});
+      const animation={finished,cancel(){cancelCount+=1;resolve()}};
+      pending.push(animation);
+      return animation;
+    };
+    return el;
+  }
+  const section=fakeElement(),incoming=animatedElement(),existing=fakeElement(),count=fakeElement(),boundary=fakeElement();
+  const beats=[fakeElement(),fakeElement(),fakeElement(),fakeElement()];
+  const scenes=[fakeElement(),fakeElement(),fakeElement()];
+  scenes[0].dataset.incidentScene="duplicate";
+  scenes[1].dataset.incidentScene="timeout";
+  scenes[2].dataset.incidentScene="review";
+  const titles=[fakeElement(),fakeElement(),fakeElement(),fakeElement()];
+  const copies=[fakeElement(),fakeElement(),fakeElement(),fakeElement()];
+  const map=new Map([
+    ["#reliability",section],["#incidentBoundary",boundary],
+    ["#incidentDuplicateIncoming",incoming],["#incidentDuplicateExisting",existing],["#incidentDuplicateCount",count],
+    ["#incidentBeatTitle0",titles[0]],["#incidentBeatTitle1",titles[1]],["#incidentBeatTitle2",titles[2]],["#incidentBeatTitle3",titles[3]],
+    ["#incidentBeatCopy0",copies[0]],["#incidentBeatCopy1",copies[1]],["#incidentBeatCopy2",copies[2]],["#incidentBeatCopy3",copies[3]]
+  ]);
+  const document={
+    documentElement:{dataset:{},classList:fakeClassList()},
+    querySelector(sel){return map.get(sel)||null},
+    querySelectorAll(sel){
+      if(sel==="#reliability [data-incident-beat]")return beats;
+      if(sel==="#reliability [data-incident-scene]")return scenes;
+      return [];
+    }
+  };
+  const sandbox={window:{},setTimeout,clearTimeout,matchMedia:()=>({matches:false}),document};
+  sandbox.window.window=sandbox.window;
+  vm.runInNewContext(code,sandbox);
+  const c=sandbox.window.LeadFlowStorytelling.createController({root:document});
+  const first=c.playReliabilityStory("duplicate");
+  await Promise.resolve();
+  const second=c.playReliabilityStory("duplicate");
+  await Promise.resolve();
+  assert.ok(cancelCount>=1,"second run must cancel the previous in-flight animation");
+  c.cancelAll();
+  await Promise.all([first,second]);
+});
