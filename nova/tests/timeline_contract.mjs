@@ -216,3 +216,9 @@ for(let p=.162;p<=.36+1e-9;p+=.002){
 }
 assert.ok(v3MaxPoseStep <= .020,
   `V3 source-pose scrub must remain continuous through Design→Sound; max .002-scroll step=${v3MaxPoseStep}`);
+
+
+const v3SettleA=sampleTimeline(.19,'desktop');
+const v3SettleB=sampleTimeline(.22,'desktop');
+assert.ok(Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw) <= .012,
+  `V3 Design settle yaw drift must stay bounded for stable engineering annotations; delta=${Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw)}`);
