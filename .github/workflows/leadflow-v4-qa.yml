@@ -1,0 +1,25 @@
+name: LeadFlow V4 QA
+
+on:
+  push:
+    branches:
+      - leadflow/v4-warm-industrial
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: V4 palette and preservation contract
+        run: node --test tests/leadflow-v4-palette.test.js
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check dashboard.js
+          node --check storytelling.js
+          node --check functions/api/qualify.js
