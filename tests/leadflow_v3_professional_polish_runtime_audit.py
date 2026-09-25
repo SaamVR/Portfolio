@@ -177,4 +177,3 @@ finally:
     except: pass
     proc.terminate()
     shutil.rmtree(profile,ignore_errors=True)
-
