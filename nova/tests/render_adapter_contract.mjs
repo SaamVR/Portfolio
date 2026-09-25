@@ -38,3 +38,29 @@ assert.ok(latestLook[1]>0 && latestLook[1]<1,'camera vertical target must damp i
 
 const poseStep=mixer.times[1]-mixer.times[0];
 assert.ok(poseStep<=.07,`source-pose velocity must stay below 70ms of source animation per frame, got ${poseStep}`);
+
+
+{
+  const camera2={position:vec(),fov:30,lookAts:[],updateProjectionMatrix(){},lookAt(...args){this.lookAts.push(args);}};
+  const turntable={position:vec(),rotation:vec(),scale:vec(1,1,1)};
+  const orientation={position:vec(),rotation:vec(),scale:vec(1,1,1)};
+  const adapter2=createRenderAdapter({
+    THREE,camera:camera2,presentation:turntable,orientation,
+    mixer:null,clipDuration:0,renderer:{toneMappingExposure:1},lights:{},environment,
+    orientationX:-Math.PI/2
+  });
+  const viewState={
+    ...base,
+    product:{...base.product,yaw:Math.PI*.75,pitch:.08}
+  };
+  adapter2.snap(viewState);
+
+  assert.ok(Math.abs(turntable.rotation.y-viewState.product.yaw)<1e-9,
+    'turntable group must own interactive yaw');
+  assert.ok(Math.abs(turntable.rotation.x)<1e-9,
+    'turntable group must not also carry the fixed model import orientation');
+  assert.ok(Math.abs(orientation.rotation.x-(-Math.PI/2+viewState.product.pitch))<1e-9,
+    'orientation group must own fixed import orientation plus fine pitch');
+  assert.ok(Math.abs(orientation.rotation.y)<1e-9,
+    'orientation group must not own turntable yaw');
+}
