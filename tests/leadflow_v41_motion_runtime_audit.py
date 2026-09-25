@@ -5,15 +5,27 @@ os.makedirs(OUT,exist_ok=True)
 
 def audit(width,height,port):
     profile=tempfile.mkdtemp(prefix="lf-v41-")
-    proc=subprocess.Popen(["/usr/bin/google-chrome","--headless","--no-sandbox","--disable-gpu","--hide-scrollbars","--remote-allow-origins=*",
-        f"--remote-debugging-port={port}",f"--user-data-dir={profile}","about:blank"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    err_path=os.path.join(profile,"chrome-stderr.log")
+    err_file=open(err_path,"w")
+    proc=subprocess.Popen(["/usr/bin/google-chrome","--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage","--hide-scrollbars","--remote-allow-origins=*",
+        f"--remote-debugging-port={port}",f"--user-data-dir={profile}","about:blank"],stdout=subprocess.DEVNULL,stderr=err_file)
     errors=[]
     try:
-        for _ in range(160):
+        tab=None
+        for _ in range(300):
             try:
                 tabs=json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list"))
-                tab=next(x for x in tabs if x.get("type")=="page" and x.get("url")=="about:blank");break
-            except Exception:time.sleep(.05)
+                pages=[x for x in tabs if x.get("type")=="page"]
+                if pages:
+                    tab=pages[0]
+                    break
+            except Exception:
+                if proc.poll() is not None:break
+                time.sleep(.05)
+        if tab is None:
+            err_file.flush()
+            detail=open(err_path).read()[-3000:]
+            raise RuntimeError("Chrome did not expose a page target. "+detail)
         ws=websocket.create_connection(tab["webSocketDebuggerUrl"],timeout=20);seq=0
         def call(method,params=None):
             nonlocal seq
@@ -88,7 +100,10 @@ def audit(width,height,port):
     finally:
         try:ws.close()
         except:pass
-        proc.terminate();shutil.rmtree(profile,ignore_errors=True)
+        proc.terminate()
+        try:err_file.close()
+        except:pass
+        shutil.rmtree(profile,ignore_errors=True)
 
 audit(1440,950,9640)
 audit(390,844,9641)
