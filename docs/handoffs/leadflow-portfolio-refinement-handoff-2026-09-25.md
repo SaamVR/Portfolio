@@ -184,3 +184,44 @@ Do not report production complete until those checks pass.
 - Runtime responsive audit found no horizontal overflow at tested widths 390/768/1024/1440.
 - Functional runtime test: default workflow `COMPLETE`, score `92`, `16 events`, `ERR0`.
 - Production verification: Instrument Sans marker present; typography/final audit CSS present; root API remains deterministic-qualification-v2; `/v1/api/qualify` remains v1; live Sarah/Acme POST returns score 92.
+
+
+## Lead Operations dashboard + readability redesign — production update
+
+- Approved design spec: `docs/superpowers/specs/2026-09-25-leadflow-visual-dashboard-redesign.md`.
+- Approved implementation plan: `docs/superpowers/plans/2026-09-25-leadflow-visual-dashboard-redesign.md`.
+- Development and audit loops executed on the GPT runtime; `samvr` was used only for the authenticated Cloudflare Wrangler deployment and public curl verification.
+- Production source commit: `e04fa39e90c3e4e351db44353f59b096b2f7ef7b`.
+- Cloudflare immutable deployment: https://e0a01bee.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Frozen legacy: https://leadflow-ai-bhy.pages.dev/v1/
+- Added `dashboard.js` with pure/testable `LeadFlowDashboard.buildDashboardModel(leads)` analytics.
+- Rebuilt the CRM preview as a practical Lead Operations dashboard with:
+  - contextual pipeline/high-priority/average-score/immediate-follow-up KPIs;
+  - qualification-distribution donut;
+  - recent qualification score trend;
+  - next-action queue;
+  - source-quality count/average view;
+  - urgency/timeline mix;
+  - expanded operational lead table with next action;
+  - human-readable activity plus collapsible technical event details.
+- All dashboard analytics are derived from browser-local demo records. Missing source values use `Unspecified`; no source/channel names are synthesized.
+- Source-quality bars encode the displayed average qualification score rather than unrelated record count.
+- Typography/visibility runtime audit: zero visible text nodes below 12px in both light and dark modes.
+- Responsive audit: no page-level horizontal overflow at 390 / 768 / 1024 / 1440 widths; the lead table retains its own contained horizontal scroll on narrow screens.
+- Empty/sparse state audit passed without NaN/Infinity or fabricated data.
+- Reduced-motion audit passed; metrics/charts remain immediately readable without transition dependency.
+- End-to-end runtime scenarios passed from an empty CRM:
+  - high priority: 92, 16 events;
+  - needs review: 64, 16 events;
+  - nurture: 33, 16 events;
+  - dashboard and CRM totals stayed consistent.
+- Node/static gate before sync: 7/7 tests pass; `dashboard.js`, `app.js`, and root qualification function syntax checks pass; `git diff --check` passes.
+- Whole-branch review found one Important truthfulness issue in source analytics; fixed with a RED→GREEN regression audit before release.
+- GitHub-side guarded sync reconstructed a checksummed GPT-runtime payload, reran tests, confirmed no diff to `v1`, `functions/v1`, or `functions/api/qualify.js`, then pushed `main`.
+- Public post-deploy verification on both immutable and canonical domains:
+  - dashboard DOM + `dashboard.js` present;
+  - root GET API reports `deterministic-qualification-v2`;
+  - canonical Sarah / Acme Dental POST returns score 92 and `Sales review`;
+  - `/v1/` remains the original LeadFlow AI build;
+  - `/v1/api/qualify` remains `deterministic-qualification-v1`.
