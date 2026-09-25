@@ -13,6 +13,7 @@ export function createRenderAdapter({
 }){
   if(!THREE || !camera || !presentation || !renderer) throw new Error('render adapter missing required dependencies');
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
+  let poseClock=null;
   const applyVec=(obj,key,values,lambda,dt)=>{
     obj[key].x=damp(obj[key].x,values[0],lambda,dt);
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
@@ -37,7 +38,12 @@ export function createRenderAdapter({
       presentation.scale.y=damp(presentation.scale.y,s,4.5,step);
       presentation.scale.z=damp(presentation.scale.z,s,4.5,step);
 
-      if(mixer && Number.isFinite(clipDuration)) mixer.setTime(state.product.pose*clipDuration);
+      if(mixer && Number.isFinite(clipDuration)){
+        const targetPose=Math.max(0,Math.min(1,Number.isFinite(state.product.pose)?state.product.pose:0));
+        if(poseClock===null) poseClock=targetPose;
+        else poseClock=damp(poseClock,targetPose,9.0,step);
+        mixer.setTime(poseClock*clipDuration);
+      }
 
       renderer.toneMappingExposure=damp(renderer.toneMappingExposure,state.lighting.exposure,3.7,step);
       if(lights){
