@@ -375,8 +375,8 @@ Treat `bcc98f7` / `797dc1f0...` as the final LeadFlow visual/UIUX showcase freez
 
 ## CRM ANALYTICS / NAV / WALKTHROUGH POLISH — superseding production state
 
-- Production source commit: `fb35fcc1c9593dd6699e8127ff7a7bff00b37ebf` (`refine LeadFlow CRM analytics nav and walkthrough`).
-- Latest immutable Cloudflare deployment: https://3d82ce5f.leadflow-ai-bhy.pages.dev
+- Production source commit: `543c056076fd73a39de327a3364b7e10bbc99156` (primary refinement `fb35fcc1c9593dd6699e8127ff7a7bff00b37ebf` + regression-audit formatting cleanup).
+- Latest immutable Cloudflare deployment: https://8fcca7f9.leadflow-ai-bhy.pages.dev
 - Canonical production: https://leadflow-ai-bhy.pages.dev/
 - Frozen legacy remains: https://leadflow-ai-bhy.pages.dev/v1/
 
@@ -439,10 +439,11 @@ Treat `bcc98f7` / `797dc1f0...` as the final LeadFlow visual/UIUX showcase freez
   - all four detailed analytics regions render;
   - light KPI surfaces are white/readable.
 - Public theme interaction verified `Dark → Light` with moving thumb and correct ARIA state.
+- Final public browser verification also passed on the immutable `8fcca7f9...` deployment and canonical domain; 390px Analytics runtime text floor remained 12.5px and the reduced-motion public tour reached all 6/6 stages with result only after workflow COMPLETE.
 - Public normal-motion guided walkthrough verified all 6 steps and waits for workflow completion before result.
 - Root API remains `deterministic-qualification-v2`; Sarah / Acme Dental still returns 92.
 - `/v1/` remains legacy and `/v1/api/qualify` remains `deterministic-qualification-v1`.
 - No changes were made to `v1`, `functions/v1`, or `functions/api/qualify.js`.
 
 ### Current freeze state
-Treat `fb35fcc` / `3d82ce5f...` as the current LeadFlow showcase freeze. The Pipeline Analytics readability issue, walkthrough timing defect, navbar width, and Light/Dark toggle presentation have all been superseded by this build.
+Treat `543c056` / `8fcca7f9...` as the current LeadFlow showcase freeze. The Pipeline Analytics readability issue, walkthrough timing defect, navbar width, and Light/Dark toggle presentation have all been superseded by this build.
