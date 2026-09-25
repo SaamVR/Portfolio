@@ -305,6 +305,8 @@ function publishState(state){
   document.body.dataset.activeScene=state.range;
   document.body.dataset.transition=state.ui.transition || 'none';
   document.body.dataset.stageGating='true';
+  document.body.dataset.visualProgress=Number(state.progress||0).toFixed(4);
+  document.body.dataset.productPose=Number(state.product?.pose||0).toFixed(4);
   if(publishedRange!==state.range){
     for(const stage of rangeStages) stage.classList.toggle('is-active',stage.dataset.rangeAnchor===state.range);
     publishedRange=state.range;
