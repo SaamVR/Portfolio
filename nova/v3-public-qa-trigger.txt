@@ -1,1 +1,2 @@
 NOVA V3 public QA trigger — 2026-09-25 product-framing release.
+NOVA V3 public QA — final control framing c8b7aac — 2026-09-25.
