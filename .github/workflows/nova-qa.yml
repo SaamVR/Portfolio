@@ -254,7 +254,7 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_transparency.png'});
 
             await scrollProgress(page,.65);
-            await page.getByRole('button',{name:/fold/i}).click();
+            await page.getByRole('button',{name:'Fold',exact:true}).click();
             await page.waitForTimeout(850);
             await page.screenshot({path:'nova-qa/desktop_fold.png'});
             await page.mouse.wheel(0,620);
