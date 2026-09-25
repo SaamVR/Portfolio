@@ -68,7 +68,7 @@ async function dragCanvas(page,dx,dy){
   const x=box.x+box.width*.5,y=box.y+box.height*.5;
   await page.mouse.move(x,y); await page.mouse.down(); await page.mouse.move(x+dx,y+dy,{steps:10}); await page.mouse.up();
 }
-async function collect(page,{frames=80,actions=[]}){
+async function collect(page,{frames=60,actions=[]}){
   return page.evaluate(async ({frames,actions})=>{
     const rows=[];
     const byFrame=new Map(actions.map(a=>[a.frame,a]));
@@ -98,7 +98,7 @@ async function collect(page,{frames=80,actions=[]}){
     return rows;
   },{frames,actions});
 }
-async function continuous(page,{frames=220,from=0,to=1}){
+async function continuous(page,{frames=150,from=0,to=1}){
   return page.evaluate(async ({frames,from,to})=>{
     document.documentElement.style.scrollBehavior='auto';
     const behind=document.querySelector('#behind');
@@ -120,51 +120,54 @@ async function continuous(page,{frames=220,from=0,to=1}){
 async function auditDesktop(url,label){
   const {context,page,errors}=await ready(url,{width:1440,height:1000});
   const out={errors};
+  console.log(label+': desktop inspection views');
 
   await setProgress(page,.79,600);
-  out.side=trajectoryStats(await collect(page,{frames:80,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
+  out.side=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
 
   await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(650);
-  out.rear=trajectoryStats(await collect(page,{frames:100,actions:[{frame:4,type:'click',selector:'[data-inspection-view="rear"]'}]}));
+  out.rear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="rear"]'}]}));
 
   await page.waitForTimeout(650);
-  out.frontFromRear=trajectoryStats(await collect(page,{frames:100,actions:[{frame:4,type:'click',selector:'[data-inspection-view="front"]'}]}));
+  out.frontFromRear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="front"]'}]}));
 
   await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
   await dragCanvas(page,280,70); await page.waitForTimeout(60);
-  out.dragToSide=trajectoryStats(await collect(page,{frames:80,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
+  out.dragToSide=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
 
   await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
   await dragCanvas(page,-260,-55); await page.waitForTimeout(60);
-  out.dragReset=trajectoryStats(await collect(page,{frames:80,actions:[{frame:4,type:'click',selector:'#inspectionReset'}]}));
+  out.dragReset=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'#inspectionReset'}]}));
 
   await setProgress(page,.79,350); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(850);
-  out.rearExit=trajectoryStats(await collect(page,{frames:95,actions:[{frame:4,type:'scroll',progress:.87}]}));
+  out.rearExit=trajectoryStats(await collect(page,{frames:70,actions:[{frame:4,type:'scroll',progress:.87}]}));
 
   await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
-  out.rapidViews=trajectoryStats(await collect(page,{frames:105,actions:[
+  out.rapidViews=trajectoryStats(await collect(page,{frames:80,actions:[
     {frame:4,type:'click',selector:'[data-inspection-view="rear"]'},
     {frame:11,type:'click',selector:'[data-inspection-view="side"]'},
     {frame:18,type:'click',selector:'[data-inspection-view="front"]'},
     {frame:25,type:'click',selector:'[data-inspection-view="rear"]'}
   ]}));
 
+  console.log(label+': desktop fold controls');
   await setProgress(page,.65,500);
-  out.foldRetarget=trajectoryStats(await collect(page,{frames:110,actions:[
+  out.foldRetarget=trajectoryStats(await collect(page,{frames:80,actions:[
     {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
     {frame:25,type:'click',selector:'[data-fold-state="open"]'},
     {frame:46,type:'click',selector:'[data-fold-state="fold"]'}
   ]}));
 
   await setProgress(page,.65,500);
-  out.foldExit=trajectoryStats(await collect(page,{frames:95,actions:[
+  out.foldExit=trajectoryStats(await collect(page,{frames:70,actions:[
     {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
     {frame:30,type:'scroll',progress:.74}
   ]}));
 
+  console.log(label+': desktop scroll trajectories');
   await setProgress(page,0,500);
-  out.scrollForward=trajectoryStats(await continuous(page,{frames:240,from:0,to:1}));
-  out.scrollReverse=trajectoryStats(await continuous(page,{frames:190,from:1,to:0}));
+  out.scrollForward=trajectoryStats(await continuous(page,{frames:160,from:0,to:1}));
+  out.scrollReverse=trajectoryStats(await continuous(page,{frames:140,from:1,to:0}));
 
   await setProgress(page,.79,500); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(800);
   await page.screenshot({path:`nova-motion-audit/${label}_desktop_rear.png`});
@@ -174,8 +177,9 @@ async function auditDesktop(url,label){
 async function auditMobile(url,label){
   const {context,page,errors}=await ready(url,{width:390,height:844},true);
   const out={errors};
+  console.log(label+': mobile scroll trajectory');
   await setProgress(page,0,500);
-  out.scrollForward=trajectoryStats(await continuous(page,{frames:220,from:0,to:1}));
+  out.scrollForward=trajectoryStats(await continuous(page,{frames:150,from:0,to:1}));
   await setProgress(page,.79,450); await page.locator('[data-inspection-view="rear"]').tap(); await page.waitForTimeout(800);
   await page.screenshot({path:`nova-motion-audit/${label}_mobile_rear.png`});
   await context.close();
@@ -198,18 +202,23 @@ function compare(a,b){
   return pairs;
 }
 
-const baselineDesktop=await auditDesktop(BASELINE,'baseline');
-const candidateDesktop=await auditDesktop(CANDIDATE,'candidate');
-const baselineMobile=await auditMobile(BASELINE,'baseline');
-const candidateMobile=await auditMobile(CANDIDATE,'candidate');
-
-const report={
-  baselineUrl:BASELINE,candidateUrl:CANDIDATE,
-  desktop:{baseline:baselineDesktop,candidate:candidateDesktop,compare:compare(baselineDesktop,candidateDesktop)},
-  mobile:{baseline:baselineMobile,candidate:candidateMobile,compare:compare(baselineMobile,candidateMobile)}
-};
+const phase=process.env.NOVA_MOTION_PHASE||'desktop';
+let report;
+let errors=[];
+if(phase==='desktop'){
+  const baseline=await auditDesktop(BASELINE,'baseline');
+  const candidate=await auditDesktop(CANDIDATE,'candidate');
+  report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
+  errors=[...baseline.errors,...candidate.errors];
+}else if(phase==='mobile'){
+  const baseline=await auditMobile(BASELINE,'baseline');
+  const candidate=await auditMobile(CANDIDATE,'candidate');
+  report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
+  errors=[...baseline.errors,...candidate.errors];
+}else{
+  throw new Error('Unknown NOVA_MOTION_PHASE '+phase);
+}
 fs.writeFileSync('nova-motion-audit/report.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));
 await browser.close();
-const errors=[...baselineDesktop.errors,...candidateDesktop.errors,...baselineMobile.errors,...candidateMobile.errors];
 if(errors.length) throw new Error(errors.join('\n'));
