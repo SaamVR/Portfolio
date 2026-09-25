@@ -329,3 +329,45 @@ Do not report production complete until those checks pass.
 
 ### Freeze recommendation
 Treat this version as the visual/UIUX freeze for the LeadFlow portfolio showcase. Future changes should be bug fixes, content corrections, or portfolio-link updates rather than additional visual-system redesign.
+
+
+## POST-FREEZE QA POLISH — superseding production state
+
+- Superseding production source commit: `bcc98f7b85273f8304166a0b116b75962b484f1e` (`finalize LeadFlow showcase interaction polish`).
+- Latest immutable Cloudflare deployment: https://797dc1f0.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- The earlier visual-freeze deployment `4c4b676c...` / source `f37e102` is superseded by this QA-polished build.
+- Post-freeze fixes discovered during whole-branch/runtime review:
+  - hero no longer highlights `Workflow` before the visitor reaches the first navigable section;
+  - sticky nav still tracks Workflow / Demo / Workspace / Reliability / Architecture / ROI deterministically;
+  - opening Blueprint or Architecture technical disclosures now immediately promotes nested reveal targets, so content cannot remain at `opacity: 0` in normal/background/reduced-motion browsing contexts;
+  - the disclosure reveal handler also refreshes reading state after expansion.
+- Final static suite: 20/20 PASS.
+- Dedicated CRM runtime audit: PASS in dark/light, search/filter, lead drawer, all CRM tabs, empty state, and zero CRM browser errors.
+- Final-showcase runtime audit: PASS across dark/light × 390/768/1024/1440, plus expanded disclosure states.
+- Runtime audit confirms:
+  - zero visible text below 12px;
+  - zero measured normal-text contrast failures;
+  - zero undersized audited controls;
+  - zero page-level horizontal overflow;
+  - mobile workspace pipeline rows render as cards;
+  - reduced-motion presentation disables nonessential motion;
+  - Blueprint and Architecture disclosure content reaches `opacity: 1` after a normal open interaction.
+- Live canonical browser verification after deploy:
+  - hero active nav = none;
+  - all six section nav states correct;
+  - reading progress = `scaleX(0.5)` at page midpoint;
+  - Blueprint disclosure opens with visible content;
+  - Architecture secondary detail opens with visible content;
+  - 390px document width remains exactly 390px;
+  - mobile pipeline rows render as `grid`;
+  - zero visible text below 12px in the live mobile spot-check.
+- Public API verification on immutable + canonical:
+  - root API remains `deterministic-qualification-v2`;
+  - Sarah / Acme Dental still returns score 92;
+  - `/v1/` remains legacy;
+  - `/v1/api/qualify` remains `deterministic-qualification-v1`.
+- No changes to `v1`, `functions/v1`, or `functions/api/qualify.js`.
+
+### Freeze status
+Treat `bcc98f7` / `797dc1f0...` as the final LeadFlow visual/UIUX showcase freeze. Further work should be limited to bug fixes, content corrections, portfolio-link maintenance, or materially new product functionality.
