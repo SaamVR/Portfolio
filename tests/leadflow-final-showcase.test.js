@@ -54,3 +54,9 @@ test("navigation leaves section links neutral while the hero is still above the 
 test("blueprint disclosure affordance keeps a visible plus glyph", () => {
   assert.match(css, /\.blueprint-summary-action i\s*\{[^}]*font-size:\s*16px/);
 });
+
+test("opening deferred detail disclosures promotes nested reveal targets", () => {
+  assert.match(app, /function revealOpenedDetails/);
+  assert.match(app, /details\.querySelectorAll\("\.reveal-on-scroll"\)/);
+  assert.match(app, /addEventListener\("toggle"/);
+});

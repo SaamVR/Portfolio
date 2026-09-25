@@ -281,20 +281,30 @@ if("IntersectionObserver" in window){
   document.querySelectorAll(".section").forEach(section=>section.classList.add("is-section-visible"));
 }
 
+function revealOpenedDetails(details){
+  if(!details?.open)return;
+  details.querySelectorAll(".reveal-on-scroll").forEach(el=>el.classList.add("is-visible"));
+  details.closest(".section")?.classList.add("is-section-visible");
+  requestReadingState();
+}
+document.querySelectorAll("details").forEach(details=>{
+  details.addEventListener("toggle",()=>revealOpenedDetails(details));
+  revealOpenedDetails(details);
+});
+
 /* Active-section orientation for the long-form presentation. */
 const navSectionLinks=[...document.querySelectorAll(".desktop-nav a[href^='#']")];
 const presentationProgressBar=document.querySelector("#presentationProgressBar");
 function updateReadingState(){
   const navHeight=document.querySelector(".nav")?.getBoundingClientRect().height||78;
   const readingLine=navHeight+52;
+  const navTargets=navSectionLinks.map(link=>document.querySelector(link.getAttribute("href"))).filter(Boolean);
+  const firstTarget=navTargets[0]||null;
   let activeTarget=null;
-  for(const link of navSectionLinks){
-    const target=document.querySelector(link.getAttribute("href"));
-    if(!target)continue;
-    if(target.getBoundingClientRect().top<=readingLine)activeTarget=target;
-  }
-  if(!activeTarget){
-    activeTarget=navSectionLinks.map(link=>document.querySelector(link.getAttribute("href"))).filter(Boolean).sort((a,b)=>Math.abs(a.getBoundingClientRect().top-readingLine)-Math.abs(b.getBoundingClientRect().top-readingLine))[0]||null;
+  if(!(firstTarget&&firstTarget.getBoundingClientRect().top>readingLine)){
+    for(const target of navTargets){
+      if(target.getBoundingClientRect().top<=readingLine)activeTarget=target;
+    }
   }
   navSectionLinks.forEach(link=>link.classList.toggle("is-active",!!activeTarget&&link.getAttribute("href")==="#"+activeTarget.id));
   if(presentationProgressBar){
