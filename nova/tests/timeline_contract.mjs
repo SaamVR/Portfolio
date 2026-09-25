@@ -97,12 +97,13 @@ const designPose=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
 const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
 const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
-assert.ok(Math.abs(designClosePoseB-designClosePoseA) >= .06,
-  `Design close pass should visibly advance the source clip like V1; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
+const designCloseDelta=Math.abs(designClosePoseB-designClosePoseA);
+assert.ok(designCloseDelta >= .005 && designCloseDelta <= .025,
+  `V3 Design close pass should stay alive without an expansion jump; delta=${designCloseDelta}`);
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
-  assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
+  assert.ok(pose >= .34 && pose <= .60,`V3 product motion should remain in a controlled presentation range at ${p}, got ${pose}`);
 }
 
 
