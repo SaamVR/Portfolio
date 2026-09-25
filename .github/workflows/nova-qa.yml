@@ -194,10 +194,31 @@ jobs:
 
             const pointAt=async (progress,id)=>{
               await scrollProgress(page,progress);
-              await page.waitForFunction(hotspot=>{
-                const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
-                return el?.dataset.visible==='true';
-              },id);
+              try{
+                await page.waitForFunction(hotspot=>{
+                  const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                  return el?.dataset.visible==='true';
+                },id,{timeout:5000});
+              }catch(error){
+                const diagnostic=await page.evaluate(({progress,id})=>{
+                  const el=document.querySelector('[data-hotspot="'+id+'"]');
+                  const detailMap={cushion:'cushion',headband:'hinge',controls:'controls'};
+                  const detail=document.querySelector('[data-detail-id="'+detailMap[id]+'"]');
+                  return {
+                    progress,id,
+                    range:document.body.dataset.range,
+                    rangeProgress:document.body.dataset.rangeProgress,
+                    designDetail:document.body.dataset.designDetail,
+                    hotspotVisible:el?.dataset.visible||null,
+                    hotspotExpanded:el?.getAttribute('aria-expanded')||null,
+                    hotspotTransform:el?.style.transform||null,
+                    detailPressed:detail?.getAttribute('aria-pressed')||null,
+                    scrollY,
+                    viewport:{width:innerWidth,height:innerHeight}
+                  };
+                },{progress,id});
+                throw new Error(prefix+' hotspot visibility timeout '+JSON.stringify(diagnostic));
+              }
               return page.evaluate(({progress,id})=>{
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
                 const r=el.getBoundingClientRect();
