@@ -252,3 +252,75 @@ Live immutable and canonical byte/source verification passed, and V1/V2/V3 plus 
 
 Treat product commit `f6b177cd513a82143a26c123c71f62adb52c72b9` and immutable deployment `c6c98fd8` as the current brown/navy refinement baseline.
 
+## Navy guideline refinement — 2026-09-25
+
+A navy-only design refinement was completed using the supplied Material Design, W3C, and NN/g references as the design/a11y standard.
+
+Authoritative source:
+- PR #33 — Refine LeadFlow navy design with motion and accessibility guidelines
+- reviewed branch head: `e9b6f5d3e3c3ab58ee6eef2353fd546b5cf5cf74`
+- squash merge: `a8d03aa665bc4291ea85178e93ad5a325647bd81`
+- preservation branch: `preserve/leadflow-navy-guidelines-a8d03aa6-20260925`
+
+Scope:
+- only `refine-navy/theme.css`, the navy guideline test, and its QA workflow branch trigger changed
+- no brown variant files changed
+- no green root files changed
+- no shared app/dashboard/story JS changed
+- no qualification API behavior changed
+
+Design changes:
+- removes persistent decorative hero signal, workflow connector, flow-node, follow-up-card and Run-workflow CTA loops
+- keeps intentional story/workflow motion event-driven
+- standardizes navy motion tokens to 160ms / 240ms / 320ms with `cubic-bezier(.4,0,.2,1)`
+- keeps route-level `prefers-reduced-motion` authoritative
+- reduces sticky navigation to 64px desktop / 60px mobile
+- changes sticky navigation from translucent blur to opaque high-contrast chrome
+- preserves 44px minimum interaction targets despite smaller persistent chrome
+- uses navy for identity, key actions, active navigation, focus, and meaningful state rather than large neutral surfaces
+- converts the hero visual from ambient/glass styling to a crisper product diagram
+- reduces heavy shadows / competing card emphasis
+- makes “Watch LeadFlow in action” a tertiary hero action
+- keeps architecture integration detail, engineering/API detail, and workflow planning progressively disclosed
+- strengthens disclosure keyboard focus states
+- changes the final CTA to a neutral surface with a navy keyline
+- keeps yellow reserved for review/attention semantics in the refined hierarchy
+
+Final QA:
+- GitHub Actions run: https://github.com/SaamVR/Portfolio/actions/runs/36195433372
+- artifact: `leadflow-refine-brown-navy-review`
+- artifact ID: `10890316387`
+- artifact digest: `sha256:5088182258df49749017f7c644f67eeafee12c6efa5e909e46d002669647fc60`
+- navy guideline contract PASS
+- full Node regression PASS
+- syntax PASS
+- brown responsive matrix PASS
+- navy responsive matrix PASS
+- brown contrast audit PASS
+- navy contrast audit PASS
+- brown six-chapter guided motion PASS
+- navy six-chapter guided motion PASS
+- final brown/navy visual captures PASS
+
+Final visual review confirms:
+- dark hero tertiary tour control no longer competes with primary CTAs
+- capability strip uses navy/neutral hierarchy rather than decorative yellow
+- light hero preserves strict grayscale canvas with controlled navy identity
+- Operations reads as a restrained dashboard
+- progressive-disclosure sections remain discoverable without dominating the page
+- mobile header remains compact with 44px controls
+
+Deployment state at handoff creation:
+- source is merged and preserved
+- canonical `/refine-navy/` still serves the prior `f6b177cd...` achromatic release
+- Cloudflare deployment is pending because the authenticated `samvr` relay is offline and its SSH recovery host is unreachable
+- `samai` is online but its local Wrangler credential is expired and no Cloudflare API token/account ID is present in its environment
+- do not claim production deployment until the canonical route contains the `LEADFLOW NAVY — GUIDELINE REFINEMENT` marker and byte verification passes
+
+When deployment access returns, deploy exact product merge `a8d03aa665bc4291ea85178e93ad5a325647bd81`, then:
+1. verify immutable and canonical navy `theme.css` byte-match the merge
+2. confirm green root and brown variant remain unchanged
+3. confirm `/v1`, `/v2`, `/v3` remain present
+4. confirm root/V2/V3 qualification engine is deterministic v2 and V1 remains deterministic v1
+5. create a deployment-ID preservation alias if desired and record the immutable Pages URL
+
