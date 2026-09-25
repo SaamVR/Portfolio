@@ -48,10 +48,14 @@ assert.equal(composed.camera.position[0], base.camera.position[0],
   'inspection fine-tune should keep camera framing centered');
 assert.equal(composed.camera.position[1], base.camera.position[1],
   'inspection fine-tune should not vertically pan the camera');
-assert.ok(Math.abs(composed.product.yaw-(base.product.yaw+.2))<1e-9,
-  'inspection yaw should fine-tune product orientation');
-assert.ok(Math.abs(composed.product.pitch-(base.product.pitch+.05))<1e-9,
-  'inspection pitch should fine-tune product tilt');
+assert.ok(Math.abs(composed.product.yaw-base.product.yaw)<1e-9,
+  'inspection must preserve authored timeline yaw');
+assert.ok(Math.abs(composed.product.pitch-base.product.pitch)<1e-9,
+  'inspection must preserve authored timeline pitch');
+assert.ok(Math.abs(composed.product.inspectionYaw-.2)<1e-9,
+  'inspection yaw should belong to the dedicated turntable');
+assert.ok(Math.abs(composed.product.inspectionPitch-.05)<1e-9,
+  'inspection pitch should belong to the dedicated turntable');
 assert.notEqual(composed.environment.spatialSpread, base.environment.spatialSpread);
 assert.deepEqual(composed.product.position, base.product.position);
 
