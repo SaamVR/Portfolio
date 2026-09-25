@@ -2473,3 +2473,28 @@ html[data-theme=light] .drawer-score span{color:#526B5D!important}
   gap:6px;
   white-space:nowrap;
 }
+
+/* V3 storytelling foundation */
+.story-active{--story-focus-ring:rgba(142,240,186,.28)}
+.story-focus{
+  position:relative;
+  z-index:2;
+  border-color:var(--accent-readable,var(--accent))!important;
+  box-shadow:0 0 0 1px var(--story-focus-ring),0 14px 34px rgba(0,0,0,.12);
+}
+.story-packet{
+  pointer-events:none;
+  will-change:transform,opacity;
+  transform:translateZ(0);
+}
+.story-replay{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+@media(prefers-reduced-motion:reduce){
+  .story-packet{transition:none!important;animation:none!important}
+  .story-focus{transition:none!important}
+}
