@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#eee8dc" />
   <title>NOVA — Hear beyond.</title>
-  <meta name="description" content="NOVA is an interactive 3D headphone product study benchmarked against current premium over-ear hardware." />
+  <meta name="description" content="NOVA is a real-time interactive 3D headphone visualization built from a measured GLTF asset and verified browser runtime." />
   <meta property="og:title" content="NOVA — Hear beyond." />
-  <meta property="og:description" content="A responsive real-time 3D headphone product study grounded in current premium over-ear benchmarks." />
+  <meta property="og:description" content="A responsive real-time 3D product visualization with measured asset specs, scroll choreography, inspection states and verified fallbacks." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://nova-interactive-portfolio.pages.dev/" />
   <meta name="twitter:card" content="summary" />
@@ -57,10 +57,10 @@
   <main id="top">
     <section id="hero" class="stage stage--hero" data-range-anchor="hero">
       <div class="stage-inner hero-copy">
-        <p class="eyebrow">Interactive premium headphone study</p>
+        <p class="eyebrow">Interactive 3D product visualization</p>
         <h1>NOVA</h1>
         <h2>Hear beyond.</h2>
-        <p class="lede">A real-time product launch experience grounded in the battery, weight, connectivity and daily-use expectations of current premium over-ear headphones.</p>
+        <p class="lede">A browser-based headphone product experience built from a live 1.86 MB skinned GLTF: 31.3K triangles, 14 skinned meshes, a 36-joint rig and authored motion composed in real time.</p>
         <div class="hero-actions">
           <a class="button button--solid" href="#design">Explore NOVA <span>↘</span></a>
           <button type="button" class="button button--ghost" id="guidedTourStart" aria-controls="guidedTourPanel" aria-expanded="false" aria-label="Three product moments guided tour">Guided tour</button>
@@ -88,28 +88,28 @@
     <section id="sound" class="stage stage--sound" data-range-anchor="spatial">
       <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div class="stage-inner copy copy--center">
-        <p class="eyebrow">Immersive audio</p>
-        <h2>Your space becomes<br /><em>the soundstage.</em></h2>
-        <p>The interaction changes the visual field rather than pretending to measure acoustics: Spatial widens the visual field, Focus reduces visual distraction, and Ambient keeps surrounding context visible.</p>
-        <div class="segmented" role="group" aria-label="Concept listening profile">
-          <button type="button" data-listening-mode="spatial" aria-pressed="true">Spatial</button>
+        <p class="eyebrow">Presentation presets</p>
+        <h2>Shape the<br /><em>product field.</em></h2>
+        <p>These controls change the presentation—not the headphone hardware. Wide opens the scene, Focus reduces visual distraction, and Context preserves more of the surrounding environment.</p>
+        <div class="segmented" role="group" aria-label="Product presentation preset">
+          <button type="button" data-listening-mode="spatial" aria-pressed="true">Wide</button>
           <button type="button" data-listening-mode="focus" aria-pressed="false">Focus</button>
-          <button type="button" data-listening-mode="ambient" aria-pressed="false">Ambient</button>
+          <button type="button" data-listening-mode="ambient" aria-pressed="false">Context</button>
         </div>
-        <p class="mode-description" id="listeningModeDescription" aria-live="polite">Spatial opens the presentation for a wider, more immersive listening feel. Focus reduces surrounding motion. Ambient keeps the visual field open to the world around you.</p>
+        <p class="mode-description" id="listeningModeDescription" aria-live="polite"><strong>Wide</strong> opens the presentation around the product. Focus reduces surrounding motion. Context keeps more environmental information visible.</p>
       </div>
     </section>
 
     <section id="control" class="stage stage--control" data-range-anchor="adaptive">
       <div class="stage-inner copy copy--right">
-        <p class="eyebrow">Adaptive listening</p>
-        <h2>Silence,<br /><em>on your terms.</em></h2>
-        <p>This scene demonstrates a practical control pattern: Adaptive tightens the scene around the product, while Transparency opens the scene and preserves surrounding context.</p>
-        <div class="segmented segmented--light" role="group" aria-label="Concept noise control mode">
-          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Adaptive</button>
-          <button type="button" data-noise-mode="transparency" aria-pressed="false">Transparency</button>
+        <p class="eyebrow">Scene emphasis</p>
+        <h2>Control the<br /><em>attention.</em></h2>
+        <p>This control demonstrates two art-direction states for the same product. Isolate tightens the light and environment around NOVA; Reveal restores surrounding context and fill.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Scene emphasis preset">
+          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Isolate</button>
+          <button type="button" data-noise-mode="transparency" aria-pressed="false">Reveal</button>
         </div>
-        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite">Adaptive represents focused isolation. Transparency represents awareness and a more open connection to the environment.</p>
+        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite"><strong>Isolate</strong> concentrates the scene around the product. Reveal opens the lighting and surrounding field.</p>
       </div>
       <div class="control-field" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
@@ -147,18 +147,18 @@
 
     <section id="discover" class="stage stage--resolution" data-range-anchor="resolution">
       <div class="stage-inner resolution-copy">
-        <p class="eyebrow">Premium over-ear benchmark</p>
-        <h2>Hear beyond.</h2>
-        <p>NOVA is presented against real shipping-headphone benchmarks so the product study has practical context instead of placeholder specifications.</p>
-        <div class="feature-strip" aria-label="NOVA feature summary">
-          <span>30–60 h battery class</span>
-          <span>254–293 g benchmark</span>
-          <span>Bluetooth 5.2–5.4</span>
-          <span>Multipoint common</span>
-          <span>USB-C / analog backup</span>
+        <p class="eyebrow">Project specifications</p>
+        <h2>Built in<br /><em>real time.</em></h2>
+        <p>The numbers below come from the actual production asset and browser build—not from a fictional hardware datasheet.</p>
+        <div class="feature-strip" aria-label="NOVA project specification summary">
+          <span>31.3K triangles</span>
+          <span>14 skinned meshes</span>
+          <span>36-joint rig</span>
+          <span>12 × 1K WebP maps</span>
+          <span>1.86 MB GLTF</span>
         </div>
         <div class="resolution-actions">
-          <button type="button" class="button button--solid" id="benchmarkSpecsTrigger" aria-controls="benchmarkPanel" aria-expanded="false">Benchmark specs</button>
+          <button type="button" class="button button--solid" id="benchmarkSpecsTrigger" aria-controls="benchmarkPanel" aria-expanded="false">Project specs</button>
           <a class="button button--ghost" href="#case-study">View case study <span>↘</span></a>
         </div>
       </div>
@@ -296,28 +296,42 @@
   </div>
 
   <div class="facts-shell" aria-hidden="true">
-    <button class="facts-backdrop" type="button" data-benchmark-close aria-label="Close benchmark specifications"></button>
+    <button class="facts-backdrop" type="button" data-benchmark-close aria-label="Close project specifications"></button>
     <aside id="benchmarkPanel" class="facts-panel benchmark-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="benchmarkTitle" tabindex="-1">
       <div class="interest-panel__meta">
-        <span>NOVA / REAL-WORLD BENCHMARK</span>
-        <button type="button" data-benchmark-close aria-label="Close benchmark specifications">Close ×</button>
+        <span>NOVA / PROJECT SPECS</span>
+        <button type="button" data-benchmark-close aria-label="Close project specifications">Close ×</button>
       </div>
       <div class="facts-panel__body">
-        <p class="eyebrow">Official manufacturer specifications / checked September 2026</p>
-        <h2 id="benchmarkTitle">Premium over-ear<br /><em>benchmark.</em></h2>
-        <p class="benchmark-note">Benchmark data, not NOVA manufacturing claims. The comparison below uses current shipping headphones to ground the portfolio study in real weight, battery, charging and connectivity expectations.</p>
+        <p class="eyebrow">Measured from the shipped asset and runtime</p>
+        <h2 id="benchmarkTitle">Production<br /><em>specifications.</em></h2>
+        <p class="benchmark-note">These are the real specifications of the NOVA visualization delivered in this portfolio project. Hardware reference data appears separately below and is never presented as NOVA manufacturing data.</p>
 
+        <div class="project-spec-grid">
+          <article><strong>31,306 triangles</strong><span>render geometry</span><small>28 render primitives across 14 skinned meshes.</small></article>
+          <article><strong>36 joints</strong><span>skeletal rig</span><small>One skin drives the articulated product motion.</small></article>
+          <article><strong>5 materials</strong><span>surface system</span><small>12 × 1024² WebP textures cover the current asset.</small></article>
+          <article><strong>3 animation clips</strong><span>authored motion</span><small>The primary 27.708 s clip contains 42 channels.</small></article>
+          <article><strong>1.86 MB GLTF</strong><span>model file</span><small>2.45 MiB 3D asset payload including texture maps.</small></article>
+          <article><strong>3 viewport classes</strong><span>verified delivery</span><small>Desktop, tablet and mobile plus reduced-motion and WebGL fallback paths.</small></article>
+        </div>
+
+        <div class="market-reference">
+          <p class="eyebrow">Market reference / official manufacturer data</p>
+          <h3>Real-life premium over-ear context.</h3>
+          <p>These manufacturer figures are reference context, not NOVA hardware specifications.</p>
+        </div>
         <div class="benchmark-table-wrap">
           <table class="benchmark-table">
             <thead><tr><th>Product</th><th>Weight</th><th>Battery</th><th>Quick charge</th><th>Wireless</th></tr></thead>
             <tbody>
               <tr>
                 <th><a href="https://www.sony.com/electronics/support/wireless-headphones-bluetooth-headphones/wh-1000xm6/specifications" target="_blank" rel="noopener">Sony WH-1000XM6 ↗</a></th>
-                <td>254 g</td><td>30 hrs NC on / 40 hrs off</td><td>3 min → up to 3 hrs with USB PD</td><td>Bluetooth 5.3 · SBC / AAC / LDAC / LC3</td>
+                <td>254 g</td><td>30 hrs NC on / 40 hrs off</td><td>3 min → up to 3 hrs with USB PD</td><td>Bluetooth 5.3 · SBC / AAC / LDAC / LC3 · multipoint</td>
               </tr>
               <tr>
                 <th><a href="https://www.bose.com/p/headphones/bose-quietcomfort-ultra-headphones-2nd-gen/QCUH2-HEADPHONEARN.html" target="_blank" rel="noopener">Bose QuietComfort Ultra Headphones (2nd Gen) ↗</a></th>
-                <td>264 g</td><td>30 hrs</td><td>15 min → up to 3 hrs</td><td>Bluetooth 5.4 · USB-C audio · multipoint</td>
+                <td>264 g</td><td>Up to 30 hrs</td><td>15 min → up to 3 hrs</td><td>Bluetooth 5.4 · USB-C audio · multipoint</td>
               </tr>
               <tr>
                 <th><a href="https://support.sennheiser-hearing.com/hc/en-gb/articles/37791406604189-MOMENTUM-4-Wireless-Specifications" target="_blank" rel="noopener">Sennheiser MOMENTUM 4 Wireless ↗</a></th>
@@ -328,15 +342,15 @@
         </div>
 
         <div class="practical-grid">
-          <article><span>01</span><h3>Long-haul travel</h3><p>The benchmark class spans roughly 254–293 g and 30–60 hours of advertised battery life, making weight, clamping comfort and case geometry as important as headline battery numbers.</p></article>
-          <article><span>02</span><h3>Phone + laptop</h3><p>Multipoint is normal in this tier. Bose documents two active devices; Sennheiser documents two active connections; Sony lists multipoint support.</p></article>
-          <article><span>03</span><h3>Wired fallback</h3><p>Sony retains a stereo mini jack, Bose combines AUX with USB-C audio, and Sennheiser supports analog plus USB-C streaming—useful when Bluetooth is unavailable or latency matters.</p></article>
-          <article><span>04</span><h3>Quick charge</h3><p>Useful recovery ranges from Sony's 3-minute USB-PD top-up to Bose's 15-minute charge and Sennheiser's 5-minute charge. Charging behavior is a daily-use feature, not a footnote.</p></article>
+          <article><span>01</span><h3>Touch + mouse</h3><p>Scroll choreography, named inspection views and direct drag/swipe inspection are available without requiring a proprietary app.</p></article>
+          <article><span>02</span><h3>Graceful fallback</h3><p>If WebGL or the GLTF fails, the page keeps navigation, copy, project specifications and the static product presentation usable.</p></article>
+          <article><span>03</span><h3>Reduced motion</h3><p>The experience publishes settled product states for visitors who request reduced motion rather than removing the product story.</p></article>
+          <article><span>04</span><h3>Responsive delivery</h3><p>The release gate exercises 1440 × 1000, 1024 × 768 and 390 × 844 layouts before deployment.</p></article>
         </div>
 
         <div class="benchmark-sources">
-          <p>Official sources:</p>
-          <a href="https://helpguide.sony.net/mdr/2984/v1/en/contents/TP1001856818.html" target="_blank" rel="noopener">Sony battery guide ↗</a>
+          <p>Official market-reference sources:</p>
+          <a href="https://www.sony.com/electronics/support/wireless-headphones-bluetooth-headphones/wh-1000xm6/specifications" target="_blank" rel="noopener">Sony specifications ↗</a>
           <a href="https://support.bose.com/s/article/product-specifications-bose-quietcomfort-ultra-headphones-2nd-gen?language=en_US" target="_blank" rel="noopener">Bose specifications ↗</a>
           <a href="https://support.sennheiser-hearing.com/hc/en-gb/articles/37791406604189-MOMENTUM-4-Wireless-Specifications" target="_blank" rel="noopener">Sennheiser specifications ↗</a>
         </div>
