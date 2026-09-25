@@ -92,8 +92,8 @@ function renderOpsActivity(){
   technical.innerHTML=technicalRows.map(r=>'<div class="ops-activity-row '+escapeHtml(r.state||"other")+'"><span class="ops-activity-pulse"></span><time>'+escapeHtml(r.time)+'</time><code>'+escapeHtml(r.code)+'</code><b>'+escapeHtml(r.message)+'</b></div>').join("");
 }
 function sourceForLead(l){return String(l?.source||"Unspecified").trim()||"Unspecified"}
-function renderDistribution(model){
-  const box=$("#opsDistribution"),legend=$("#opsDistributionLegend");
+function renderDistribution(model,boxSelector="#opsDistribution",legendSelector="#opsDistributionLegend"){
+  const box=$(boxSelector),legend=$(legendSelector);
   if(!box||!legend)return;
   const items=[
     ["hot",model.status.hot,model.statusPct.hot],
@@ -117,8 +117,8 @@ function renderDistribution(model){
   box.setAttribute("aria-label","Qualification distribution: "+items.map(([key,count,p])=>dashboardStatusLabel(key)+" "+count+" ("+p+"%)").join(", "));
   legend.innerHTML=items.map(([key,count,percent])=>'<div class="ops-legend-row"><span class="ops-legend-dot '+key+'"></span><div><b>'+dashboardStatusLabel(key)+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+percent+'%</strong></div>').join("");
 }
-function renderScoreTrend(model){
-  const box=$("#opsScoreTrend");if(!box)return;
+function renderScoreTrend(model,boxSelector="#opsScoreTrend"){
+  const box=$(boxSelector);if(!box)return;
   const rows=model.recentScores.slice().reverse();
   if(!rows.length){box.innerHTML='<div class="ops-empty-state">Run a lead to build the score trend.</div>';return}
   const w=720,h=220,left=46,right=16,top=18,bottom=48,plotH=h-top-bottom,plotW=w-left-right;
@@ -132,8 +132,8 @@ function renderScoreTrend(model){
   }).join("");
   box.innerHTML='<svg viewBox="0 0 720 220" role="img" aria-label="Recent lead qualification scores">'+guides+bars+'</svg>';
 }
-function renderActionQueue(model){
-  const box=$("#opsActionQueue");if(!box)return;
+function renderActionQueue(model,boxSelector="#opsActionQueue"){
+  const box=$(boxSelector);if(!box)return;
   const rows=[
     ["salesReview","Sales review",model.actions.salesReview,"hot"],
     ["humanReview","Human review",model.actions.humanReview,"review"],
@@ -143,13 +143,13 @@ function renderActionQueue(model){
   if(!rows.length){box.innerHTML='<div class="ops-empty-state">No queued actions yet.</div>';return}
   box.innerHTML=rows.map(([,label,count,state])=>'<div class="ops-queue-row"><span class="ops-queue-icon '+state+'"></span><div><b>'+label+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+count+'</strong></div>').join("");
 }
-function renderSourceQuality(model){
-  const box=$("#opsSourceQuality");if(!box)return;
+function renderSourceQuality(model,boxSelector="#opsSourceQuality"){
+  const box=$(boxSelector);if(!box)return;
   if(!model.sources.length){box.innerHTML='<div class="ops-empty-state">No source data yet.</div>';return}
   box.innerHTML=model.sources.map(source=>'<div class="ops-quality-row"><div><b>'+escapeHtml(source.name)+'</b><span>'+source.count+' lead'+(source.count===1?"":"s")+'</span></div><div class="ops-quality-track" aria-label="Average score '+source.averageScore+' out of 100"><i style="width:'+source.averageScore+'%"></i></div><strong>'+source.averageScore+'<small>/100 avg</small></strong></div>').join("");
 }
-function renderUrgency(model){
-  const box=$("#opsUrgencyMix");if(!box)return;
+function renderUrgency(model,boxSelector="#opsUrgencyMix"){
+  const box=$(boxSelector);if(!box)return;
   const active=model.urgency.filter(i=>i.count>0);
   if(!active.length){box.innerHTML='<div class="ops-empty-state">No timeline data yet.</div>';return}
   box.innerHTML='<div class="ops-urgency-bar">'+active.map(item=>'<span class="'+item.key+'" style="width:'+item.pct+'%" title="'+escapeHtml(item.label)+' '+item.pct+'%"></span>').join("")+'</div><div class="ops-urgency-list">'+active.map(item=>'<div><span class="ops-urgency-dot '+item.key+'"></span><b>'+escapeHtml(item.label)+'</b><strong>'+item.count+'</strong><small>'+item.pct+'%</small></div>').join("")+'</div>';
@@ -184,11 +184,47 @@ function renderOps(){
   replayDashboardMotion();
 }
 
-function renderCRM(){const q=$("#crmSearch").value.trim().toLowerCase(),filter=$("#crmFilter").value,filtered=leads.filter(l=>(!q||l.name.toLowerCase().includes(q)||l.company.toLowerCase().includes(q))&&(filter==="all"||l.status===filter));$("#crmRows").innerHTML=filtered.map(l=>`<tr data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(l.name)} at ${escapeHtml(l.company)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}"><td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.company)}</td><td><span class="crm-score">${l.score}</span></td><td><span class="crm-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.intent)}</td><td>${escapeHtml(l.timelineLabel)}</td><td>${escapeHtml(l.created)}</td></tr>`).join("");$("#crmEmpty").style.display=filtered.length?"none":"block";$("#crmTotal").textContent=leads.length;$("#crmHot").textContent=leads.filter(l=>l.status==="hot").length;$("#crmReview").textContent=leads.filter(l=>l.status==="review").length;$("#crmNurture").textContent=leads.filter(l=>l.status==="nurture").length;const settings=readSettings();$("#crmHotRule").textContent="score "+settings.hot+"+";$("#crmReviewRule").textContent="score "+settings.review+"–"+(settings.hot-1);$("#crmNurtureRule").textContent="score below "+settings.review;$$('#crmRows tr').forEach(row=>{const open=()=>openLead(row.dataset.id);row.addEventListener("click",open);row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open()}})})}
+function renderCrmOverviewActivity(){
+  const box=$("#crmOverviewActivity");if(!box)return;
+  const recent=leads.slice(0,5);
+  if(!recent.length){box.innerHTML='<div class="crm-overview-empty">Run the interactive demo to create the first CRM activity record.</div>';return}
+  box.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Demo data")+'</em></div>').join("");
+}
+function replayCrmOverviewMotion(){
+  const panel=document.querySelector('[data-crm-panel="leads"]');if(!panel)return;
+  panel.classList.remove("crm-overview-animate");void panel.offsetWidth;panel.classList.add("crm-overview-animate");
+}
+function renderCRM(){
+  const q=$("#crmSearch").value.trim().toLowerCase(),filter=$("#crmFilter").value;
+  const filtered=leads.filter(l=>(!q||l.name.toLowerCase().includes(q)||l.company.toLowerCase().includes(q))&&(filter==="all"||l.status===filter));
+  const enriched=leads.map(l=>({...l,source:sourceForLead(l),action:l.action||nextActionLabel(l)}));
+  const model=window.LeadFlowDashboard.buildDashboardModel(enriched);
+
+  animateDashboardNumber($("#crmTotal"),model.total);
+  animateDashboardNumber($("#crmHot"),model.status.hot);
+  $("#crmHotRate").textContent=model.statusPct.hot+"% of pipeline";
+  animateDashboardNumber($("#crmAverage"),model.averageScore);
+  animateDashboardNumber($("#crmImmediate"),model.immediate.count);
+  $("#crmImmediateRate").textContent=model.immediate.pct+"% ASAP";
+
+  renderDistribution(model,"#crmOverviewDistribution","#crmOverviewDistributionLegend");
+  renderScoreTrend(model,"#crmOverviewScoreTrend");
+  renderActionQueue(model,"#crmOverviewActionQueue");
+  renderSourceQuality(model,"#crmOverviewSourceQuality");
+  renderUrgency(model,"#crmOverviewUrgencyMix");
+  renderCrmOverviewActivity();
+
+  $("#crmRows").innerHTML=filtered.map(l=>`<tr data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(l.name)} at ${escapeHtml(l.company)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}"><td><b>${escapeHtml(l.name)}</b><small>${escapeHtml(l.company)}</small></td><td>${escapeHtml(sourceForLead(l))}</td><td><span class="crm-score">${l.score}</span></td><td><span class="crm-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.timelineLabel||"Unspecified")}</td><td><span class="crm-next-action">${escapeHtml(nextActionLabel(l))}</span></td><td>${escapeHtml(l.created||"Demo data")}</td></tr>`).join("");
+  $("#crmEmpty").style.display=filtered.length?"none":"block";
+  $("#crmPipelineSummary").textContent=filtered.length+" shown · "+model.total+" total";
+  $$('#crmRows tr').forEach(row=>{const open=()=>openLead(row.dataset.id);row.addEventListener("click",open);row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open()}})});
+  replayCrmOverviewMotion();
+}
+
 function renderAnalytics(){const total=Math.max(1,leads.length),hot=leads.filter(l=>l.status==="hot").length,review=leads.filter(l=>l.status==="review").length,nurture=leads.filter(l=>l.status==="nurture").length,avg=leads.length?Math.round(leads.reduce((s,l)=>s+l.score,0)/leads.length):0,high=leads.length?Math.round(leads.filter(l=>l.intent==="High").length/leads.length*100):0,urgent=leads.length?Math.round(leads.filter(l=>l.timeline==="asap").length/leads.length*100):0;$("#analyticsAvg").textContent=avg;$("#analyticsIntent").textContent=high+"%";$("#analyticsUrgent").textContent=urgent+"%";$("#analyticsTotal").textContent=leads.length+" lead"+(leads.length===1?"":"s");[["Hot",hot],["Review",review],["Nurture",nurture]].forEach(([n,v])=>{$("#bar"+n).style.width=Math.round(v/total*100)+"%";$("#bar"+n+"Value").textContent=v});$("#scoreBandFill").style.width=avg+"%";$("#scoreBandMarker").style.left="calc("+avg+"% - 5px)";const settings=readSettings();$("#analyticsInsight").textContent=avg>=settings.hot?"The current demo pipeline is weighted toward higher-priority opportunities.":avg>=settings.review?"The demo pipeline is mixed, with a meaningful share of leads needing review.":"Most current demo leads are early-stage and better suited to nurture."}
 function renderHistory(){const rows=leads.slice(0,5).map(l=>`<div class="run-history-row"><span class="run-dot ${l.status}"></span><div><b>${escapeHtml(l.name)} · ${escapeHtml(l.company)}</b><small>Qualification → demo CRM → ${l.status==="hot"?"sales review":"routing prepared"}</small></div><em>${escapeHtml(l.created)}</em></div>`).join("");$("#runHistoryRows").innerHTML=rows||'<div class="crm-empty" style="display:block">No workflow runs yet.</div>';$("#runHistoryCount").textContent=leads.length+" run"+(leads.length===1?"":"s")}
 function renderAll(){renderCRM();renderAnalytics();renderHistory();renderOps()}
-const crmTitles={leads:"Qualification Pipeline",analytics:"Pipeline Analytics",automations:"Automation Control",settings:"Workspace Settings"};function switchCrmView(view){const next=crmTitles[view]?view:"leads";$$('.crm-nav-btn').forEach(b=>b.classList.toggle("active",b.dataset.crmView===next));$$('.crm-view').forEach(p=>p.classList.toggle("active",p.dataset.crmPanel===next));$("#crmViewTitle").textContent=crmTitles[next];$("#leadDrawer").classList.remove("open");if(next==="analytics")renderAnalytics();if(next==="automations")renderHistory();if(next==="leads")setTimeout(()=>$("#crmSearch").focus(),60)}
+const crmTitles={leads:"Lead Operations",analytics:"Pipeline Analytics",automations:"Automation Control",settings:"Workspace Settings"};function switchCrmView(view){const next=crmTitles[view]?view:"leads";$$('.crm-nav-btn').forEach(b=>b.classList.toggle("active",b.dataset.crmView===next));$$('.crm-view').forEach(p=>p.classList.toggle("active",p.dataset.crmPanel===next));$("#crmViewTitle").textContent=crmTitles[next];$("#leadDrawer").classList.remove("open");if(next==="analytics")renderAnalytics();if(next==="automations")renderHistory();if(next==="leads"){const main=$(".crm-main");if(main)main.scrollTop=0;setTimeout(()=>$("#crmSearch").focus({preventScroll:true}),60)}}
 $$('.crm-nav-btn').forEach(btn=>btn.addEventListener("click",()=>switchCrmView(btn.dataset.crmView)));
 const initialAutomation=readAutomation();$$('.automation-card').forEach(card=>{const enabled=initialAutomation[card.dataset.automation]!==false;card.classList.toggle("enabled",enabled);const btn=$(".automation-toggle",card);btn.setAttribute("aria-pressed",String(enabled));$("em",btn).textContent=enabled?"On":"Off"});$$('.automation-toggle').forEach(btn=>btn.addEventListener("click",()=>{const card=btn.closest('.automation-card'),enabled=!card.classList.contains('enabled');card.classList.toggle('enabled',enabled);btn.setAttribute('aria-pressed',String(enabled));$("em",btn).textContent=enabled?'On':'Off';const state=readAutomation();state[card.dataset.automation]=enabled;saveJSON(AUTOMATION_KEY,state)}));
 const settingsEls={hot:$("#hotThreshold"),review:$("#reviewThreshold"),owner:$("#salesOwner"),priority:$("#priorityAlert"),followup:$("#autoFollowup"),queue:$("#reviewQueue")};function syncSettings(){ $("#hotThresholdValue").textContent=settingsEls.hot.value;$("#reviewThresholdValue").textContent=settingsEls.review.value}const saved=readSettings();settingsEls.hot.value=saved.hot;settingsEls.review.value=saved.review;settingsEls.owner.value=saved.owner;settingsEls.priority.checked=saved.priority;settingsEls.followup.checked=saved.followup;settingsEls.queue.checked=saved.queue;syncSettings();[settingsEls.hot,settingsEls.review].forEach(el=>el.addEventListener('input',syncSettings));$("#saveCrmSettings").addEventListener("click",()=>{const hot=Number(settingsEls.hot.value),review=Math.min(Number(settingsEls.review.value),hot-1),payload={hot,review,owner:settingsEls.owner.value,priority:settingsEls.priority.checked,followup:settingsEls.followup.checked,queue:settingsEls.queue.checked};settingsEls.review.value=review;saveJSON(CRM_SETTINGS_KEY,payload);syncSettings();$("#settingsSaved").textContent="Saved · applies to the next workflow run";setTimeout(()=>$("#settingsSaved").textContent="",2200);renderAll()});

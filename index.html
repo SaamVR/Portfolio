@@ -242,7 +242,59 @@
   <footer class="footer shell"><div class="brand"><span class="brand-mark">LF</span><span>LeadFlow</span></div><p>Independent automation and interface design project.</p><a href="#home">Back to top ↑</a></footer>
 
   <div class="crm-modal" id="crmModal" aria-hidden="true"><div class="crm-shell" role="dialog" aria-modal="true" aria-label="LeadFlow demo CRM"><div class="crm-sidebar"><div class="crm-logo">LF</div><button class="active crm-nav-btn" data-crm-view="leads" type="button" aria-label="Leads">⌁</button><button class="crm-nav-btn" data-crm-view="analytics" type="button" aria-label="Analytics">⌗</button><button class="crm-nav-btn" data-crm-view="automations" type="button" aria-label="Automations">↯</button><button class="crm-nav-btn" data-crm-view="settings" type="button" aria-label="Settings">⚙</button><button class="crm-exit" id="closeCrm" type="button" aria-label="Close CRM">×</button></div><div class="crm-main"><div class="crm-topbar"><div><small>LEADFLOW DEMO CRM</small><h3 id="crmViewTitle">Qualification Pipeline</h3></div><div class="crm-top-actions"><span class="sync-dot"></span><span>Browser-local state</span><button id="closeCrmTop" type="button">Close</button></div></div>
-    <section class="crm-view active" data-crm-panel="leads"><div class="crm-metrics"><div><span>Total leads</span><b id="crmTotal">0</b><small>in demo pipeline</small></div><div><span>High priority</span><b id="crmHot">0</b><small id="crmHotRule">score 80+</small></div><div><span>Needs review</span><b id="crmReview">0</b><small id="crmReviewRule">score 55–79</small></div><div><span>Nurture</span><b id="crmNurture">0</b><small id="crmNurtureRule">score below 55</small></div></div><div class="crm-toolbar"><div class="search-wrap"><span>⌕</span><input id="crmSearch" placeholder="Search name or company…" /></div><select id="crmFilter"><option value="all">All leads</option><option value="hot">High priority</option><option value="review">Review</option><option value="nurture">Nurture</option></select></div><div class="crm-table-wrap"><table class="crm-table"><thead><tr><th>Lead</th><th>Company</th><th>Score</th><th>Status</th><th>Intent</th><th>Timeline</th><th>Created</th></tr></thead><tbody id="crmRows"></tbody></table></div><div class="crm-empty" id="crmEmpty">No leads match this view.</div></section>
+
+    <section class="crm-view active" data-crm-panel="leads">
+      <div class="crm-metrics crm-overview-kpis">
+        <div><span>Pipeline</span><b id="crmTotal">0</b><small>browser-local leads</small></div>
+        <div class="crm-metric-attention"><span>High priority</span><b id="crmHot">0</b><small id="crmHotRate">0% of pipeline</small></div>
+        <div><span>Average score</span><b><span id="crmAverage">0</span><em>/100</em></b><small>qualification score</small></div>
+        <div><span>Immediate follow-up</span><b id="crmImmediate">0</b><small id="crmImmediateRate">0% ASAP</small></div>
+      </div>
+
+      <div class="crm-overview-primary">
+        <div class="crm-panel-card crm-overview-panel">
+          <div class="crm-panel-head"><div><small>PIPELINE MIX</small><b>Qualification distribution</b></div><span>Current records</span></div>
+          <div class="crm-distribution-layout">
+            <div id="crmOverviewDistribution" class="ops-donut" role="img" aria-label="CRM qualification distribution"></div>
+            <div id="crmOverviewDistributionLegend" class="ops-donut-legend"></div>
+          </div>
+        </div>
+        <div class="crm-panel-card crm-overview-panel">
+          <div class="crm-panel-head"><div><small>SCORE TREND</small><b>Recent qualification scores</b></div><span>0–100</span></div>
+          <div id="crmOverviewScoreTrend" class="ops-score-trend"></div>
+        </div>
+      </div>
+
+      <div class="crm-overview-secondary">
+        <div class="crm-panel-card crm-overview-panel">
+          <div class="crm-panel-head"><div><small>NEXT ACTION</small><b>Attention queue</b></div><span>What happens next</span></div>
+          <div id="crmOverviewActionQueue" class="ops-action-queue"></div>
+        </div>
+        <div class="crm-panel-card crm-overview-panel">
+          <div class="crm-panel-head"><div><small>SOURCE QUALITY</small><b>Inbound mix + score</b></div><span>Count / average</span></div>
+          <div id="crmOverviewSourceQuality" class="ops-source-quality"></div>
+        </div>
+        <div class="crm-panel-card crm-overview-panel">
+          <div class="crm-panel-head"><div><small>URGENCY</small><b>Timeline mix</b></div><span>Current records</span></div>
+          <div id="crmOverviewUrgencyMix" class="ops-urgency-mix"></div>
+        </div>
+      </div>
+
+      <div class="crm-pipeline-section">
+        <div class="crm-section-heading">
+          <div><small>PIPELINE</small><b>Qualified leads</b></div>
+          <span id="crmPipelineSummary">0 records</span>
+        </div>
+        <div class="crm-toolbar"><div class="search-wrap"><span>⌕</span><input id="crmSearch" placeholder="Search name or company…" /></div><select id="crmFilter"><option value="all">All leads</option><option value="hot">High priority</option><option value="review">Review</option><option value="nurture">Nurture</option></select></div>
+        <div class="crm-table-wrap"><table class="crm-table"><thead><tr><th>Lead</th><th>Source</th><th>Score</th><th>Status</th><th>Timeline</th><th>Next action</th><th>Created</th></tr></thead><tbody id="crmRows"></tbody></table></div>
+        <div class="crm-empty" id="crmEmpty">No leads match this view.</div>
+      </div>
+
+      <div class="crm-panel-card crm-overview-activity-panel">
+        <div class="crm-panel-head"><div><small>RECENT ACTIVITY</small><b>What changed</b></div><span>Local demo state</span></div>
+        <div id="crmOverviewActivity" class="crm-overview-activity"></div>
+      </div>
+    </section>
     <section class="crm-view" data-crm-panel="analytics"><div class="analytics-summary"><article><span>Average score</span><strong id="analyticsAvg">0</strong><small>across current pipeline</small></article><article><span>High intent</span><strong id="analyticsIntent">0%</strong><small>of all leads</small></article><article><span>Immediate timeline</span><strong id="analyticsUrgent">0%</strong><small>ASAP requests</small></article></div><div class="analytics-grid"><div class="crm-panel-card"><div class="crm-panel-head"><div><small>PIPELINE MIX</small><b>Qualification distribution</b></div><span id="analyticsTotal">0 leads</span></div><div class="distribution-chart"><div class="distribution-row"><span>High</span><div><i id="barHot"></i></div><b id="barHotValue">0</b></div><div class="distribution-row"><span>Review</span><div><i id="barReview"></i></div><b id="barReviewValue">0</b></div><div class="distribution-row"><span>Nurture</span><div><i id="barNurture"></i></div><b id="barNurtureValue">0</b></div></div></div><div class="crm-panel-card"><div class="crm-panel-head"><div><small>SCORE RANGE</small><b>Lead priority snapshot</b></div><span>0–100</span></div><div class="score-band"><i id="scoreBandFill"></i><span id="scoreBandMarker"></span></div><div class="score-band-labels"><span>Low</span><span>Review</span><span>High</span></div><p class="panel-copy" id="analyticsInsight">Qualification insight will update as leads enter the pipeline.</p></div></div></section>
     <section class="crm-view" data-crm-panel="automations"><div class="automation-header"><div><small>DEMO CONTROLS</small><h4>Lead operations</h4></div><span>3 controls</span></div><div class="automation-list"><article class="automation-card enabled" data-automation="qualification"><div class="automation-icon">Q</div><div class="automation-copy"><b>Lead Qualification</b><p>Validate → duplicate check → score → route</p><small>Trigger: new demo lead</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article><article class="automation-card enabled" data-automation="followup"><div class="automation-icon">↗</div><div class="automation-copy"><b>Follow-up Draft</b><p>Prepare a contextual next-step message after qualification.</p><small>Demo state only · nothing sent</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article><article class="automation-card enabled" data-automation="sales-alert"><div class="automation-icon">↯</div><div class="automation-copy"><b>Sales Review Route</b><p>Prepare high-priority opportunities for the sales-review path.</p><small>Demo state only · no outbound delivery</small></div><button class="automation-toggle" type="button" aria-pressed="true"><span></span><em>On</em></button></article></div><div class="run-history"><div class="crm-panel-head"><div><small>RECENT ACTIVITY</small><b>Workflow runs</b></div><span id="runHistoryCount">0 runs</span></div><div id="runHistoryRows" class="run-history-rows"></div></div></section>
     <section class="crm-view" data-crm-panel="settings"><div class="settings-grid"><div class="crm-panel-card"><div class="crm-panel-head"><div><small>QUALIFICATION</small><b>Routing thresholds</b></div><span>Rules</span></div><label class="setting-field">High-priority threshold<div><input id="hotThreshold" type="range" min="70" max="95" value="80"><output id="hotThresholdValue">80</output></div></label><label class="setting-field">Review threshold<div><input id="reviewThreshold" type="range" min="35" max="75" value="55"><output id="reviewThresholdValue">55</output></div></label><label class="setting-select">Default sales owner<select id="salesOwner"><option>Growth Team</option><option>Inbound Sales</option><option>Account Executive</option></select></label></div><div class="crm-panel-card"><div class="crm-panel-head"><div><small>ROUTING</small><b>Demo preferences</b></div><span>Local only</span></div><label class="setting-switch"><span><b>Priority route</b><small>Prepare the sales-review state for a high-priority lead.</small></span><input id="priorityAlert" type="checkbox" checked><i></i></label><label class="setting-switch"><span><b>Follow-up draft</b><small>Prepare a message after every qualification.</small></span><input id="autoFollowup" type="checkbox" checked><i></i></label><label class="setting-switch"><span><b>Review queue</b><small>Keep medium-score leads for human review.</small></span><input id="reviewQueue" type="checkbox" checked><i></i></label></div></div><div class="integration-row"><div><span class="integration-mark">L</span><p><b>Demo CRM</b><small>Browser-local record storage</small></p><em class="connected">Local</em></div><div><span class="integration-mark">R</span><p><b>Qualification Engine</b><small>Deterministic scoring rules</small></p><em class="connected">Active</em></div><div><span class="integration-mark">↯</span><p><b>Outbound Delivery</b><small>Email / Slack / external CRM</small></p><em>Simulated</em></div></div><div class="settings-actions"><span id="settingsSaved"></span><button id="saveCrmSettings" class="primary-btn" type="button">Save settings</button></div></section></div><aside class="lead-drawer" id="leadDrawer"><button id="closeDrawer" type="button" class="drawer-close">×</button><small>CRM RECORD</small><h3 id="drawerName">Sarah</h3><p id="drawerCompany">Acme Dental</p><div class="drawer-score"><strong id="drawerScore">92</strong><span>/100</span><em id="drawerStatus">HIGH PRIORITY</em></div><div class="drawer-fields"><div><span>Need</span><b id="drawerNeed"></b></div><div><span>Budget</span><b id="drawerBudget"></b></div><div><span>Timeline</span><b id="drawerTimeline"></b></div><div><span>Qualification rationale</span><b id="drawerSummary"></b></div></div><div class="drawer-followup"><span>DRAFT — NOT SENT</span><p id="drawerFollowup"></p></div></aside></div></div>
