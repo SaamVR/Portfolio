@@ -120,8 +120,10 @@ function applyCompositionInfluences(state,p){
   state.camera.position[2] += .26 * spatial;
 
   state.camera.target[0] += .58 * adaptive;
-  state.camera.target[1] -= .10 * adaptive;
-  state.camera.position[2] += .08 * adaptive;
+  // Keep the complete headband visible while the Control copy owns the right side.
+  // The earlier downward target bias could push the crown above the viewport after damping.
+  state.camera.target[1] += .08 * adaptive;
+  state.camera.position[2] += .18 * adaptive;
 
   state.camera.target[0] -= .72 * resolution;
   state.camera.position[2] += .08 * resolution;
