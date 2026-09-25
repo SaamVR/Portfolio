@@ -18,9 +18,25 @@ def test_required_product_controls_are_semantic_buttons():
     assert 'id="inspectionReset"' in html
     assert "<button" in html
 
-def test_no_fake_numeric_product_specs():
-    banned = ["40-hour","50-hour","mm driver","Bluetooth 5.","Hi-Res Certified","$399","$499"]
-    assert not any(term.lower() in html.lower() for term in banned)
+def test_v3_uses_real_bose_qc_ultra_2nd_gen_specs():
+    required = [
+        "Bose QuietComfort Ultra Headphones (2nd Gen)",
+        "30 hours",
+        "23 hours with Immersive Audio",
+        "45 hours with noise cancellation off",
+        "Bluetooth 5.4",
+        "Multipoint / two active devices",
+        "16-bit / 44.1 or 48 kHz USB-C audio",
+        "0.583 lb / approx. 264 g",
+        "Protein leather",
+        "3-hour full charge",
+        "15-minute charge / up to 3 hours",
+    ]
+    for term in required:
+        assert term in html
+    assert "fictional premium wireless headphone concept" not in html
+    assert "Not specified in this fictional concept" not in html
+    assert "Concept product facts" not in html
 
 def test_technical_facts_live_after_product_journey():
     assert html.index("Designed like a launch.") < html.index(">36<")
@@ -187,24 +203,28 @@ def test_r12_essential_text_visibility_is_increased():
     assert "font-size:var(--control-copy)" in compact
     assert "font-size:var(--nav-copy)" in compact
 
-def test_r12_product_copy_explains_benefit_and_mode_meaning():
+def test_v3_product_copy_uses_real_bose_modes_and_practical_context():
     for phrase in [
-        "concept listening profiles",
-        "Spatial opens the presentation",
-        "Focus reduces surrounding motion",
-        "Ambient keeps the visual field open",
-        "Adaptive represents focused isolation",
-        "Transparency represents awareness",
-        "Explore the cushions, hinge and earcup controls",
+        "Quiet Mode",
+        "Aware Mode",
+        "Immersive Audio",
+        "Cinema Mode",
+        "CustomTune",
+        "ActiveSense",
+        "USB-C lossless audio",
+        "daily commute",
+        "long-haul flight",
+        "two devices at once",
     ]:
         assert phrase in html
 
-def test_r12_product_facts_are_explicitly_conceptual_without_fake_specs():
+def test_v3_product_facts_are_real_and_sourced():
     assert 'id="productFactsPanel"' in html
-    assert "Concept product facts" in html
-    assert "Not specified in this fictional concept" in html
-    assert "Multipoint is part of the concept feature set" in html
-    assert "Are the acoustic claims measured?" in html
+    assert "Official specifications" in html
+    assert "Specifications sourced from Bose" in html
+    assert "bose.com/p/headphones/bose-quietcomfort-ultra-headphones-2nd-gen" in html
+    assert "support.bose.com" in html
+    assert "Unofficial interactive portfolio concept" in html
 
 def test_r12_named_inspection_views_and_client_capabilities_exist():
     for view in ["front","side","rear"]:
@@ -295,3 +315,21 @@ def test_r13_compact_behind_parent_does_not_add_padding_outside_sticky_child():
     assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
     assert "color:#eee8de;padding:0}" in compact
     assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
+
+
+def test_v3_three_control_inputs_have_dedicated_presentation():
+    for control in ["power", "multifunction", "volume"]:
+        assert f'data-control-input="{control}"' in html
+    for label in ["Bluetooth / power", "Multi-function", "Volume / shortcut strip"]:
+        assert label in html
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".control-inputs" in compact
+    assert ".control-input[aria-current=\"true\"]" in compact
+
+def test_v3_product_identity_is_honest_about_visualization():
+    for phrase in [
+        "Unofficial interactive portfolio concept",
+        "Independent 3D visualization",
+        "not official Bose CAD",
+    ]:
+        assert phrase in html
