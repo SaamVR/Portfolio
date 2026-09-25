@@ -69,10 +69,17 @@ jobs:
                 range:document.body.dataset.range,
                 frame:window.__NOVA_QA__?.productFrame?.()||null
               }),progress);
-              const minRatio=prefix==='mobile'?.90:.94;
-              const minHeight=prefix==='mobile'?110:180;
-              if(!state.frame||state.frame.visibleRatio<minRatio||state.frame.height<minHeight){
-                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minRatio,minHeight,state}));
+              const minSpanX=prefix==='mobile'?90:180;
+              const minSpanY=prefix==='mobile'?45:70;
+              if(
+                !state.frame ||
+                state.frame.nearViewport<3 ||
+                state.frame.inViewport<2 ||
+                state.frame.earcupsInViewport<1 ||
+                state.frame.spanX<minSpanX ||
+                state.frame.spanY<minSpanY
+              ){
+                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minSpanX,minSpanY,state}));
               }
               await page.screenshot({path:'nova-v3-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
             }
