@@ -4,7 +4,7 @@ export function createRenderAdapter({
   THREE,
   camera,
   presentation,
-  orientation=presentation,
+  inspection=null,
   mixer,
   clipDuration,
   renderer,
@@ -12,8 +12,8 @@ export function createRenderAdapter({
   environment,
   orientationX=-Math.PI/2
 }){
-  if(!THREE || !camera || !presentation || !orientation || !renderer) throw new Error('render adapter missing required dependencies');
-  const splitOrientation=orientation!==presentation;
+  if(!THREE || !camera || !presentation || !renderer) throw new Error('render adapter missing required dependencies');
+  const splitInspection=Boolean(inspection && inspection!==presentation);
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
   let renderedPose=null;
   let renderedTarget=null;
@@ -36,14 +36,13 @@ export function createRenderAdapter({
     camera.lookAt(...renderedTarget);
 
     setVec(presentation,'position',state.product.position);
-    if(splitOrientation){
-      presentation.rotation.x=0;
-      presentation.rotation.y=state.product.inspectionYaw || 0;
-      orientation.rotation.x=orientationX+state.product.pitch;
-      orientation.rotation.y=state.product.yaw;
-    }else{
-      presentation.rotation.x=orientationX+state.product.pitch;
-      presentation.rotation.y=state.product.yaw;
+    presentation.rotation.x=orientationX+state.product.pitch;
+    presentation.rotation.y=state.product.yaw;
+    presentation.rotation.z=0;
+    if(splitInspection){
+      inspection.rotation.x=state.product.inspectionPitch || 0;
+      inspection.rotation.y=0;
+      inspection.rotation.z=state.product.inspectionYaw || 0;
     }
     const s=state.product.scale;
     presentation.scale.x=s;
@@ -91,14 +90,13 @@ export function createRenderAdapter({
       presentation.position.x=damp(presentation.position.x,state.product.position[0],2.85,step);
       presentation.position.y=damp(presentation.position.y,state.product.position[1],2.85,step);
       presentation.position.z=damp(presentation.position.z,state.product.position[2],2.85,step);
-      if(splitOrientation){
-        presentation.rotation.x=damp(presentation.rotation.x,0,3.40,step);
-        presentation.rotation.y=damp(presentation.rotation.y,state.product.inspectionYaw || 0,3.00,step);
-        orientation.rotation.x=damp(orientation.rotation.x,orientationX+state.product.pitch,3.40,step);
-        orientation.rotation.y=damp(orientation.rotation.y,state.product.yaw,3.00,step);
-      }else{
-        presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,3.40,step);
-        presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,3.40,step);
+      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+      presentation.rotation.z=damp(presentation.rotation.z,0,3.00,step);
+      if(splitInspection){
+        inspection.rotation.x=damp(inspection.rotation.x,state.product.inspectionPitch || 0,3.40,step);
+        inspection.rotation.y=damp(inspection.rotation.y,0,3.00,step);
+        inspection.rotation.z=damp(inspection.rotation.z,state.product.inspectionYaw || 0,3.00,step);
       }
       const s=state.product.scale;
       presentation.scale.x=damp(presentation.scale.x,s,2.85,step);
