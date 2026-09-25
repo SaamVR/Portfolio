@@ -31,8 +31,9 @@ export function composeVisualState(baseState, interactionState=createInteraction
 
   const inspection = interactionState.inspection || {};
   const iw = clamp01(inspection.weight);
+  out.product.inspectionYaw = 0;
   if(iw > 0){
-    out.product.yaw += ((inspection.modelYaw || 0) + (inspection.yaw || 0)) * iw;
+    out.product.inspectionYaw = ((inspection.modelYaw || 0) + (inspection.yaw || 0)) * iw;
     out.product.pitch += (inspection.pitch || 0) * iw;
   }
 
