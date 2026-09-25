@@ -209,11 +209,12 @@ def test_r12_essential_text_visibility_is_increased():
 
 def test_v3_product_copy_uses_practical_language_without_demo_disclaimers():
     for phrase in [
-        "Spatial widens the visual field",
+        "These controls change the presentation—not the headphone hardware.",
+        "Wide opens the scene",
         "Focus reduces visual distraction",
-        "Ambient keeps surrounding context visible",
-        "Adaptive tightens the scene",
-        "Transparency opens the scene",
+        "Context preserves more",
+        "Isolate tightens",
+        "Reveal restores",
         "Explore comfort, hinge movement and the earcup control surface",
     ]:
         assert phrase in html
@@ -223,12 +224,13 @@ def test_v3_product_copy_uses_practical_language_without_demo_disclaimers():
 def test_v3_benchmark_panel_contains_practical_daily_use_context():
     assert 'id="benchmarkPanel"' in html
     for phrase in [
-        "Long-haul travel",
-        "Phone + laptop",
-        "Wired fallback",
-        "Quick charge",
-        "USB-C audio",
-        "multipoint",
+        "Touch + mouse",
+        "Graceful fallback",
+        "Reduced motion",
+        "Responsive delivery",
+        "Sony WH-1000XM6",
+        "Bose QuietComfort Ultra Headphones (2nd Gen)",
+        "Sennheiser MOMENTUM 4 Wireless",
     ]:
         assert phrase in html
 
