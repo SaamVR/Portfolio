@@ -3,6 +3,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const app=fs.readFileSync(path.join(__dirname,"..","app.js"),"utf8");
+const css=fs.readFileSync(path.join(__dirname,"..","styles.css"),"utf8");
 
 test("guided tour waits for camera travel to settle before every chapter action",()=>{
   assert.match(app,/async function scrollTourTarget\(/);
@@ -27,4 +28,9 @@ test("reveal staggering restarts inside each card group",()=>{
   assert.match(app,/querySelectorAll\(":scope > article"\)/);
   assert.match(app,/String\(index\+1\)/);
   assert.doesNotMatch(app,/revealTargets\.forEach\(\(el,i\)=>[\s\S]{0,400}i%3/);
+});
+test("guided tour cancel control respects the 44px interaction floor",()=>{
+  const block=css.match(/\.tour-status button\{[\s\S]*?\}/)?.[0]||"";
+  assert.match(block,/width:44px/);
+  assert.match(block,/height:44px/);
 });
