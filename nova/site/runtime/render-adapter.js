@@ -18,6 +18,7 @@ export function createRenderAdapter({
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
     obj[key].z=damp(obj[key].z,values[2],lambda,dt);
   };
+  let poseTime=null;
   return {
     apply(state,dt=DEFAULT_DT){
       if(!state) return;
@@ -37,7 +38,13 @@ export function createRenderAdapter({
       presentation.scale.y=damp(presentation.scale.y,s,4.5,step);
       presentation.scale.z=damp(presentation.scale.z,s,4.5,step);
 
-      if(mixer && Number.isFinite(clipDuration)) mixer.setTime(state.product.pose*clipDuration);
+      if(mixer && Number.isFinite(clipDuration)){
+        const targetPoseTime=state.product.pose*clipDuration;
+        poseTime=poseTime===null
+          ? targetPoseTime
+          : damp(poseTime,targetPoseTime,10.5,step);
+        mixer.setTime(poseTime);
+      }
 
       renderer.toneMappingExposure=damp(renderer.toneMappingExposure,state.lighting.exposure,3.7,step);
       if(lights){
