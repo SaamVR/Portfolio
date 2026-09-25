@@ -1,12 +1,14 @@
-name: NOVA Hotspot QA
+name: NOVA V3 Detail QA
 
 on:
   push:
-    branches: ["nova/v2-integration"]
+    branches: ["nova/v3-real-product"]
     paths:
       - ".github/workflows/nova-hotspot-qa.yml"
       - "nova/site/app.js"
       - "nova/site/interactions/hotspot-controller.js"
+      - "nova/site/runtime/timeline.js"
+      - "nova/site/ui/product-ui.js"
   workflow_dispatch:
 
 permissions:
@@ -73,56 +75,44 @@ jobs:
                 const cinematicMax=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
                 return Math.abs(scrollY/cinematicMax-value)<.003;
               },p,{timeout:3000});
-              await page.waitForTimeout(300);
+              await page.waitForTimeout(360);
             };
 
-            const readHotspots=()=>page.evaluate(()=>{
-              const pick=id=>{
-                const el=document.querySelector('[data-hotspot="'+id+'"]');
-                const r=el.getBoundingClientRect();
-                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
-              };
-              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight,range:document.body.dataset.range};
-            });
+            const details=[];
+            for(const [p,id] of [[.15,'cushion'],[.20,'headband'],[.26,'controls']]){
+              await scrollProgress(p);
+              await page.waitForFunction(expected=>document.body.dataset.detailFocus===expected,id);
+              const state=await page.evaluate(expected=>{
+                const visible=[...document.querySelectorAll('[data-hotspot]')].filter(el=>el.dataset.visible==='true').map(el=>{
+                  const r=el.getBoundingClientRect();
+                  return {id:el.dataset.hotspot,x:r.left+r.width/2,y:r.top+r.height/2};
+                });
+                return {expected,visible,w:innerWidth,h:innerHeight};
+              },id);
+              if(state.visible.length!==1||state.visible[0].id!==id) throw new Error(prefix+' single detail focus failed '+JSON.stringify(state));
+              const point=state.visible[0];
+              if(point.x<12||point.x>state.w-12||point.y<12||point.y>state.h-12) throw new Error(prefix+' detail outside viewport '+JSON.stringify(state));
+              details.push({p,id,point});
+              await page.screenshot({path:'nova-hotspot-qa/'+prefix+'_'+id+'.png'});
+            }
 
-            const validate=state=>{
-              const margin=12;
-              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden '+JSON.stringify(state));
-                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
-                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
-                }
-              }
-              const separation=Math.hypot(
-                state.cushion.x-state.controls.x,
-                state.cushion.y-state.controls.y
-              );
-              if(separation<Math.min(90,state.width*.16)){
-                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
-              }
-            };
-
-            await scrollProgress(.18);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const first=await readHotspots();
-            validate(first);
-
-            await scrollProgress(.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const second=await readHotspots();
-            validate(second);
-
-            for(const id of ['cushion','controls']){
-              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
-              if(movement<4){
-                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
-              }
+            const controls=[];
+            for(const [p,id] of [[.47,'power'],[.515,'multifunction'],[.565,'volume']]){
+              await scrollProgress(p);
+              await page.waitForFunction(expected=>document.body.dataset.controlInput===expected,id);
+              const state=await page.evaluate(()=>({
+                active:document.body.dataset.controlInput,
+                current:[...document.querySelectorAll('[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput),
+                marker:document.querySelector('[data-hotspot="controls"]')?.dataset.visible
+              }));
+              if(state.active!==id||state.current.length!==1||state.current[0]!==id||state.marker!=='true') throw new Error(prefix+' control input sequence failed '+JSON.stringify({id,state}));
+              controls.push({p,id});
+              await page.screenshot({path:'nova-hotspot-qa/'+prefix+'_control_'+id+'.png'});
             }
 
             if(errors.length) throw new Error(prefix+' browser errors '+errors.join(' | '));
-            await page.screenshot({path:'nova-hotspot-qa/'+prefix+'.png'});
             await context.close();
-            return {first,second};
+            return {details,controls};
           }
 
           const desktop=await audit({width:1440,height:1000},'desktop');
