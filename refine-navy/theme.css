@@ -557,3 +557,22 @@ html[data-theme=light] .tour-status{
   box-shadow:0 15px 45px rgba(0,0,0,.12)!important;
 }
 html[data-theme=light] .tour-progress{background:#DEDEDE!important}
+
+/* Strict grayscale completion for the rendered Operations workspace */
+html[data-theme=light] .ops-table-wrap{background:#FFFFFF!important}
+html[data-theme=light] .ops-table th{background:#EFEFEF!important;color:#444444!important;border-bottom-color:#D2D2D2!important}
+html[data-theme=light] .ops-table td{color:#555555!important;border-bottom-color:#D8D8D8!important}
+html[data-theme=light] .ops-table td:first-child b{color:#242424!important}
+html[data-theme=light] .ops-table td:first-child small{color:#666666!important}
+html[data-theme=light] .ops-table tbody tr:hover{background:#F3F3F3!important}
+html[data-theme=light] .ops-chart-item>div{background:#E4E4E4!important}
+html[data-theme=light] .ops-source-row>i{background:#E4E4E4!important}
+html[data-theme=light] .ops-panel-head>span,
+html[data-theme=light] .ops-chart-item>b,
+html[data-theme=light] .ops-chart-item>span,
+html[data-theme=light] .ops-source-row span,
+html[data-theme=light] .ops-activity-row time,
+html[data-theme=light] .ops-activity-row code,
+html[data-theme=light] .ops-activity-row b{color:#666666!important}
+html[data-theme=light] .ops-story-ribbon{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .ops-story-token{background:#F3F3F3!important;border-color:#D2D2D2!important}
