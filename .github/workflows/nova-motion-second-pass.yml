@@ -1,0 +1,60 @@
+name: NOVA Motion Second-Pass Audit
+
+on:
+  push:
+    branches: ["nova/v3-motion-audit-20260926"]
+    paths:
+      - ".github/workflows/nova-motion-second-pass.yml"
+      - "nova/tests/motion-browser-audit.mjs"
+      - "nova/site/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  motion-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore exact GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+
+      - name: Vendor Three.js GLTF runtime
+        run: |
+          set -euo pipefail
+          mkdir -p nova/site/vendor/addons/loaders nova/site/vendor/addons/utils
+          mkdir -p /tmp/nova-motion-vendor && cd /tmp/nova-motion-vendor
+          npm init -y >/dev/null 2>&1
+          npm install three@0.180.0 --no-audit --no-fund
+          cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
+
+      - name: Install Playwright
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run second-pass motion audit
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory nova/site >/tmp/nova-motion-server.log 2>&1 &
+          SERVER=$!
+          trap 'kill $SERVER || true' EXIT
+          sleep 2
+          node nova/tests/motion-browser-audit.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-motion-second-pass
+          path: nova-motion-audit
+          retention-days: 7
