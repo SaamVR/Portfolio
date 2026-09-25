@@ -447,3 +447,64 @@ Treat `bcc98f7` / `797dc1f0...` as the final LeadFlow visual/UIUX showcase freez
 
 ### Current freeze state
 Treat `543c056` / `8fcca7f9...` as the current LeadFlow showcase freeze. The Pipeline Analytics readability issue, walkthrough timing defect, navbar width, and Light/Dark toggle presentation have all been superseded by this build.
+
+## LeadFlow V3 storytelling release — 2026-09-25
+
+### Production state
+
+- Verified V3 production source SHA: `5bdc2903ec8118b04c67ba30287e9f2d59c7d22e`.
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Root `/` is V3.
+- `/v2/` preserves the pre-V3 production experience.
+- `/v1/` remains the legacy preserved version.
+- Cloudflare Wrangler deployment metadata lookup later hit npm `ECOMPROMISED`; do not infer or invent an immutable deployment URL. Canonical production was independently verified against local source bytes.
+
+### V3 storytelling shipped
+
+- Workflow / How It Works now tells one lead story through Capture → Validate → Qualify → Prepare with a single packet, semantic captions, one-shot playback and Replay flow.
+- Lead Operations tells the truthful operational delta caused by the latest lead. Insert stories update pipeline/KPIs/charts/queue/row/activity. Duplicate/upsert stories explicitly keep the pipeline count unchanged.
+- Reliability / When Something Goes Wrong now uses a four-beat Trigger → Detection → Response → Final state story for duplicate, human review and simulated CRM timeout.
+- Timeout remains explicitly simulated and visibly states `RETRY NOT EXECUTED IN THIS PUBLIC DEMO`; the public demo does not pretend a retry job or outbound CRM delivery occurred.
+- Architecture traces the same lead through Input → Cloudflare Pages Function → Rules + Demo CRM branch → reconvergence → Next Action.
+- Guided Walkthrough V3 orchestrates those same reusable story directors rather than separate fixed-delay animations. Normal motion runs about 25.1 seconds and advances chapters only after each director settles.
+- Guided reduced-motion mode preserves all semantic chapters with travel removed. Cancel aborts active stories and clears transient focus state.
+- Same-story replay cancels any superseded in-flight Web Animation, preventing overlapping choreography.
+
+### Version preservation
+
+V2 was frozen before root V3 edits. Release tests pin the following SHA-256 hashes:
+
+- `v2/index.html`: `2c48b71d17dfcb42f58c39d8799062bfed19d21bbe33adf2bb69d1ae9c009aaf`
+- `v2/app.js`: `f11eba77d751c89dfc7def585e234e5995f5d178a5f92a5f61706fe2b0f439b7`
+- `v2/dashboard.js`: `c831489e5338002a0f6ad3a956858ef838d35f19e4873b1e2faa1888c996a9c3`
+- `v2/styles.css`: `8d0c3b0356d6638c109fc93458be15d81023da79bfd7b12fa5c44508416f8a5a`
+- `v2/favicon.svg`: `8c5ff781afa9303693d288e3878957cdaaaef1255580c3fb595de4b5eb9a4d93`
+- `functions/v2/api/qualify.js`: `c3a0d1cfce32783188e5a0c431659f6f4e8a4e725081f4a60a1d242dec2658ec`
+
+Public V2 asset hashes were rechecked against those local frozen assets and matched exactly.
+
+### Final verification evidence
+
+- Fresh Node suite: **55/55 PASS**.
+- Root V3 release matrix: dark/light × 390/768/1024/1440 PASS.
+- Whole-page visible text below 12px: **0** in every release-matrix viewport/theme.
+- Story accessibility audit: **0 sub-12px story text, 0 measured contrast failures, 44px+ visible controls, no horizontal overflow**.
+- Whole-page settled contrast audit: PASS in dark/light at 1440 and 390 with 0 failures.
+- Workflow story runtime: PASS at 1440 and 390.
+- Lead Operations runtime: insert + duplicate/update PASS at 1440 and 390; duplicate count remains truthful.
+- Reliability runtime: duplicate/review/timeout + rapid scenario re-entry PASS at 1440 and 390.
+- Architecture runtime: branch/rejoin trace PASS at 1440 and 390.
+- Guided Walkthrough: reduced-motion semantics/cancel PASS; normal six-chapter sequencing PASS at ~25.1s.
+- Public browser verification on canonical root: V3 markers present, all story interactions settle, 0 browser exceptions at desktop/mobile dark/light.
+- Public `/v2/`: preserved pre-V3 CRM/Analytics experience, no V3 storytelling module, no mobile overflow.
+- Public `/v1/`: legacy LeadFlow AI preserved, no mobile overflow.
+- Canonical root asset hashes match local source SHA `5bdc2903...` byte-for-byte for `index.html`, `app.js`, `storytelling.js`, `dashboard.js`, `styles.css`, and `favicon.svg`.
+- Public root API: `deterministic-qualification-v2`, Sarah=92, missing-name=400.
+- Public V2 API: `deterministic-qualification-v2`, Sarah=92, missing-name=400.
+- Public V1 API: `deterministic-qualification-v1`, Sarah=92, missing-name=400.
+
+### Release note
+
+The older Python Playwright audit harness is unavailable on samvr because the Playwright package is not installed. No new dependency was added during release. Current Chrome/CDP runtime audits provide the release evidence above.
+
+Treat `5bdc2903...` plus the canonical production URL as the LeadFlow V3 source/deployment freeze. Future visual work should start from this V3 state, while `/v2/` and `/v1/` remain preserved unless explicitly requested.
