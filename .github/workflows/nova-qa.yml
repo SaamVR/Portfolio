@@ -244,12 +244,12 @@ jobs:
             const {page}=await readyPage(context,'desktop-interactions');
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/focus/i}).click();
+            await page.locator('[data-listening-mode="focus"]').click();
             await page.waitForTimeout(650);
             await page.screenshot({path:'nova-qa/desktop_focus.png'});
 
             await scrollProgress(page,.52);
-            await page.getByRole('button',{name:/transparency/i}).click();
+            await page.locator('[data-noise-mode="transparency"]').click();
             await page.waitForTimeout(650);
             await page.screenshot({path:'nova-qa/desktop_transparency.png'});
 
@@ -276,11 +276,11 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
-            await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='true');
+            await page.getByRole('button',{name:/specifications/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-qa/desktop_specifications.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='closed');
 
             await context.close();
           }
@@ -315,7 +315,7 @@ jobs:
             await hotspot.tap();
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/ambient/i}).tap();
+            await page.locator('[data-listening-mode="ambient"]').tap();
             await page.waitForTimeout(520);
             await page.screenshot({path:'nova-qa/mobile_ambient.png'});
 
@@ -332,11 +332,11 @@ jobs:
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
-            await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
+            await page.getByRole('button',{name:/specifications/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-qa/mobile_specifications.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='closed',{timeout:5000});
 
             await context.close();
           }
@@ -477,6 +477,67 @@ jobs:
             await context.close();
           }
 
+          async function motionContinuityAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'v3-motion-continuity');
+            const samples=[];
+            for(const progress of [.16,.18,.20,.22,.24,.26,.279]){
+              await scrollProgress(page,progress);
+              const sample=await page.evaluate(p=>{
+                const point=id=>{
+                  const el=document.querySelector('[data-hotspot="'+id+'"]');
+                  const r=el.getBoundingClientRect();
+                  return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
+                };
+                return {progress:p,cushion:point('cushion'),hinge:point('headband'),controls:point('controls')};
+              },progress);
+              samples.push(sample);
+            }
+            let maxJump=0;
+            const jumps=[];
+            for(let i=1;i<samples.length;i++){
+              for(const id of ['cushion','hinge','controls']){
+                const a=samples[i-1][id], b=samples[i][id];
+                const jump=Math.hypot(b.x-a.x,b.y-a.y);
+                maxJump=Math.max(maxJump,jump);
+                jumps.push({from:samples[i-1].progress,to:samples[i].progress,id,jump});
+              }
+            }
+            if(maxJump>145) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
+            fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify({maxJump,samples,jumps},null,2));
+            await context.close();
+          }
+
+          async function designDetailSequenceAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'v3-detail-sequence');
+            const checks=[
+              {progress:.16,detail:'cushion',hotspot:'cushion',file:'design_detail_cushion.png'},
+              {progress:.205,detail:'hinge',hotspot:'headband',file:'design_detail_hinge.png'},
+              {progress:.255,detail:'controls',hotspot:'controls',file:'design_detail_controls.png'}
+            ];
+            for(const check of checks){
+              await scrollProgress(page,check.progress);
+              await page.waitForFunction(detail=>document.body.dataset.designDetail===detail,check.detail);
+              const state=await page.evaluate(({detail,hotspot})=>{
+                const active=document.querySelector('[data-detail-id="'+detail+'"]');
+                const activeHotspot=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                const inactive=[...document.querySelectorAll('.hotspot-layer .hotspot')].filter(el=>el!==activeHotspot);
+                return {
+                  detail:document.body.dataset.designDetail,
+                  pressed:active?.getAttribute('aria-pressed'),
+                  activeOpacity:Number(getComputedStyle(activeHotspot).opacity),
+                  inactiveOpacity:Math.max(...inactive.map(el=>Number(getComputedStyle(el).opacity)))
+                };
+              },check);
+              if(state.detail!==check.detail||state.pressed!=='true'||state.activeOpacity<.8||state.inactiveOpacity>.35){
+                throw new Error('V3 Design detail sequence failed '+JSON.stringify({check,state}));
+              }
+              await page.screenshot({path:'nova-qa/'+check.file});
+            }
+            await context.close();
+          }
+
           async function readabilityAudit(viewport,prefix){
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
             const {page}=await readyPage(context,prefix+'-readability');
@@ -530,9 +591,9 @@ jobs:
             page.on('pageerror',e=>errors.push(e.message));
             await page.goto('http://127.0.0.1:4173/?static=1',{waitUntil:'networkidle'});
             await page.waitForFunction(()=>document.body.dataset.modelState==='fallback' && document.body.dataset.uiReady==='true');
-            const focus=page.getByRole('button',{name:/focus/i});
+            const focus=page.locator('[data-listening-mode="focus"]');
             await focus.click();
-            const facts=page.getByRole('button',{name:/product facts/i});
+            const facts=page.getByRole('button',{name:/specifications/i});
             await facts.click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             const result=await page.evaluate(()=>({
@@ -573,15 +634,21 @@ jobs:
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'product-facts');
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.getByRole('button',{name:/specifications/i}).click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             const state=await page.evaluate(()=>({
               open:document.body.dataset.productFacts,
               panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
-              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
-              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+              source:document.body.innerText.includes('Sony WH-1000XM6'),
+              battery:document.body.innerText.includes('30 hrs')&&document.body.innerText.includes('40 hrs'),
+              bluetooth:document.body.innerText.includes('Bluetooth 5.3'),
+              codecs:document.body.innerText.includes('SBC / AAC / LDAC / LC3'),
+              multipoint:document.body.innerText.includes('Multipoint'),
+              sourceLink:document.querySelector('#productFactsPanel a[href*="sony.com/electronics/support"]')?.href||''
             }));
-            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
+            if(state.open!=='open'||state.panelHidden!=='false'||!state.source||!state.battery||!state.bluetooth||!state.codecs||!state.multipoint||!state.sourceLink){
+              throw new Error('reference specifications incomplete '+JSON.stringify(state));
+            }
             await page.screenshot({path:'nova-qa/product_facts.png'});
             await page.locator('#productFactsPanel [data-facts-close]').click();
             await context.close();
@@ -639,6 +706,8 @@ jobs:
 
           await hotspotMotionAudit({width:1440,height:1000},'desktop');
           await hotspotMotionAudit({width:390,height:844},'mobile');
+          await motionContinuityAudit();
+          await designDetailSequenceAudit();
           await productCopyCollisionAudit({width:1440,height:1000},'desktop');
           await productCopyCollisionAudit({width:390,height:844},'mobile');
 
