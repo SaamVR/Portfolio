@@ -1,8 +1,8 @@
-name: NOVA Visual QA
+name: NOVA V3 Visual QA
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: ["nova/v3-real-product"]
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
@@ -43,7 +43,7 @@ jobs:
           npm install playwright@1.57.0 --no-audit --no-fund
           npx playwright install --with-deps chromium
 
-      - name: Create V2 QA script
+      - name: Create V3 QA script
         run: |
           cat > nova/qa-v2.mjs <<'JS'
           import { chromium } from 'playwright';
@@ -190,52 +190,49 @@ jobs:
 
           async function hotspotMotionAudit(viewport,prefix){
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
-            const {page}=await readyPage(context,prefix+'-hotspots');
-
-            const readHotspots=()=>page.evaluate(()=>{
-              const pick=id=>{
+            const {page}=await readyPage(context,prefix+'-details');
+            const checks=[
+              {p:.15,id:'cushion'},
+              {p:.20,id:'headband'},
+              {p:.26,id:'controls'}
+            ];
+            for(const check of checks){
+              await scrollProgress(page,check.p);
+              await page.waitForFunction(id=>document.querySelector('[data-hotspot="'+id+'"]')?.dataset.visible==='true',check.id);
+              const state=await page.evaluate(id=>{
+                const nodes=[...document.querySelectorAll('[data-hotspot]')];
+                const visible=nodes.filter(el=>el.dataset.visible==='true').map(el=>el.dataset.hotspot);
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
                 const r=el.getBoundingClientRect();
-                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
-              };
-              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight};
-            });
-
-            const validateViewport=state=>{
-              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden during Design close pass '+JSON.stringify(state));
-                const margin=12;
-                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
-                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
-                }
+                return {visible,id,x:r.left+r.width/2,y:r.top+r.height/2,width:innerWidth,height:innerHeight,detail:document.body.dataset.detailFocus};
+              },check.id);
+              if(state.visible.length!==1||state.visible[0]!==check.id||state.detail!==check.id){
+                throw new Error(prefix+' V3 detail focus must expose one hotspot at a time '+JSON.stringify(state));
               }
-              const separation=Math.hypot(
-                state.cushion.x-state.controls.x,
-                state.cushion.y-state.controls.y
-              );
-              if(separation<Math.min(90,state.width*.16)){
-                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
+              if(state.x<12||state.x>state.width-12||state.y<12||state.y>state.height-12){
+                throw new Error(prefix+' V3 detail hotspot outside viewport '+JSON.stringify(state));
               }
-            };
-
-            await scrollProgress(page,.18);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const first=await readHotspots();
-            validateViewport(first);
-
-            await scrollProgress(page,.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const second=await readHotspots();
-            validateViewport(second);
-
-            for(const id of ['cushion','controls']){
-              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
-              if(movement<4){
-                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
-              }
+              await page.screenshot({path:'nova-qa/'+prefix+'_detail_'+check.id+'.png'});
             }
+            await context.close();
+          }
 
-            await page.screenshot({path:'nova-qa/'+prefix+'_hotspots.png'});
+          async function controlInputsAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,prefix+'-controls');
+            for(const [p,id] of [[.47,'power'],[.515,'multifunction'],[.565,'volume']]){
+              await scrollProgress(page,p);
+              await page.waitForFunction(expected=>document.body.dataset.controlInput===expected,id);
+              const state=await page.evaluate(()=>({
+                active:document.body.dataset.controlInput,
+                current:[...document.querySelectorAll('[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput),
+                marker:document.querySelector('[data-hotspot="controls"]')?.dataset.visible
+              }));
+              if(state.current.length!==1||state.current[0]!==id||state.marker!=='true'){
+                throw new Error(prefix+' V3 control sequence mismatch '+JSON.stringify({expected:id,state}));
+              }
+              await page.screenshot({path:'nova-qa/'+prefix+'_control_'+id+'.png'});
+            }
             await context.close();
           }
 
@@ -244,14 +241,14 @@ jobs:
             const {page}=await readyPage(context,'desktop-interactions');
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/focus/i}).click();
+            await page.getByRole('button',{name:/cinema/i}).click();
             await page.waitForTimeout(650);
-            await page.screenshot({path:'nova-qa/desktop_focus.png'});
+            await page.screenshot({path:'nova-qa/desktop_cinema.png'});
 
             await scrollProgress(page,.52);
-            await page.getByRole('button',{name:/transparency/i}).click();
+            await page.getByRole('button',{name:/aware/i}).click();
             await page.waitForTimeout(650);
-            await page.screenshot({path:'nova-qa/desktop_transparency.png'});
+            await page.screenshot({path:'nova-qa/desktop_aware.png'});
 
             await scrollProgress(page,.65);
             await page.getByRole('button',{name:/fold/i}).click();
@@ -276,11 +273,10 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
-            await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='true');
+            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-qa/desktop_product_facts_interaction.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').click();
 
             await context.close();
           }
@@ -315,9 +311,9 @@ jobs:
             await hotspot.tap();
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/ambient/i}).tap();
+            await page.getByRole('button',{name:/standard/i}).tap();
             await page.waitForTimeout(520);
-            await page.screenshot({path:'nova-qa/mobile_ambient.png'});
+            await page.screenshot({path:'nova-qa/mobile_standard.png'});
 
             await scrollProgress(page,.79);
             const box=await page.locator('#webgl').boundingBox();
@@ -332,11 +328,10 @@ jobs:
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
-            await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
+            await page.getByRole('button',{name:/product facts/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-qa/mobile_product_facts.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').tap();
 
             await context.close();
           }
@@ -578,10 +573,14 @@ jobs:
             const state=await page.evaluate(()=>({
               open:document.body.dataset.productFacts,
               panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
-              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
-              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+              bose:document.body.innerText.includes('Bose QuietComfort Ultra Headphones (2nd Gen)'),
+              battery:document.body.innerText.includes('30 hours'),
+              bluetooth:document.body.innerText.includes('Bluetooth 5.4'),
+              usb:document.body.innerText.includes('16-bit / 44.1 or 48 kHz USB-C audio'),
+              sourced:document.body.innerText.includes('Specifications sourced from Bose'),
+              unofficial:document.body.innerText.includes('Unofficial interactive portfolio concept')
             }));
-            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
+            if(state.open!=='open'||state.panelHidden!=='false'||!state.bose||!state.battery||!state.bluetooth||!state.usb||!state.sourced||!state.unofficial) throw new Error('V3 real product facts incomplete '+JSON.stringify(state));
             await page.screenshot({path:'nova-qa/product_facts.png'});
             await page.locator('#productFactsPanel [data-facts-close]').click();
             await context.close();
@@ -627,7 +626,7 @@ jobs:
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
             await page.waitForFunction(()=>document.body.dataset.modelState==='error',{timeout:10000});
             const result=await page.evaluate(()=>({
-              headline:document.body.innerText.includes('Hear beyond'),
+              headline:document.body.innerText.includes('Ultra. 2nd Gen.'),
               nav:Boolean(document.querySelector('.masthead')),
               productControl:Boolean(document.querySelector('[data-listening-mode="spatial"]'))
             }));
@@ -639,6 +638,8 @@ jobs:
 
           await hotspotMotionAudit({width:1440,height:1000},'desktop');
           await hotspotMotionAudit({width:390,height:844},'mobile');
+          await controlInputsAudit({width:1440,height:1000},'desktop');
+          await controlInputsAudit({width:390,height:844},'mobile');
           await productCopyCollisionAudit({width:1440,height:1000},'desktop');
           await productCopyCollisionAudit({width:390,height:844},'mobile');
 
@@ -668,7 +669,7 @@ jobs:
           await browser.close();
           JS
 
-      - name: Run V2 visual audit
+      - name: Run V3 visual audit
         run: |
           set -euo pipefail
           python3 -m http.server 4173 --directory nova/site >/tmp/nova-server.log 2>&1 &
