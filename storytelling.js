@@ -165,6 +165,92 @@
       if(detail)detail.textContent=(lead.name||"Lead")+" completes the workflow with a visible, inspectable next action.";
     }
 
+    const reliabilityStories={
+      duplicate:{beats:[
+        ["Incoming identity","Name + company are normalized before CRM matching."],
+        ["Existing record matched","A browser-local record with the same identity already exists."],
+        ["Existing record updated","The workflow upserts the matching record instead of creating another row."],
+        ["No duplicate row","Pipeline count stays unchanged after the update."]
+      ]},
+      review:{beats:[
+        ["Score enters review range","The deterministic score lands between the configured review and high-priority thresholds."],
+        ["Review band detected","Automatic sales review is not selected for this score."],
+        ["Human review selected","The lead remains visible and is routed to a person for review."],
+        ["Safe visible state","No model-confidence claim is used to make this routing decision."]
+      ]},
+      timeout:{beats:[
+        ["External CRM request","The public demo starts a simulated external-CRM failure story."],
+        ["Timeout detected","The simulated outbound request does not complete."],
+        ["Retry plan prepared","An illustrative bounded retry path is shown, but no retry job runs."],
+        ["RETRY NOT EXECUTED IN THIS PUBLIC DEMO","Production requires durable retry state and idempotent delivery."]
+      ]}
+    };
+
+    async function reliabilityDirector(context,storyOptions){
+      const incidentScenario=storyOptions.scenario||"duplicate";
+      const config=reliabilityStories[incidentScenario]||reliabilityStories.duplicate;
+      const section=q("#reliability"),beats=qa("#reliability [data-incident-beat]"),scenes=qa("#reliability [data-incident-scene]");
+      if(!section||beats.length!==4)return;
+      section.dataset.storyState="playing";
+      section.dataset.incidentScenario=incidentScenario;
+      scenes.forEach(scene=>scene.classList.toggle("active",scene.dataset.incidentScene===incidentScenario));
+      beats.forEach(beat=>beat.classList.remove("incident-focus","incident-complete"));
+
+      const boundary=q("#incidentBoundary");
+      if(boundary)boundary.classList.toggle("visible",incidentScenario==="timeout");
+
+      if(incidentScenario==="duplicate"){
+        const incoming=q("#incidentDuplicateIncoming"),existing=q("#incidentDuplicateExisting"),count=q("#incidentDuplicateCount");
+        if(count){const n=Number(storyOptions.recordCount)||3;count.textContent=n+" → "+n+" records"}
+        incoming?.classList.remove("merged");
+        existing?.classList.remove("matched");
+      }
+      if(incidentScenario==="review"){
+        const marker=q("#incidentReviewMarker"),settings=storyOptions.settings||{review:55,hot:80};
+        const score=Number(storyOptions.score)||Math.min(settings.hot-1,Math.max(settings.review,67));
+        if(marker){marker.style.left=score+"%";marker.setAttribute("aria-label",score+" score")}
+        q("#reliability .sales-route")?.classList.remove("dimmed");
+        q("#reliability .human-route")?.classList.remove("selected");
+      }
+      if(incidentScenario==="timeout"){
+        q("#incidentTimeoutRequest")?.classList.remove("failed");
+        q("#reliability .timeout-link")?.classList.remove("failed");
+        q("#incidentRetryPlan")?.classList.remove("visible");
+      }
+
+      for(let index=0;index<4;index++){
+        if(context.cancelled())return;
+        beats.forEach((beat,i)=>beat.classList.toggle("incident-focus",i===index));
+        const title=q("#incidentBeatTitle"+index),copy=q("#incidentBeatCopy"+index);
+        if(title)title.textContent=config.beats[index][0];
+        if(copy)copy.textContent=config.beats[index][1];
+
+        if(incidentScenario==="duplicate"){
+          if(index===0)await context.animate(q("#incidentDuplicateIncoming"),[{transform:"translateX(-14px)",opacity:.35},{transform:"translateX(0)",opacity:1}],{duration:420,easing:"ease-out",fill:"forwards"});
+          if(index===1)q("#incidentDuplicateExisting")?.classList.add("matched");
+          if(index===2)q("#incidentDuplicateIncoming")?.classList.add("merged");
+        }
+        if(incidentScenario==="review"){
+          if(index===1)q("#reliability .sales-route")?.classList.add("dimmed");
+          if(index===2)q("#reliability .human-route")?.classList.add("selected");
+        }
+        if(incidentScenario==="timeout"){
+          if(index===1){
+            q("#incidentTimeoutRequest")?.classList.add("failed");
+            q("#reliability .timeout-link")?.classList.add("failed");
+          }
+          if(index===2)q("#incidentRetryPlan")?.classList.add("visible");
+        }
+
+        await context.wait(index===3?760:620);
+        if(context.cancelled())return;
+        beats[index].classList.add("incident-complete");
+      }
+
+      beats.forEach(beat=>beat.classList.remove("incident-focus"));
+      section.dataset.storyState="complete";
+    }
+
     async function operationsDirector(context,storyOptions){
       const story=storyOptions.storyContext,section=q("#workspace"),dashboard=q("#workspace .ops-dashboard");
       const headline=q("#opsStoryHeadline"),detail=q("#opsStoryDetail"),token=q("#opsStoryToken");
@@ -220,7 +306,7 @@
     const directors={
       workflow:workflowDirector,
       operations:operationsDirector,
-      reliability:genericDirector,
+      reliability:reliabilityDirector,
       architecture:genericDirector
     };
 

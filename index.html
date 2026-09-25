@@ -240,7 +240,42 @@
       </div>
     </section>
 
-    <section id="reliability" class="section band engineering-combo-start"><div class="shell"><div class="section-head"><div><p class="tag">WHEN SOMETHING GOES WRONG</p><h2>Make exceptions visible and recoverable.</h2></div><p>Explore duplicate handling, a simulated external-CRM timeout, and the rules-based human-review path.</p></div><div class="reliability-lab"><div class="reliability-copy"><small>SCENARIO DETAILS</small><b>Implemented behavior and simulated scenarios stay clearly separated.</b><p>Duplicate handling runs in the demo. Timeout recovery is shown as a simulation, while review routing follows explicit score thresholds.</p></div><div class="reliability-actions"><button type="button" data-edge="duplicate">Duplicate lead · implemented</button><button type="button" data-edge="timeout">CRM timeout · simulated</button><button type="button" data-edge="review">Needs human review · implemented</button></div><div class="reliability-log" id="reliabilityLog"><div><code>scenario.ready</code><span>Select a scenario to inspect what happened, what the demo does, and what remains pending.</span></div></div></div></div></section>
+    <section id="reliability" class="section band engineering-combo-start" data-story-state="idle" data-incident-scenario="none"><div class="shell">
+      <div class="section-head"><div><p class="tag">WHEN SOMETHING GOES WRONG</p><h2>Make exceptions visible and recoverable.</h2></div><p>Choose a scenario and follow the system from trigger to safe final state. Implemented behavior and simulated recovery remain explicitly separated.</p></div>
+      <div class="reliability-lab">
+        <div class="reliability-copy"><small>SCENARIO STORY</small><b>See what happened, how the workflow responded, and what state remains.</b><p>Duplicate handling and human-review routing are implemented. CRM timeout recovery is an explicit simulation.</p></div>
+        <div class="reliability-actions"><button type="button" data-edge="duplicate">Duplicate lead · implemented</button><button type="button" data-edge="timeout">CRM timeout · simulated</button><button type="button" data-edge="review">Needs human review · implemented</button></div>
+
+        <div class="incident-story-shell">
+          <div class="incident-rail" aria-live="polite">
+            <article data-incident-beat="trigger"><small>01 · TRIGGER</small><b id="incidentBeatTitle0">Awaiting scenario</b><p id="incidentBeatCopy0">Choose an exception to start the story.</p></article>
+            <article data-incident-beat="detection"><small>02 · DETECTION</small><b id="incidentBeatTitle1">—</b><p id="incidentBeatCopy1">The system state will appear here.</p></article>
+            <article data-incident-beat="response"><small>03 · RESPONSE</small><b id="incidentBeatTitle2">—</b><p id="incidentBeatCopy2">The handling path will appear here.</p></article>
+            <article data-incident-beat="final"><small>04 · FINAL STATE</small><b id="incidentBeatTitle3">—</b><p id="incidentBeatCopy3">The settled outcome will appear here.</p></article>
+          </div>
+
+          <div class="incident-scenes" id="incidentScenario" aria-label="Incident scenario visualization">
+            <div class="incident-scene duplicate-scene" data-incident-scene="duplicate">
+              <div class="duplicate-track"><span id="incidentDuplicateIncoming" class="incident-token incoming">INCOMING</span><i></i><span id="incidentDuplicateExisting" class="incident-token existing">CRM RECORD</span></div>
+              <strong id="incidentDuplicateCount">3 → 3 records</strong>
+              <small>Existing identity is updated, not duplicated.</small>
+            </div>
+            <div class="incident-scene timeout-scene" data-incident-scene="timeout">
+              <div class="timeout-track"><span id="incidentTimeoutRequest" class="incident-token request">CRM REQUEST</span><i class="timeout-link"></i><span class="incident-failure-mark">×</span><span id="incidentRetryPlan" class="incident-retry-plan">RETRY PLAN</span></div>
+              <strong id="incidentBoundary">RETRY NOT EXECUTED IN THIS PUBLIC DEMO</strong>
+              <small>Production requires durable retry state + idempotent delivery.</small>
+            </div>
+            <div class="incident-scene review-scene" data-incident-scene="review">
+              <div class="review-score-track"><span>NURTURE</span><span>REVIEW</span><span>HIGH</span><i id="incidentReviewMarker"></i></div>
+              <div class="review-routes"><span class="sales-route">Sales review</span><span class="human-route">Human review</span></div>
+              <small>The configured score band selects a person-in-the-loop path.</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="reliability-log" id="reliabilityLog"><div><code>scenario.ready</code><span>Select a scenario to inspect the technical event evidence.</span></div></div>
+      </div>
+    </div></section>
 
     <section id="architecture" class="section shell engineering-combo-end"><div class="section-head"><div><p class="tag">HOW IT WORKS</p><h2>A clear path from input to action.</h2></div><p>Each stage has one clear responsibility, so the workflow is easier to inspect, explain, and adapt.</p></div><div class="architecture"><div class="arch-source"><small>INPUT</small><b>Lead form</b><span>Structured browser submission</span></div><div class="arch-arrow">POST →</div><div class="arch-core"><small>LIVE API</small><b>Cloudflare Pages Function</b><span>Validation · trace ID · no-store response</span></div><div class="arch-arrow">JSON →</div><div class="arch-column"><div><small>RULES</small><b>Qualification scoring</b><span>Budget · timeline · intent terms</span></div><div><small>STORAGE</small><b>Demo CRM</b><span>Browser localStorage</span></div></div><div class="arch-arrow">STATE →</div><div class="arch-source"><small>NEXT ACTION</small><b>Draft · review · nurture</b><span>Prepared in the demo; no outbound delivery</span></div></div><div class="stack implemented-stack"><span>Implemented: HTML / CSS / JavaScript</span><span>Cloudflare Pages Function</span><span>REST JSON</span><span>localStorage demo CRM</span></div><details class="architecture-more">
   <summary>
