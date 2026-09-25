@@ -1,7 +1,9 @@
 name: Apply GPT runtime LeadFlow redesign
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - runtime/leadflow-dashboard-redesign
 
 permissions:
   contents: write
@@ -20,7 +22,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat             runtime/sync/chunk-000             runtime/sync/chunk-001             runtime/sync/chunk-002             runtime/sync/chunk-003-part-0             runtime/sync/chunk-003-part-1             runtime/sync/chunk-003-part-2             runtime/sync/chunk-003-part-3             runtime/sync/chunk-004             runtime/sync/chunk-005             runtime/sync/chunk-006             runtime/sync/chunk-007             > /tmp/leadflow-shippable.b64
+          cat \
+            runtime/sync/chunk-000 \
+            runtime/sync/chunk-001 \
+            runtime/sync/chunk-002 \
+            runtime/sync/chunk-003-part-0 \
+            runtime/sync/chunk-003-part-1 \
+            runtime/sync/chunk-003-part-2 \
+            runtime/sync/chunk-003-part-3 \
+            runtime/sync/chunk-004 \
+            runtime/sync/chunk-005 \
+            runtime/sync/chunk-006 \
+            runtime/sync/chunk-007 \
+            > /tmp/leadflow-shippable.b64
+          test "$(wc -c < /tmp/leadflow-shippable.b64)" = "60000"
           base64 -d /tmp/leadflow-shippable.b64 > /tmp/leadflow-shippable.tar.xz
           test "$(wc -c < /tmp/leadflow-shippable.tar.xz)" = "45000"
           echo "e7f465d32e83fd7dfd499c9eb4c2904855bbfe357edbce4192187ad1ed9f8b7d  /tmp/leadflow-shippable.tar.xz" | sha256sum -c -
@@ -55,7 +70,15 @@ jobs:
 
           git config user.name "SaamVR"
           git config user.email "163770486+SaamVR@users.noreply.github.com"
-          git add index.html app.js dashboard.js styles.css             tests/browser_harness.py             tests/leadflow-dashboard-model.test.js             tests/leadflow-dashboard-dom.test.js             tests/leadflow_visual_audit.py             tests/leadflow_empty_state_audit.py             tests/leadflow_responsive_audit.py             tests/leadflow_source_truth_audit.py             tests/leadflow_final_runtime_audit.py
+          git add index.html app.js dashboard.js styles.css \
+            tests/browser_harness.py \
+            tests/leadflow-dashboard-model.test.js \
+            tests/leadflow-dashboard-dom.test.js \
+            tests/leadflow_visual_audit.py \
+            tests/leadflow_empty_state_audit.py \
+            tests/leadflow_responsive_audit.py \
+            tests/leadflow_source_truth_audit.py \
+            tests/leadflow_final_runtime_audit.py
 
           git commit -m "refine LeadFlow dashboard readability and analytics"
           git push origin main
