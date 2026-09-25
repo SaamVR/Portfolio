@@ -6,14 +6,14 @@ build = (ROOT / ".github/workflows/nova-build.yml").read_text()
 public_qa = (ROOT / ".github/workflows/nova-public-preview-qa.yml").read_text()
 hotspot_qa = (ROOT / ".github/workflows/nova-hotspot-qa.yml").read_text()
 
-def test_visual_qa_targets_v2_integration_and_progress_boundaries():
-    assert "nova/v2-integration" in qa
+def test_visual_qa_targets_v3_and_progress_boundaries():
+    assert "nova/v3-real-product" in qa
     for value in [".119", ".121", ".279", ".281", ".959", ".961"]:
         assert value in qa
     assert "dataset.range" in qa
 
 def test_visual_qa_exercises_product_interactions():
-    for phrase in ["focus", "transparency", "fold", "reset view"]:
+    for phrase in ["cinema", "aware", "standard", "fold", "reset view"]:
         assert phrase.lower() in qa.lower()
     assert "reducedMotion" in qa
     assert "headphones-web.gltf" in qa
@@ -50,16 +50,18 @@ def test_collision_guard_covers_early_hero_and_design_at_strict_threshold():
     assert "result.ratio>.04" in qa
 # Trigger fast contracts on the strengthened browser-collision implementation.
 
-def test_hotspot_qa_tracks_authored_motion_not_legacy_fixed_screen_band():
+def test_v3_detail_qa_enforces_one_detail_at_a_time():
     assert "hotspotMotionAudit" in qa
-    assert "hotspot should move with authored close pass" in qa
+    assert "V3 detail focus must expose one hotspot at a time" in qa
+    assert "data.detailFocus" in qa or "dataset.detailFocus" in qa
     assert "state.height*.34" not in qa
     assert "state.height*.62" not in qa
 # Trigger contracts for motion-aware hotspot QA implementation.
 # Final exact verification checkpoint: Contracts + Visual QA + Production Bundle.
 
-def test_focused_hotspot_qa_tracks_close_pass_motion_not_fixed_band():
-    assert "hotspot should move with authored close pass" in hotspot_qa
+def test_v3_focused_detail_qa_checks_single_detail_and_controls():
+    assert "single detail focus failed" in hotspot_qa
+    assert "control input sequence failed" in hotspot_qa
     assert "state.height*.34" not in hotspot_qa
     assert "state.height*.62" not in hotspot_qa
 # Trigger contracts for focused motion-aware hotspot QA implementation.
