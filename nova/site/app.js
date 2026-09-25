@@ -381,6 +381,8 @@ function scheduleTourDetail(callback){
   window.setTimeout(callback,delay);
 }
 
+const DESIGN_DETAIL_PROGRESS={cushion:.16,hinge:.205,controls:.255};
+
 const actions={
   setListeningMode(mode){
     listeningMode=mode;
@@ -396,6 +398,15 @@ const actions={
   },
   focusHotspot(id){
     hotspotController?.focus(id);
+  },
+  selectDesignDetail(detail,target){
+    hotspotController?.clear();
+    const progress=DESIGN_DETAIL_PROGRESS[detail];
+    if(Number.isFinite(progress)) scrollToProgress(progress);
+    if(rendererAvailable){
+      const delay=reducedMotion?70:520;
+      window.setTimeout(()=>hotspotController?.focus(target),delay);
+    }
   },
   clearHotspot(){
     hotspotController?.clear();
