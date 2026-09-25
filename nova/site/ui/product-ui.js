@@ -13,13 +13,13 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'Spatial opens the presentation for a wider, more immersive listening feel.',
-  focus:'Focus reduces surrounding motion so attention stays tightly centered.',
-  ambient:'Ambient keeps the visual field open to the world around you.'
+  spatial:'LDAC is included in the reference codec set for compatible Bluetooth source devices.',
+  focus:'AAC is included in the reference codec set for practical playback across supported devices.',
+  ambient:'LC3 is included alongside SBC, AAC and LDAC in the reference Bluetooth codec set.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
-  transparency:'Transparency represents awareness and a more open connection to the environment.'
+  adaptive:'Noise Canceling is the reference mode for reducing outside sound during travel, work and focused listening.',
+  transparency:'Ambient Sound keeps useful surroundings available when awareness matters.'
 };
 
 const actions = {};
@@ -62,7 +62,6 @@ export function bindProductUI(nextActions={}){
   bound=true;
 
   document.body.dataset.mobileNav='closed';
-  document.body.dataset.notifyConcept='closed';
   document.body.dataset.productFacts='closed';
   document.body.dataset.guidedTour='closed';
 
@@ -110,6 +109,13 @@ export function bindProductUI(nextActions={}){
       const expanded=button.getAttribute('aria-expanded')==='true';
       if(expanded) actions.clearHotspot?.();
       else actions.focusHotspot?.(button.dataset.hotspot);
+    });
+  });
+
+  document.querySelectorAll('[data-detail-id]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const target=button.dataset.detailTarget;
+      if(target) actions.focusHotspot?.(target);
     });
   });
 
@@ -185,29 +191,6 @@ export function bindProductUI(nextActions={}){
   factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
   document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
 
-  const notifyTrigger=document.querySelector('#notifyConcept');
-  const notifyPanel=document.querySelector('#notifyPanel');
-  const notifyShell=document.querySelector('.interest-shell');
-  const setNotifyOpen=open=>setDialog({
-    open,bodyKey:'notifyConcept',trigger:notifyTrigger,panel:notifyPanel,shell:notifyShell,focusTarget:notifyPanel
-  });
-  notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
-
-  const notifyForm=document.querySelector('#notifyDemoForm');
-  const notifyStatus=document.querySelector('#notifyDemoStatus');
-  notifyForm?.addEventListener('submit',event=>{
-    event.preventDefault();
-    const input=notifyForm.querySelector('input[type="email"]');
-    if(!input?.checkValidity()){
-      input?.reportValidity();
-      return;
-    }
-    notifyForm.dataset.state='confirmed';
-    if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
-    input.value='';
-  });
-  document.querySelectorAll('[data-notify-close]').forEach(button=>button.addEventListener('click',()=>setNotifyOpen(false)));
-
   const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
   const briefButton=document.querySelector('#copyProjectBrief');
   const briefStatus=document.querySelector('#projectBriefStatus');
@@ -222,7 +205,6 @@ export function bindProductUI(nextActions={}){
 
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape') return;
-    if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);
     if(document.body.dataset.mobileNav==='open') setMobileNav(false);
@@ -234,7 +216,17 @@ export function updateProductUI(state){
   document.body.dataset.range=ui.range || state?.range || 'hero';
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
-  const activeTarget=NAV_TARGET[ui.range || state?.range] || null;
+  const range=ui.range || state?.range || 'hero';
+  const designDetail=range==='design'
+    ? (state?.rangeProgress < .34 ? 'cushion' : state?.rangeProgress < .68 ? 'hinge' : 'controls')
+    : 'none';
+  document.body.dataset.designDetail=designDetail;
+  document.querySelectorAll('[data-detail-id]').forEach(button=>{
+    const active=button.dataset.detailId===designDetail;
+    button.setAttribute('aria-pressed',String(active));
+    button.classList.toggle('is-active',active);
+  });
+  const activeTarget=NAV_TARGET[range] || null;
   document.querySelectorAll('.product-nav a[href^="#"],.mobile-nav a[href^="#"]').forEach(link=>{
     const active=Boolean(activeTarget && link.getAttribute('href')===activeTarget);
     link.classList.toggle('is-active',active);
