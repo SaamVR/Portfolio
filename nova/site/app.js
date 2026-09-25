@@ -41,6 +41,8 @@ let noiseMode = 'adaptive';
 let foldState = 'open';
 let inspectionView = 'front';
 let scrollActivityUntil = 0;
+let smoothedProgress = null;
+const SCROLL_DAMPING = 11.5;
 
 let renderer=null;
 let rendererAvailable=false;
@@ -275,8 +277,13 @@ function resize(){
   environment.resize(innerWidth,innerHeight);
 }
 
-function sampleAuthoredState(){
-  const progress=currentProgress();
+function sampleAuthoredState(dt=1/60){
+  const targetProgress=currentProgress();
+  if(smoothedProgress===null) smoothedProgress=targetProgress;
+  smoothedProgress=reducedMotion
+    ? targetProgress
+    : THREE.MathUtils.damp(smoothedProgress,targetProgress,SCROLL_DAMPING,dt);
+  const progress=smoothedProgress;
   const range=getRangeState(progress);
   const authoredProgress=reducedMotion ? REDUCED_SETTLED[range.range] ?? progress : progress;
   const state=sampleTimeline(authoredProgress,viewportClass());
@@ -359,7 +366,7 @@ function render(now=performance.now()){
   const dt=Math.min(.05,Math.max(.001,(now-lastTime)/1000 || 1/60));
   lastTime=now;
 
-  const base=sampleAuthoredState();
+  const base=sampleAuthoredState(dt);
   updateInteractionInfluences(base,dt,now);
   const composed=composeVisualState(base,interactionState);
   currentComposedState=composed;
