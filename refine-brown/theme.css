@@ -311,3 +311,5 @@ html[data-theme=light] .case-list span,
 html[data-theme=light] .project-stack,
 html[data-theme=light] .project-meta{color:#55463D!important}
 html[data-theme=light] .case-grid>div:first-child::after{color:#66554A!important;border-color:#BFA99A!important}
+
+.number-field span{color:#C4B2A7!important}
