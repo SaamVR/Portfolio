@@ -78,10 +78,14 @@ const DT=1/60;
     'manual inspection yaw must not pan the camera away from the centered product');
   assert.equal(composed.camera.position[1],base.camera.position[1],
     'manual inspection pitch must not pan the camera vertically out of frame');
-  assert.ok(Math.abs(composed.product.yaw-(base.product.yaw+Math.PI*.48+.32))<1e-9,
-    'manual inspection yaw should fine-tune the selected product view');
-  assert.ok(Math.abs(composed.product.pitch-(base.product.pitch+.08))<1e-9,
-    'manual inspection pitch should fine-tune product tilt');
+  assert.equal(composed.product.yaw,base.product.yaw,
+    'inspection yaw must not contaminate authored timeline yaw');
+  assert.equal(composed.product.pitch,base.product.pitch,
+    'inspection pitch must not contaminate authored timeline pitch');
+  assert.ok(Math.abs(composed.product.inspectionYaw-(Math.PI*.48+.32))<1e-9,
+    'preset yaw plus manual fine-tune should belong to the dedicated inspection turntable');
+  assert.ok(Math.abs(composed.product.inspectionPitch-.08)<1e-9,
+    'manual fine-tune pitch should belong to the dedicated inspection turntable');
 }
 
 console.log('motion_control_contract: PASS');
