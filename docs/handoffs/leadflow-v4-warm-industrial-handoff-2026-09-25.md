@@ -134,27 +134,47 @@ Do not revert this workflow to the older root+V1-only payload.
 
 ## Current deployment status
 
-Canonical production before this V4 release attempt:
+V4 production is COMPLETE.
+
+Canonical production:
 - https://leadflow-ai-bhy.pages.dev/
+
+Immutable V4 deployment:
+- https://8ee3bf74.leadflow-ai-bhy.pages.dev/
 
 Previously verified immutable V3 deployment:
 - https://aa6c8f81.leadflow-ai-bhy.pages.dev/
 
-V4 deployment attempt:
-- GitHub Actions run: https://github.com/SaamVR/Portfolio/actions/runs/36165187748
-- trigger SHA: `0aaa860dcfbafb3c0e0cf29abb0af89819515eb1`
+Deployment path:
+- authenticated Wrangler CLI on `samvr`
+- isolated npm cache: `/home/ubuntu/.cache/leadflow-wrangler-v4`
+- reconciled detached deploy worktree: `/home/ubuntu/leadflow-v4-production-deploy`
+- deployed source SHA: `e4023b728698b89e4179ed939d17f90f609e0957`
+- V4 application blobs at that SHA match the final reviewed V4 source
+- Cloudflare Pages project: `leadflow-ai`
+- production hostname: `leadflow-ai-bhy.pages.dev`
 
-Result:
-- checkout: PASS
-- V4 source verification: PASS
-- Require Cloudflare credentials: FAIL
-- Pages payload build: skipped
-- Wrangler deploy: skipped
-- production smoke tests: skipped
+Production verification:
+- local Node regression before deploy: 91/91 PASS
+- immutable root V4 smoke: PASS
+- canonical root V4 smoke: PASS
+- immutable and canonical root assets `index.html`, `app.js`, `dashboard.js`, `storytelling.js`, `styles.css` match the reconciled source byte-for-byte
+- `/v3/`, `/v2/`, `/v1/`: PASS on immutable and canonical deployment
+- root / V3 / V2 qualification APIs report deterministic v2 engine
+- V1 qualification API reports deterministic v1 engine
+- live real-browser dark/light × 390/768/1024/1440 release matrix: PASS
+- no audited visible text below 12px
+- audited controls remain >=44px
+- no horizontal overflow
+- live canonical presets remain 92 / 64 / 33 with 16 events each and LIVE API RESPONSE
+- live whole-page contrast: 0 failures at dark/light 1440 and 390
 
-Therefore no V4 bytes were sent to Cloudflare in this run. The previously verified V3 production remains the safe live state.
+Earlier GitHub Actions release attempt:
+- https://github.com/SaamVR/Portfolio/actions/runs/36165187748
+- still documents that GitHub Actions does not currently have the Cloudflare credentials
+- this no longer blocks V4 production because the authenticated `samvr` Wrangler path completed the release
 
-## Current blocker
+## Remaining CI deployment-path issue
 
 GitHub Actions still lacks:
 - `CLOUDFLARE_API_TOKEN`
@@ -163,18 +183,14 @@ GitHub Actions still lacks:
 Tracking issue:
 - https://github.com/SaamVR/Portfolio/issues/24
 
-Never paste either credential into chat, source, an issue, or a handoff.
+This is now a future CI/CD reliability task, not a V4 production blocker. Never paste either credential into chat, source, an issue, or a handoff.
 
 ## Exact resume instructions
 
-1. Do not redo V4 design/audit work.
-2. Reconcile current `main` against this handoff.
-3. Confirm the two Cloudflare GitHub Actions secrets exist.
-4. Rerun failed deployment run `36165187748` or update `leadflow/deploy-trigger.txt`.
-5. Require every deployment step to pass, including all root/V1/V2/V3 smoke checks and screenshot capture.
-6. Record the new immutable Cloudflare deployment URL.
-7. Verify canonical production points to V4.
-8. Verify `/v3/`, `/v2/`, and `/v1/` all remain independently functional.
-9. Only then update this handoff/issue and call V4 production-complete.
-
-If remote Desktop Commander access becomes available before GitHub credentials are added, the previous authenticated Wrangler path on `samvr` can be used, but first reconcile that runtime worktree against GitHub main and use an isolated npm cache as documented in the V3 handoff.
+1. Treat V4 production as frozen and complete at immutable deployment `https://8ee3bf74.leadflow-ai-bhy.pages.dev/`.
+2. Do not redo V4 design/audit/deployment work unless a regression or new V5 request is explicit.
+3. Preserve `/v3/`, `/v2/`, and `/v1/` independently.
+4. For future production changes, reconcile the active runtime worktree against GitHub `main` before any write.
+5. Prefer the hardened GitHub Actions deploy path after its Cloudflare secrets are configured.
+6. Until then, the authenticated `samvr` Wrangler path is proven; use a clean detached worktree and isolated npm cache.
+7. Require byte checks, version/API smoke checks, and real-browser verification for any future production promotion.
