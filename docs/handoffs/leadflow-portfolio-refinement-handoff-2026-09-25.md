@@ -508,3 +508,92 @@ Public V2 asset hashes were rechecked against those local frozen assets and matc
 The older Python Playwright audit harness is unavailable on samvr because the Playwright package is not installed. No new dependency was added during release. Current Chrome/CDP runtime audits provide the release evidence above.
 
 Treat `5bdc2903...` plus the canonical production URL as the LeadFlow V3 source/deployment freeze. Future visual work should start from this V3 state, while `/v2/` and `/v1/` remain preserved unless explicitly requested.
+
+## LeadFlow V3 professional product-motion refinement — 2026-09-25
+
+### Production freeze
+
+- Verified production source SHA: `87a785c255508eb4e79f5d3738fbfced7d3e88bd`.
+- Primary implementation commit: `cfac01cc6b3a48d60ac7483b779f68c78520dc06`.
+- Formatting-only follow-up: `87a785c255508eb4e79f5d3738fbfced7d3e88bd`.
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Immutable deployment: https://226a19db.leadflow-ai-bhy.pages.dev/
+- Root `/` is the refined V3.
+- `/v2/` remains the frozen pre-V3 experience.
+- `/v1/` remains the legacy preserved experience.
+
+### Professionalization completed
+
+- Removed user-facing prototype language such as demo / demonstration / showcase / simulated / illustrative from root V3 presentation copy.
+- Internal compatibility identifiers such as `#demo`, seed IDs, and localStorage keys were intentionally preserved because they are not user-visible and changing them would risk state/bookmark regressions.
+- Workflow animation now transforms the moving token by operational state:
+  - `NEW INQUIRY` — blue incoming state
+  - `VERIFIED` — emerald validated state
+  - dynamic score such as `92 / 100` — status-driven priority/review/nurture state
+  - `SALES REVIEW` / `HUMAN REVIEW` / `NURTURE` — settled ready state
+- Workflow connectors inherit semantic state color instead of remaining one uniform accent.
+- Lead Operations infographics now animate their actual geometry:
+  - qualification donut sweep
+  - score bars rise with delayed score/name reveal
+  - source-quality bars grow
+  - urgency segments expand
+  - staggered supporting list entries
+- Lead Operations infographic categories support pointer and keyboard emphasis without mutating/filtering the underlying data.
+- Scenario Story now starts in a neutral state and supports direct four-beat inspection by pointer and keyboard:
+  - Trigger
+  - Detection
+  - Response
+  - Final state
+- Scenario Story supports Enter / Space plus arrow-key / Home / End navigation.
+- Scenario selectors use semantic colors. Timeout uses red failure + amber recovery-plan states, duplicate uses blue→amber→emerald, and human review uses blue→amber→emerald.
+- Timeout wording now uses the professional boundary `DELIVERY RETRY REQUIRES A CONNECTED CRM`; it does not imply that a retry job or outbound CRM delivery occurred.
+- Architecture animation now uses semantic payload states:
+  - `REQUEST` — blue
+  - `VALID` — emerald
+  - branch `SCORE` — amber
+  - branch `CRM STATE` — blue
+  - reconverged `READY` — emerald
+- Architecture nodes remain persistently readable throughout the animation. Branch tokens merge away before the final READY state, and the final READY token settles above the destination instead of covering node copy.
+- Guided Walkthrough continues to reuse the shared story directors and remains event-driven rather than fixed-delay.
+
+### Final verification
+
+- Fresh Node suite: **65/65 PASS**.
+- Focused professionalization contract suite: PASS.
+- Professional production runtime audit: PASS on canonical production with zero browser exceptions.
+- Workflow semantic runtime: PASS at 1440 and 390.
+- Lead Operations insert + update runtime: PASS at 1440 and 390.
+- Reliability duplicate / review / timeout + re-entry runtime: PASS at 1440 and 390.
+- Architecture branch / rejoin runtime: PASS at 1440 and 390.
+- CRM detail runtime: PASS in dark/light/mobile/empty states.
+- Guided Walkthrough:
+  - reduced-motion semantic sequence + cancellation PASS
+  - normal-motion six-chapter sequence PASS at ~25.6s
+- Visibility/accessibility matrix:
+  - dark/light × 1440 and 390: 0 sub-12px story text
+  - 0 measured story contrast failures
+  - all visible story controls meet 44px minimum
+  - no document overflow
+- Whole-page release matrix:
+  - dark/light × 390/768/1024/1440 PASS
+  - 0 visible sub-12px text
+  - no document-level overflow
+- Whole-page settled contrast: PASS at dark/light 1440 and 390 with 0 failures.
+- Real qualification presets unchanged:
+  - hot = 92
+  - review = 64
+  - nurture = 33
+- Protected `v1/`, `v2/`, `functions/v1/`, `functions/v2/`, and root `functions/api/qualify.js` were unchanged by this refinement.
+- Public root files on both canonical and immutable deployment match local source byte-for-byte for:
+  - `index.html`
+  - `app.js`
+  - `storytelling.js`
+  - `dashboard.js`
+  - `styles.css`
+  - `favicon.svg`
+- Public V2 assets also match the frozen local V2 files byte-for-byte.
+- Public root API remains `deterministic-qualification-v2`, Sarah=92, missing-name=400.
+- Public V2 API remains `deterministic-qualification-v2`, Sarah=92, missing-name=400.
+- Public V1 API remains `deterministic-qualification-v1`, Sarah=92, missing-name=400.
+
+Treat `87a785c2...` / `226a19db...` as the current LeadFlow V3 professional-product-motion production freeze.
