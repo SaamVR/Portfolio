@@ -60,6 +60,24 @@ jobs:
             await page.waitForTimeout(500);
           }
 
+          async function assertProductFraming(page,prefix,points){
+            for(const progress of points){
+              await scrollProgress(page,progress);
+              await page.waitForTimeout(700);
+              const state=await page.evaluate(p=>({
+                progress:p,
+                range:document.body.dataset.range,
+                frame:window.__NOVA_QA__?.productFrame?.()||null
+              }),progress);
+              const minRatio=prefix==='mobile'?.90:.94;
+              const minHeight=prefix==='mobile'?110:180;
+              if(!state.frame||state.frame.visibleRatio<minRatio||state.frame.height<minHeight){
+                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minRatio,minHeight,state}));
+              }
+              await page.screenshot({path:'nova-v3-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
+            }
+          }
+
           {
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const page=await ready(context,'desktop');
@@ -74,6 +92,7 @@ jobs:
             if(basics.model!=='ready'||!basics.hero||!basics.story||!basics.runtime.includes('LIVE')||basics.fakeNotify){
               throw new Error('desktop V3 runtime invalid '+JSON.stringify(basics));
             }
+            await assertProductFraming(page,'desktop',[.02,.16,.36,.54,.65,.79,.90]);
 
             for(const check of [
               {p:.16,detail:'cushion',hotspot:'cushion',file:'design_cushion.png'},
@@ -132,6 +151,7 @@ jobs:
           {
             const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
             const page=await ready(context,'mobile');
+            await assertProductFraming(page,'mobile',[.02,.16,.36,.54,.65,.79,.90]);
             await page.getByRole('button',{name:/menu/i}).tap();
             await page.waitForFunction(()=>document.body.dataset.mobileNav==='open');
             const nav=await page.evaluate(()=>({
