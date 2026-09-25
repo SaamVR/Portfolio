@@ -31,7 +31,7 @@ def test_v3_real_world_specs_are_sourced_and_not_presented_as_nova_manufacturing
         "Bluetooth 5.3",
         "Bluetooth 5.4",
         "Bluetooth 5.2",
-        "Benchmark data, not NOVA manufacturing claims",
+        "These manufacturer figures are reference context, not NOVA hardware specifications.",
     ]:
         assert phrase in html
     for url in [
