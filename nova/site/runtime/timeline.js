@@ -70,18 +70,17 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // V1-style source-clip choreography: keep the physical product legible while the
-  // authored GLTF pose continues to evolve underneath V2's camera and UI layers.
-  [0.000,.240],[0.045,.285],[0.090,.320],[0.120,.300],
-  [0.160,.270],[0.180,.285],[0.200,.205],[0.240,.270],[0.280,.240],
-  [0.300,.460],[0.320,.700],
-  [0.360,.760],[0.410,.710],[0.450,.740],
-  [0.490,.700],[0.540,.760],[0.580,.720],
-  [0.620,.680],[0.670,.770],[0.720,.720],
-  [0.760,.680],[0.790,.740],[0.830,.700],[0.860,.730],
-  [0.900,.760],[0.945,.690],[0.960,.720],
-  [0.985,.670],[1.000,.640]
-];
+  // V3 normal scroll stays in a stable open-product source range.
+  // The deliberate fold is handled by fold-controller, not by abrupt scroll scrub.
+  [0.000,.240],[0.060,.250],[0.120,.270],
+  [0.160,.280],[0.200,.285],[0.240,.290],[0.280,.295],
+  [0.320,.300],[0.360,.305],[0.410,.300],[0.450,.310],
+  [0.490,.315],[0.540,.305],[0.580,.300],
+  [0.620,.300],[0.670,.312],[0.720,.292],
+  [0.760,.286],[0.790,.280],[0.830,.274],[0.860,.270],
+  [0.900,.264],[0.945,.255],[0.960,.246],
+  [0.985,.220],[1.000,.200]
+]
 
 function sampleProductPose(progress){
   const p=clamp01(progress);
