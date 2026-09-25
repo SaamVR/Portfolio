@@ -73,12 +73,14 @@ scene.add(camera);
 
 const normalizationRoot=new THREE.Group();
 const presentation=new THREE.Group();
+const visualOffsetGroup=new THREE.Group();
 const pivotGroup=new THREE.Group();
 const inspectionGroup=new THREE.Group();
 const centerGroup=new THREE.Group();
 inspectionGroup.add(centerGroup);
 pivotGroup.add(inspectionGroup);
-presentation.add(pivotGroup);
+visualOffsetGroup.add(pivotGroup);
+presentation.add(visualOffsetGroup);
 normalizationRoot.add(presentation);
 scene.add(normalizationRoot);
 
@@ -245,14 +247,18 @@ function loadModel(){
     const cable=model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
-    // Measure/center the animated asset in a neutral local frame. Bounds from
-    // an already-oriented ancestor are world-space values and must not be
-    // written back as a local center offset; doing so makes turntable yaw orbit
-    // the whole product out of frame.
+    // Keep two centers separate:
+    // 1) neutralCenter is the true geometric pivot for inspection rotation.
+    // 2) legacyVisualCenter preserves the established authored screen origin.
+    // This yields T(-L) * T(C) * R * T(-C): Front is visually compatible with
+    // the existing story, while Side/Rear rotate around the real product center.
     normalizationRoot.scale.setScalar(1);
     presentation.position.set(0,0,0);
     presentation.rotation.set(0,0,0);
     presentation.scale.set(1,1,1);
+    visualOffsetGroup.position.set(0,0,0);
+    visualOffsetGroup.rotation.set(0,0,0);
+    visualOffsetGroup.scale.set(1,1,1);
     pivotGroup.position.set(0,0,0);
     pivotGroup.rotation.set(0,0,0);
     pivotGroup.scale.set(1,1,1);
@@ -264,11 +270,28 @@ function loadModel(){
     centerGroup.scale.set(1,1,1);
     scene.updateMatrixWorld(true);
 
+    const neutralBounds=computePrimaryBounds(model);
+    const neutralCenter=neutralBounds.getCenter(new THREE.Vector3());
+
+    // Reproduce the visual-origin convention the V3 timeline was authored
+    // against, but make it deterministic instead of load-timing dependent.
+    const reference=sampleTimeline(0,viewportClass());
+    presentation.position.fromArray(reference.product.position);
+    presentation.rotation.set(
+      orientationX+reference.product.pitch,
+      reference.product.yaw,
+      0
+    );
+    presentation.scale.setScalar(reference.product.scale);
+    scene.updateMatrixWorld(true);
+
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
-    const center=primaryProductBounds.getCenter(new THREE.Vector3());
-    pivotGroup.position.copy(center);
-    centerGroup.position.copy(center).multiplyScalar(-1);
+    const legacyVisualCenter=primaryProductBounds.getCenter(new THREE.Vector3());
+
+    visualOffsetGroup.position.copy(legacyVisualCenter).multiplyScalar(-1);
+    pivotGroup.position.copy(neutralCenter);
+    centerGroup.position.copy(neutralCenter).multiplyScalar(-1);
     const major=Math.max(size.x,size.y,size.z,1);
     normalizationRoot.scale.setScalar(3.55/major);
     scene.updateMatrixWorld(true);
