@@ -49,3 +49,29 @@ test("variant routes are included in the Cloudflare deployment contract",()=>{
   assert.match(workflow,/LEADFLOW REFINE — BROWN/);
   assert.match(workflow,/LEADFLOW REFINE — NAVY/);
 });
+
+
+for(const variant of variants){
+  test(variant.slug+" neutralizes inherited green story and success states",()=>{
+    const css=read(variant.slug+"/theme.css");
+    const required=[
+      ".workflow-story-packet.verified",
+      ".workflow-story-packet.ready",
+      ".workflow-story-connector.tone-verified",
+      ".workflow-story-connector.tone-ready",
+      ".reliability-actions [data-edge=\"duplicate\"].active",
+      ".architecture-payload.arch-tone-valid",
+      ".architecture-payload.arch-tone-ready",
+      ".architecture.arch-phase-valid [data-arch-node=\"api\"]",
+      ".architecture.arch-phase-ready [data-arch-node=\"next\"]",
+      ".incident-rail::before",
+      ".incident-rail article.incident-complete::before",
+      ".tour-progress i",
+      ".execution-progress>div",
+      ".ops-chart-item.hot i",
+      "html[data-theme=light] .workflow-map article:nth-of-type(3) .icon",
+      "html[data-theme=light] .hero .panel-top i"
+    ];
+    for(const selector of required)assert.ok(css.includes(selector),variant.slug+" missing "+selector);
+  });
+}
