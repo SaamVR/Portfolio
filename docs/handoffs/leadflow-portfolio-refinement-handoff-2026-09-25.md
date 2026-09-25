@@ -280,3 +280,50 @@ Do not report production complete until those checks pass.
   - root API remains `deterministic-qualification-v2`;
   - Sarah / Acme Dental POST returns score 92;
   - `/v1/` and `/v1/api/qualify` remain unchanged on v1.
+
+
+## FINAL VISUAL FREEZE — LeadFlow showcase
+
+- Frozen production source commit: `f37e1027cf95067089c3c1087acddbaf2d040a68`.
+- Primary visual-freeze commit: `fef48dc052404272778f2a04470f28daa3ba4290`.
+- Final production-only disclosure-glyph fix: `f37e1027cf95067089c3c1087acddbaf2d040a68`.
+- Latest immutable Cloudflare deployment: https://4c4b676c.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Frozen legacy: https://leadflow-ai-bhy.pages.dev/v1/
+
+### Final art-direction changes
+- Added a 2px reading-progress rail to the sticky navigation and replaced IntersectionObserver ratio-based nav state with deterministic reading-line section tracking.
+- Hero CTA hierarchy is now primary demo + secondary CRM + quiet guided walkthrough.
+- Hero workflow uses slower semantic green system-flow motion; red remains reserved for high-priority/outcome attention.
+- Interactive demo now has a designed pre-run "Awaiting qualification" result state instead of a visually empty result panel.
+- Desktop workflow presentation is one connected editorial rail instead of four independently floating cards.
+- Reliability and Architecture visually read as one engineering chapter.
+- Secondary integration/configuration + implementation proof is collapsed under "Explore integration and implementation details"; core architecture remains visible.
+- Workflow Blueprint is demoted to an optional collapsed planning tool.
+- Mobile Workspace pipeline is rendered as readable lead cards rather than requiring horizontal table reading.
+- Mobile secondary analytics use an edge-peeking horizontal snap rail.
+- Mobile workflow is a compact timeline layout.
+- Light-mode Blueprint and final CTA contrast are explicitly themed.
+- Surface hierarchy, border density, semantic red usage, metadata contrast, touch targets, ending spacing, and reveal pacing were normalized.
+- Instrument Sans + IBM Plex Mono retained.
+
+### Final measurements and verification
+- Full Node suite: 19/19 PASS.
+- Dedicated CRM runtime audit: PASS.
+- End-to-end workflow audit under reduced motion: 92 / 64 / 33, 16 events each, CRM grows 1 → 2 → 3 records, zero runtime errors.
+- Default presentation visibility: PASS at dark/light 1440 and 390.
+- Expanded Architecture + Blueprint visibility: PASS at dark/light 1440 and 390.
+- Public canonical visibility gate after deploy:
+  - zero visible text below 12px;
+  - zero measured normal-text contrast failures;
+  - zero undersized audited controls;
+  - zero page-level horizontal overflow.
+- Canonical page height after compaction: approximately 9,138px desktop and 15,786px mobile with optional detail collapsed.
+- Sticky nav verified on Workflow / Demo / Workspace / Reliability / Architecture / ROI.
+- Reading progress verified at ~50% when page is half-scrolled.
+- Root API remains `deterministic-qualification-v2`; canonical Sarah / Acme Dental POST still returns score 92.
+- `/v1/` remains legacy and `/v1/api/qualify` remains `deterministic-qualification-v1`.
+- No changes were made to `v1`, `functions/v1`, or `functions/api/qualify.js`.
+
+### Freeze recommendation
+Treat this version as the visual/UIUX freeze for the LeadFlow portfolio showcase. Future changes should be bug fixes, content corrections, or portfolio-link updates rather than additional visual-system redesign.
