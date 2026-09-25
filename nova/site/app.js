@@ -275,6 +275,41 @@ function resize(){
   environment.resize(innerWidth,innerHeight);
 }
 
+function measureProductFrame(){
+  if(!rendererAvailable || !model) return null;
+  normalizationRoot.updateWorldMatrix(true,true);
+  model.updateWorldMatrix(true,true);
+  const box=new THREE.Box3().setFromObject(model,true);
+  if(box.isEmpty()) return null;
+  const min=box.min, max=box.max;
+  const corners=[
+    [min.x,min.y,min.z],[min.x,min.y,max.z],[min.x,max.y,min.z],[min.x,max.y,max.z],
+    [max.x,min.y,min.z],[max.x,min.y,max.z],[max.x,max.y,min.z],[max.x,max.y,max.z]
+  ].map(values=>new THREE.Vector3(...values).project(camera));
+  const left=(Math.min(...corners.map(v=>v.x))+1)*.5*innerWidth;
+  const right=(Math.max(...corners.map(v=>v.x))+1)*.5*innerWidth;
+  const top=(1-Math.max(...corners.map(v=>v.y)))*.5*innerHeight;
+  const bottom=(1-Math.min(...corners.map(v=>v.y)))*.5*innerHeight;
+  const width=Math.max(0,right-left);
+  const height=Math.max(0,bottom-top);
+  const visibleLeft=Math.max(0,left);
+  const visibleTop=Math.max(0,top);
+  const visibleRight=Math.min(innerWidth,right);
+  const visibleBottom=Math.min(innerHeight,bottom);
+  const visibleArea=Math.max(0,visibleRight-visibleLeft)*Math.max(0,visibleBottom-visibleTop);
+  const area=Math.max(1,width*height);
+  return {
+    left,top,right,bottom,width,height,
+    visibleRatio:visibleArea/area,
+    viewport:{width:innerWidth,height:innerHeight}
+  };
+}
+
+Object.defineProperty(window,'__NOVA_QA__',{
+  value:{productFrame:measureProductFrame},
+  configurable:true
+});
+
 function sampleAuthoredState(){
   const progress=currentProgress();
   const range=getRangeState(progress);
