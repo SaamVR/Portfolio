@@ -165,3 +165,19 @@ def test_r13_visual_qa_covers_guided_tour_compact_handoff_and_evidence():
         "compact_case_study.png",
     ]:
         assert token in qa
+
+
+def test_v3_visual_qa_covers_benchmark_detail_sequence_and_motion_continuity():
+    for token in [
+        "v3BenchmarkAudit",
+        "v3_benchmark_desktop.png",
+        "v3_benchmark_mobile.png",
+        "v3DesignDetailAudit",
+        "v3_design_cushion.png",
+        "v3_design_headband.png",
+        "v3_design_controls.png",
+        "v3MotionContinuityAudit",
+        "pose discontinuity",
+        "camera target discontinuity",
+    ]:
+        assert token in qa
