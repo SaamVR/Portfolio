@@ -178,3 +178,9 @@ def test_v3_visual_qa_covers_benchmark_detail_rail_and_motion_continuity():
         "motion_continuity.json",
     ]:
         assert token in qa
+
+
+def test_v3_compact_case_study_waits_for_damped_visual_range():
+    assert "dataset.visualProgress" in qa
+    assert "document.body.dataset.range==='behind'" in qa
+    assert "Number(document.body.dataset.visualProgress||0)>=.96" in qa
