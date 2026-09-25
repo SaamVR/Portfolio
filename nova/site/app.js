@@ -73,10 +73,12 @@ scene.add(camera);
 
 const normalizationRoot=new THREE.Group();
 const presentation=new THREE.Group();
+const pivotGroup=new THREE.Group();
 const inspectionGroup=new THREE.Group();
 const centerGroup=new THREE.Group();
 inspectionGroup.add(centerGroup);
-presentation.add(inspectionGroup);
+pivotGroup.add(inspectionGroup);
+presentation.add(pivotGroup);
 normalizationRoot.add(presentation);
 scene.add(normalizationRoot);
 
@@ -251,6 +253,9 @@ function loadModel(){
     presentation.position.set(0,0,0);
     presentation.rotation.set(0,0,0);
     presentation.scale.set(1,1,1);
+    pivotGroup.position.set(0,0,0);
+    pivotGroup.rotation.set(0,0,0);
+    pivotGroup.scale.set(1,1,1);
     inspectionGroup.position.set(0,0,0);
     inspectionGroup.rotation.set(0,0,0);
     inspectionGroup.scale.set(1,1,1);
@@ -262,10 +267,11 @@ function loadModel(){
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
     const center=primaryProductBounds.getCenter(new THREE.Vector3());
+    pivotGroup.position.copy(center);
     centerGroup.position.copy(center).multiplyScalar(-1);
     const major=Math.max(size.x,size.y,size.z,1);
     normalizationRoot.scale.setScalar(3.55/major);
-    model.updateMatrixWorld(true);
+    scene.updateMatrixWorld(true);
 
     buildHotspotController(size);
     rebuildAdapter();
