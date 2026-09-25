@@ -109,3 +109,63 @@ html[data-theme=light] .final-cta{
 }
 html[data-theme=light] #workflow .workflow-stage[data-story-tone="verified"].story-focus,
 html[data-theme=light] #workflow .workflow-stage[data-story-tone="ready"].story-focus{border-color:#7A4F36!important;box-shadow:inset 0 3px 0 #7A4F36,0 12px 32px rgba(71,47,34,.12)!important}
+
+
+/* Green-leak neutralization — remap inherited success/system states to brown */
+.trust-band{background:linear-gradient(90deg,rgba(226,182,75,.035),transparent 28%,transparent 72%,rgba(185,134,103,.05)),#19130F;border-color:#49382F}
+.capability span{color:#C3AFA2}
+.card-title>span{background:#302219;color:#D8AA88}
+.result-orb{background:#2A1D16;border-color:#6C4C3A;color:#D8AA88}
+.temperature.hot{background:#302219;color:#D8AA88}
+.ai-summary{background:#241914;border-color:#654637}
+.ops-status-icon,.ops-console-brand>span{background:#2D2019;color:#D8AA88}
+.backend-proof.live{background:#241914;border-color:#74513E}
+.execution-progress>div{background:linear-gradient(90deg,#8C5C40,#B98667)}
+.distribution-row i{background:linear-gradient(90deg,#8C5C40,#B98667)}
+.ops-chart-item.hot i{background:linear-gradient(#D7A98A,#8C5C40)}
+.tour-progress i{background:linear-gradient(90deg,#8C5C40,#D7A98A);box-shadow:0 0 14px rgba(185,134,103,.30)}
+.workflow-story-packet.verified,
+.workflow-story-packet.ready{background:#302219;border-color:#9B684C;color:#FFF2E8;box-shadow:0 8px 24px rgba(0,0,0,.2),0 0 0 4px rgba(185,134,103,.09)}
+.workflow-story-packet.verified i,
+.workflow-story-packet.ready i{background:#B98667;box-shadow:0 0 14px rgba(185,134,103,.62)}
+#workflow .workflow-story-connector.tone-verified i,
+#workflow .workflow-story-connector.tone-ready i{background:#B98667!important}
+.reliability-actions [data-edge="duplicate"].active,
+.reliability-actions [data-edge="duplicate"]:hover{border-color:#9B684C;color:#FFEFE4;background:#302219;box-shadow:inset 0 3px 0 #B98667}
+#reliability[data-incident-scenario="duplicate"] .incident-beat-button:is([data-incident-index="2"],[data-incident-index="3"]).incident-focus,
+#reliability[data-incident-scenario="review"] .incident-beat-button[data-incident-index="3"].incident-focus{border-color:#B98667;background:#302219;box-shadow:inset 0 3px 0 #B98667}
+.architecture-payload.arch-tone-valid,
+.architecture-payload.arch-tone-ready{background:#302219;border-color:#9B684C;color:#FFF2E8;box-shadow:0 0 0 4px rgba(185,134,103,.09)}
+#architecture .architecture.arch-phase-valid [data-arch-node="api"],
+#architecture .architecture.arch-phase-ready [data-arch-node="next"]{border-color:#9B684C!important;box-shadow:inset 0 3px 0 #B98667,0 12px 30px rgba(0,0,0,.1)}
+#architecture .architecture.arch-reconverged [data-arch-edge="state"]{color:#D8AA88!important;text-shadow:0 0 14px rgba(185,134,103,.26)}
+.incident-rail::before{background:linear-gradient(90deg,#7CC4FF,#F2C66D,#B98667)}
+.incident-rail article.incident-complete::before{border-color:#B98667;background:#3A281E}
+.number-field:focus-within{border-color:#9B684C;box-shadow:0 0 0 3px rgba(185,134,103,.08)}
+@keyframes roiResultPulse{
+  0%{box-shadow:inset 0 0 0 1px rgba(185,134,103,0);background-color:#241914}
+  45%{box-shadow:inset 0 0 0 1px rgba(185,134,103,.28);background-color:#302219}
+  100%{box-shadow:inset 0 0 0 1px rgba(185,134,103,0);background-color:#241914}
+}
+@keyframes heroNodeLightState{
+  0%,13%,100%{border-color:#BCA99D;background:#FFFFFF}
+  17%,32%{border-color:#7A4F36;background:#F1E5DD}
+  38%,100%{border-color:#BCA99D;background:#FFFFFF}
+}
+html[data-theme=light] .workflow-story-packet.verified,
+html[data-theme=light] .workflow-story-packet.ready{background:#F4E7DE;color:#603B28;border-color:#9A725B}
+html[data-theme=light] .architecture-payload.arch-tone-valid,
+html[data-theme=light] .architecture-payload.arch-tone-ready{background:#F4E7DE;color:#603B28;border-color:#9A725B}
+html[data-theme=light] .reliability-actions [data-edge="duplicate"].active,
+html[data-theme=light] .reliability-actions [data-edge="duplicate"]:hover{background:#F4E7DE;color:#603B28;border-color:#9A725B}
+html[data-theme=light] .workflow-map article:nth-of-type(3) .icon{background:#70462F!important;color:#FFFFFF!important}
+html[data-theme=light] .hero .panel-top i{background:#B98667!important}
+html[data-theme=light] .tour-progress{background:#E7D9CF}
+html[data-theme=light] .tour-progress i{background:linear-gradient(90deg,#7A4F36,#B98667)}
+html[data-theme=light] .trust-band{background:linear-gradient(90deg,#F2E8DF,#EEE6DF 32%,#EEE6DF 70%,#F3E3DD);border-color:#D0C1B6}
+html[data-theme=light] .trust-grid>div:first-child small,
+html[data-theme=light] .ops-panel-head small{color:#70462F!important}
+html[data-theme=light] .capability:hover{background:rgba(122,79,54,.05);border-left-color:#7A4F36}
+html[data-theme=light] .capability span{color:#66554A}
+html[data-theme=light] #roi .roi-primary strong{color:#70462F}
+html[data-theme=light] .incident-neutral-mark{background:#F2E9E3;color:#603B28;border-color:#B99B87}
