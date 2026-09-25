@@ -18,9 +18,28 @@ def test_required_product_controls_are_semantic_buttons():
     assert 'id="inspectionReset"' in html
     assert "<button" in html
 
-def test_no_fake_numeric_product_specs():
-    banned = ["40-hour","50-hour","mm driver","Bluetooth 5.","Hi-Res Certified","$399","$499"]
-    assert not any(term.lower() in html.lower() for term in banned)
+def test_v3_real_world_specs_are_sourced_and_not_presented_as_nova_manufacturing_claims():
+    for phrase in [
+        "Sony WH-1000XM6",
+        "Bose QuietComfort Ultra Headphones (2nd Gen)",
+        "Sennheiser MOMENTUM 4 Wireless",
+        "254 g",
+        "264 g",
+        "293 g",
+        "30 hrs",
+        "60 hrs",
+        "Bluetooth 5.3",
+        "Bluetooth 5.4",
+        "Bluetooth 5.2",
+        "Benchmark data, not NOVA manufacturing claims",
+    ]:
+        assert phrase in html
+    for url in [
+        "sony.com/electronics/support/wireless-headphones-bluetooth-headphones/wh-1000xm6/specifications",
+        "bose.com/p/headphones/bose-quietcomfort-ultra-headphones-2nd-gen",
+        "support.sennheiser-hearing.com/hc/en-gb/articles/37791406604189-MOMENTUM-4-Wireless-Specifications",
+    ]:
+        assert url in html
 
 def test_technical_facts_live_after_product_journey():
     assert html.index("Designed like a launch.") < html.index(">36<")
@@ -58,14 +77,15 @@ def test_stage_geometry_matches_global_timeline():
             assert f".stage--{name}{{min-height:{height}" in compact
 
 
-def test_notify_concept_has_visible_accessible_panel():
-    assert 'id="notifyConcept"' in html
-    assert 'id="notifyPanel"' in html
-    assert 'aria-controls="notifyPanel"' in html
-    assert 'role="dialog"' in html
-    assert 'aria-modal="true"' in html
-    assert 'id="notifyClose"' in html
-    assert 'body[data-notify-concept="open"] .interest-panel' in css
+def test_v3_removes_fake_notify_flow_and_replaces_it_with_real_benchmark_panel():
+    assert 'id="notifyConcept"' not in html
+    assert 'id="notifyPanel"' not in html
+    assert "Preview notify flow" not in html
+    assert "Demo only" not in html
+    assert 'id="benchmarkSpecsTrigger"' in html
+    assert 'id="benchmarkPanel"' in html
+    assert 'aria-controls="benchmarkPanel"' in html
+    assert 'body[data-benchmark-panel="open"]' in css
 
 
 def test_chapter_background_is_state_driven():
@@ -187,24 +207,30 @@ def test_r12_essential_text_visibility_is_increased():
     assert "font-size:var(--control-copy)" in compact
     assert "font-size:var(--nav-copy)" in compact
 
-def test_r12_product_copy_explains_benefit_and_mode_meaning():
+def test_v3_product_copy_uses_practical_language_without_demo_disclaimers():
     for phrase in [
-        "concept listening profiles",
-        "Spatial opens the presentation",
-        "Focus reduces surrounding motion",
-        "Ambient keeps the visual field open",
-        "Adaptive represents focused isolation",
-        "Transparency represents awareness",
-        "Explore the cushions, hinge and earcup controls",
+        "Spatial widens the visual field",
+        "Focus reduces visual distraction",
+        "Ambient keeps surrounding context visible",
+        "Adaptive tightens the scene",
+        "Transparency opens the scene",
+        "Explore comfort, hinge movement and the earcup control surface",
     ]:
         assert phrase in html
+    for banned in ["fictional product", "Concept product facts", "What the demo", "Not specified in this fictional concept"]:
+        assert banned not in html
 
-def test_r12_product_facts_are_explicitly_conceptual_without_fake_specs():
-    assert 'id="productFactsPanel"' in html
-    assert "Concept product facts" in html
-    assert "Not specified in this fictional concept" in html
-    assert "Multipoint is part of the concept feature set" in html
-    assert "Are the acoustic claims measured?" in html
+def test_v3_benchmark_panel_contains_practical_daily_use_context():
+    assert 'id="benchmarkPanel"' in html
+    for phrase in [
+        "Long-haul travel",
+        "Phone + laptop",
+        "Wired fallback",
+        "Quick charge",
+        "USB-C audio",
+        "multipoint",
+    ]:
+        assert phrase in html
 
 def test_r12_named_inspection_views_and_client_capabilities_exist():
     for view in ["front","side","rear"]:
@@ -295,3 +321,24 @@ def test_r13_compact_behind_parent_does_not_add_padding_outside_sticky_child():
     assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
     assert "color:#eee8de;padding:0}" in compact
     assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
+
+
+def test_v3_design_detail_rail_replaces_three_competing_text_callouts():
+    for detail in ["cushion","headband","controls"]:
+        assert f'data-design-detail="{detail}"' in html
+    assert 'class="design-detail-rail"' in html
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'body[data-range="design"].hotspotspan{opacity:0' in compact
+    assert 'body[data-range="design"].hotspot[aria-expanded="true"]span' in compact
+
+def test_v3_scroll_progress_is_damped_for_smooth_motion():
+    app=(ROOT/"app.js").read_text()
+    assert "smoothedProgress" in app
+    assert "THREE.MathUtils.damp" in app
+    assert "SCROLL_DAMPING" in app
+
+def test_v3_meta_and_product_summary_are_project_ready():
+    assert 'content="NOVA is an interactive 3D headphone product study benchmarked against current premium over-ear hardware."' in html
+    assert "Premium over-ear benchmark" in html
+    assert "30–60 h battery class" in html
+    assert "254–293 g benchmark" in html
