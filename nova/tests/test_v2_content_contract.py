@@ -74,14 +74,9 @@ def test_stage_geometry_matches_global_timeline():
             assert f".stage--{name}{{min-height:{height}" in compact
 
 
-def test_notify_concept_has_visible_accessible_panel():
-    assert 'id="notifyConcept"' in html
-    assert 'id="notifyPanel"' in html
-    assert 'aria-controls="notifyPanel"' in html
-    assert 'role="dialog"' in html
-    assert 'aria-modal="true"' in html
-    assert 'id="notifyClose"' in html
-    assert 'body[data-notify-concept="open"] .interest-panel' in css
+def test_v3_removes_fake_early_access_demo():
+    for token in ['id="notifyConcept"','id="notifyPanel"','Early access','Preview notification','Demo only / no data leaves this browser','NOVA / CONCEPT PREVIEW']:
+        assert token not in html
 
 
 def test_chapter_background_is_state_driven():
@@ -333,3 +328,12 @@ def test_v3_product_identity_is_honest_about_visualization():
         "not official Bose CAD",
     ]:
         assert phrase in html
+
+
+def test_v3_control_story_is_scroll_synchronized_and_single_focus():
+    app = (ROOT/"app.js").read_text()
+    ui = (ROOT/"ui"/"product-ui.js").read_text()
+    assert "CONTROL_ORDER = ['power','multifunction','volume']" in ui
+    assert "document.body.dataset.controlInput" in ui
+    assert "base.range==='adaptive'" in app
+    assert "if(id!=='controls') el.dataset.visible='false'" in app
