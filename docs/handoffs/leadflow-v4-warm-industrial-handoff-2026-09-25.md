@@ -194,3 +194,53 @@ This is now a future CI/CD reliability task, not a V4 production blocker. Never 
 5. Prefer the hardened GitHub Actions deploy path after its Cloudflare secrets are configured.
 6. Until then, the authenticated `samvr` Wrangler path is proven; use a clean detached worktree and isolated npm cache.
 7. Require byte checks, version/API smoke checks, and real-browser verification for any future production promotion.
+
+
+## V4 motion refinement — 2026-09-25
+
+The V4 visual direction remains frozen. A focused motion-quality audit and refinement was completed after the warm-industrial release.
+
+Authoritative motion refinement:
+- PR #28: https://github.com/SaamVR/Portfolio/pull/28
+- reviewed feature commit: `872ee04f6bc8d02180448bffb37249fb22754d3a`
+- squash merge on `main`: `a2a3d9e2a923f6fc47660b00c06fbf6bfc68fec8`
+- preservation branch: `preserve/leadflow-v4-motion-1f4caf2f-20260925`
+- immutable production: https://1f4caf2f.leadflow-ai-bhy.pages.dev/
+- canonical production: https://leadflow-ai-bhy.pages.dev/
+- pre-motion V4 immutable remains preserved at https://8ee3bf74.leadflow-ai-bhy.pages.dev/
+
+Verified abnormalities fixed:
+- guided chapter animations could begin while smooth camera scroll was still moving, including roughly 0.94–1.04 seconds of overlap in later chapters
+- reveal staggering used a page-global index instead of a local card-group sequence
+- reveal delay remained attached after entrance and could delay later hover/focus transitions
+- Escape could close the tour UI while native smooth scroll continued
+- native smooth-scroll startup had a cancellation race
+- mobile Qualification and Operations could move 16–17px from browser scroll anchoring when dynamic content changed
+- manually replaying a story during the guided tour could leave the tour UI open and disabled
+- duplicate/dead CSS animation declarations were present
+
+Refinement behavior:
+- each guided chapter waits for camera settle before internal motion begins
+- native `scrollend` is used when available with a requestAnimationFrame/frame-stability fallback
+- a short post-settle breathing gap separates camera motion from content motion
+- cancelling the tour actively stops in-flight/native-startup smooth scrolling
+- guided tour temporarily owns `overflow-anchor:none`; normal browsing retains native anchoring
+- external story interruption exits guided mode cleanly
+- reveal groups stagger locally 1 → 2 → 3 → 4 and entrance delay is discarded after transition completion
+- V4 palette, copy, application logic, qualification APIs, V1/V2/V3, and the six-chapter story structure are unchanged
+
+Final verification:
+- Node regression suite: 100/100 PASS
+- production desktop guided trace: all six chapter actions had 0px viewport movement in the preceding ~96ms; 0 browser exceptions; ~31.9s total
+- production mobile 390×844 guided trace: all six chapter actions had 0px viewport movement in the preceding ~96ms; 0 browser exceptions; ~30.8s total
+- Escape cancellation stops continued camera drift once cancellation is processed
+- replay interruption during LEAD JOURNEY exits guided mode, closes status UI, and re-enables the CTA
+- reduced-motion mode completes with 0 running animations and 0 browser exceptions at 390 and 1440
+- manual-scroll audit confirms Workflow / Operations / Reliability / Architecture do not auto-start during continuous user scrolling
+- production responsive matrix dark/light × 390/768/1024/1440: PASS
+- production canonical presets: 92 / 64 / 33, 16 events each, LIVE API RESPONSE
+- whole-page production contrast: 0 failures at dark/light 1440 and 390
+- immutable and canonical root assets match merged source byte-for-byte
+- `/v3/`, `/v2/`, `/v1/` and versioned qualification APIs remain functional
+
+For future work, treat `a2a3d9e2a923f6fc47660b00c06fbf6bfc68fec8` plus immutable deployment `1f4caf2f` as the current LeadFlow V4 production motion baseline. Do not restore the earlier immediate-scroll story sequencing.
