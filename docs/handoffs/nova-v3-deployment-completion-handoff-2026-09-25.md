@@ -25,7 +25,7 @@ Commit:
 
 This is the exact site-source revision used to build the deployed production artifact.
 
-The branch head at completion is newer only because of QA-only workflow changes:
+The latest QA/code head immediately before this completion handoff is newer only because of QA-only workflow changes:
 
 `27aa1b08e2eddf9e6ee4c5ed54eb15ab1979f2bd`
 
@@ -35,7 +35,7 @@ Commit:
 Comparison `63af14a...27aa1b0` contains only:
 `.github/workflows/nova-v3-public-qa.yml`
 
-Therefore deployed site bytes remain attributable to `63af14a...`.
+The completion handoff commit(s) are docs-only and must not be treated as a new site-source revision. Therefore deployed site bytes remain attributable to `63af14a...`.
 
 ## Final verified gates
 
