@@ -91,3 +91,8 @@ def test_case_study_progress_is_decoupled_from_global_document_height():
     assert "cinematicTrackHeight" in js
     assert "caseStudyEl" in js
     assert "dataset.caseStudy" in js
+
+
+def test_v3_form_scroll_does_not_release_explicit_fold_controller():
+    app=(ROOT/"app.js").read_text()
+    assert "foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil" in app
