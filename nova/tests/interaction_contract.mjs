@@ -214,3 +214,17 @@ const inspected=composeVisualState(baseVisual,inspectionState);
 assert.ok(inspected.camera.position[0]<.5,
   'direct inspection must suppress hotspot camera offsets so controllers do not fight');
 assert.equal(inspected.lighting.key,1.12,'hotspot lighting emphasis may remain during inspection');
+
+
+const nearEdgeElement={dataset:{},style:{},setAttribute(){}};
+const nearEdgeHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{hinge:{point:[.72,1.22,0],cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{hinge:nearEdgeElement}
+});
+nearEdgeHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1440,height:1000}});
+assert.equal(nearEdgeElement.dataset.visible,'true',
+  'near-edge engineering annotations should remain visible when safe-edge clamping can present them');
+assert.ok(String(nearEdgeElement.style.transform).includes('16px'),
+  'near-edge engineering annotations should clamp to the viewport safe inset');
