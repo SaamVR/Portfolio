@@ -511,3 +511,48 @@ html[data-theme=light] .fc-one small{color:var(--accent)!important}
 html[data-theme=light] .fc-one span{color:#666666!important}
 html[data-theme=light] .fc-two small{color:#666666!important}
 html[data-theme=light] .fc-two b{color:#242424!important}
+
+/* Strict grayscale completion for inherited CRM analytics and guided-tour chrome */
+html[data-theme=light] .crm-modal,
+html[data-theme=light] .followup-modal{background:rgba(235,235,235,.88)!important}
+
+html[data-theme=light] .crm-topbar{
+  background:linear-gradient(180deg,#F7F7F7 76%,rgba(247,247,247,.95) 90%,rgba(247,247,247,0))!important;
+}
+html[data-theme=light] .crm-overview-kpis>div,
+html[data-theme=light] .crm-pipeline-section{background:#F3F3F3!important}
+
+html[data-theme=light] .crm-table-wrap{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-table th{background:#EFEFEF!important;color:#444444!important}
+html[data-theme=light] .crm-table td{color:#555555!important}
+html[data-theme=light] .crm-table td:first-child{color:#242424!important}
+html[data-theme=light] .crm-table tbody tr:hover,
+html[data-theme=light] .crm-table tbody tr.selected{background:#F3F3F3!important}
+
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>span{color:#444444!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>small{color:#666666!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary strong{color:#242424!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-panel{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-analytics-v2 .score-band-labels{color:#666666!important}
+html[data-theme=light] .crm-analytics-v2 .panel-copy{color:#555555!important}
+
+html[data-theme=light] .crm-top-actions,
+html[data-theme=light] .crm-metrics span,
+html[data-theme=light] .crm-metrics small,
+html[data-theme=light] .crm-panel-head>span,
+html[data-theme=light] .automation-header>span,
+html[data-theme=light] .automation-copy p,
+html[data-theme=light] .automation-copy small,
+html[data-theme=light] .automation-toggle,
+html[data-theme=light] .run-history-row small,
+html[data-theme=light] .run-history-row em,
+html[data-theme=light] .integration-row small{color:#666666!important}
+html[data-theme=light] .search-wrap{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-sidebar button{color:#555555!important}
+
+html[data-theme=light] .tour-status{
+  background:rgba(255,255,255,.97)!important;
+  box-shadow:0 15px 45px rgba(0,0,0,.12)!important;
+}
+html[data-theme=light] .tour-progress{background:#DEDEDE!important}
