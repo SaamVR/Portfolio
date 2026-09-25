@@ -20,16 +20,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Python contracts
-        run: |
-          python3 -m pip install -q pytest
-          python3 -m pytest nova/tests -q
       - name: Runtime contracts
         run: |
+          if [ -f nova/tests/render_adapter_contract.mjs ]; then
+            node nova/tests/render_adapter_contract.mjs
+          fi
           node nova/tests/timeline_contract.mjs
           if [ -f nova/tests/interaction_contract.mjs ]; then
             node nova/tests/interaction_contract.mjs
           fi
-          if [ -f nova/tests/render_adapter_contract.mjs ]; then
-            node nova/tests/render_adapter_contract.mjs
-          fi
+      - name: Python contracts
+        run: |
+          python3 -m pip install -q pytest
+          python3 -m pytest nova/tests -q
