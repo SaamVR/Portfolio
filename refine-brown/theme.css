@@ -9,6 +9,7 @@
   --accent:#B98667;
   --accent2:#D7A98A;
   --accent-readable:#D8AA88;
+  --meta-readable:#B7A69B;
   --story-focus-ring:rgba(185,134,103,.28);
   --bg:#120F0D;
   --bg2:#1A1512;
@@ -74,6 +75,7 @@ html[data-theme=light]{
   --accent:#7A4F36;
   --accent2:#5F3B28;
   --accent-readable:#70462F;
+  --meta-readable:#66554A;
   --story-focus-ring:rgba(122,79,54,.22);
   --bg:#F5F0EB;
   --bg2:#EDE5DE;
