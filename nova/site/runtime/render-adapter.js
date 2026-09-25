@@ -49,8 +49,8 @@ export function createRenderAdapter({
         const targetPose=Math.max(0,Math.min(1,state.product.pose));
         if(renderedPose===null) renderedPose=targetPose;
         else{
-          const candidate=damp(renderedPose,targetPose,7.2,step);
-          const maxPoseDelta=Math.max(.0015,step*.55);
+          const candidate=damp(renderedPose,targetPose,5.8,step);
+          const maxPoseDelta=Math.max(.0012,step*.36);
           renderedPose += Math.max(-maxPoseDelta,Math.min(maxPoseDelta,candidate-renderedPose));
         }
         mixer.setTime(renderedPose*clipDuration);
