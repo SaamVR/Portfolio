@@ -1,9 +1,9 @@
-name: NOVA V2 Contracts
+name: NOVA V3 Contracts
 
 on:
   push:
     branches:
-      - "nova/v2-*"
+      - "nova/v3-real-product"
     paths:
       - ".github/workflows/nova-v2-contracts.yml"
       - "nova/site/**"
