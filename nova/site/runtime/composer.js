@@ -32,9 +32,8 @@ export function composeVisualState(baseState, interactionState=createInteraction
   const inspection = interactionState.inspection || {};
   const iw = clamp01(inspection.weight);
   if(iw > 0){
-    out.camera.position[0] += (inspection.yaw || 0) * 1.05 * iw;
-    out.camera.position[1] += (inspection.pitch || 0) * .72 * iw;
-    out.product.yaw += (inspection.modelYaw || 0) * iw;
+    out.product.yaw += ((inspection.modelYaw || 0) + (inspection.yaw || 0)) * iw;
+    out.product.pitch += (inspection.pitch || 0) * iw;
   }
 
   const hotspot = interactionState.hotspot || {};
