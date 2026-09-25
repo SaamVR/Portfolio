@@ -4095,3 +4095,15 @@ html[data-theme=light] .final-cta .tag{color:#F2C962!important}
 html[data-theme=light] .final-cta h2{color:#F7FAF8!important}
 html[data-theme=light] .final-cta>div>p:not(.tag){color:#D4DDD7!important}
 html[data-theme=light] .event-empty{color:#526158!important}
+
+
+/* V4 light hero console — graphite chrome with yellow live signal */
+html[data-theme=light] .hero .panel-top{
+  background:#2C332F!important;
+  color:#F3F1E9!important;
+  border-bottom-color:#414B45!important;
+  opacity:1!important;
+}
+html[data-theme=light] .hero .panel-top>span{color:#F3F1E9!important}
+html[data-theme=light] .hero .panel-top .healthy{color:#F2C962!important}
+html[data-theme=light] .hero .panel-top i{background:#62B886!important}
