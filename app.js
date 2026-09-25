@@ -379,28 +379,44 @@ function playLeadOperationsStory(options={}){
     ...options
   })||Promise.resolve({status:"complete",story:"operations"});
 }
-function workspaceStoryVisible(){
-  const el=$("#workspace");if(!el)return false;
-  const r=el.getBoundingClientRect();return r.top<innerHeight*.82&&r.bottom>innerHeight*.18;
+function createStoryArrivalObserver(target,onArrive,{dwellMs=700,rootMargin="-24% 0px -38% 0px"}={}){
+  if(!target||!("IntersectionObserver" in window))return null;
+  let arrivalTimer=null,inBand=false;
+  const clearArrival=()=>{if(arrivalTimer){clearTimeout(arrivalTimer);arrivalTimer=null}};
+  const schedule=()=>{
+    clearArrival();
+    if(!inBand||guided)return;
+    arrivalTimer=setTimeout(()=>{
+      arrivalTimer=null;
+      if(inBand&&!guided)onArrive?.();
+    },dwellMs);
+  };
+  const observer=new IntersectionObserver(entries=>{
+    const entry=entries.find(item=>item.target===target);
+    if(!entry)return;
+    inBand=entry.isIntersecting;
+    if(!inBand){clearArrival();return}
+    schedule();
+  },{threshold:0,rootMargin});
+  observer.observe(target);
+  return {
+    disconnect(){clearArrival();observer.disconnect();inBand=false},
+    schedule,
+    isArrived(){return inBand}
+  };
 }
 function queueLeadOperationsStory(){
   if(!lastCrmEvent)return;
   pendingOpsStory=true;
   $("#opsStoryReplay").disabled=false;
-  if(workspaceStoryVisible()){pendingOpsStory=false;playLeadOperationsStory()}
+  if(workspaceStoryObserver?.isArrived())workspaceStoryObserver.schedule();
 }
 $("#opsStoryReplay")?.addEventListener("click",()=>playLeadOperationsStory());
-let workspaceStoryObserver=null;
-if("IntersectionObserver" in window){
-  workspaceStoryObserver=new IntersectionObserver(entries=>{
-    if(!pendingOpsStory)return;
-    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.22);
-    if(!hit)return;
-    pendingOpsStory=false;
-    playLeadOperationsStory();
-  },{threshold:[.22]});
-  workspaceStoryObserver.observe($("#workspace"));
-}
+let workspaceStoryObserver=createStoryArrivalObserver($("#workspace"),()=>{
+  if(!pendingOpsStory)return;
+  pendingOpsStory=false;
+  playLeadOperationsStory();
+},{dwellMs:720,rootMargin:"-20% 0px -34% 0px"});
 
 function renderCrmOverviewActivity(){
   const box=$("#crmOverviewActivity");if(!box)return;
@@ -473,12 +489,12 @@ function closeLeadDrawer(){$("#leadDrawer").classList.remove("open");$$('#crmRow
 $("#showFollowup").addEventListener("click",()=>{if(!currentLead)return;followupReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;$("#followupTitle").textContent="Follow-up draft for "+currentLead.name;$("#followupSubject").textContent=currentLead.subject;$("#followupBody").textContent=currentLead.followup;$("#followupModal").classList.add("open");$("#followupModal").setAttribute("aria-hidden","false");setTimeout(()=>$("#closeFollowup").focus(),40)});function closeFollow(){$("#followupModal").classList.remove("open");$("#followupModal").setAttribute("aria-hidden","true");if(followupReturnFocus?.isConnected)followupReturnFocus.focus()}$("#closeFollowup").addEventListener("click",closeFollow);$("#followupModal").addEventListener("click",e=>{if(e.target===$("#followupModal"))closeFollow()});
 let guided=false,cancelled=false;
 const tourChapters=[
-  ["FOLLOW THE LEAD","See one lead move through the workflow."],
-  ["RUN IT FOR REAL","Execute the six-stage qualification workflow."],
-  ["WHY 92?","Read the score, rationale, and prepared next action."],
-  ["OPERATIONS","Watch one lead change the operational dashboard."],
-  ["SAFETY","See how a connection timeout becomes a visible recovery requirement."],
-  ["UNDER THE HOOD","Trace the same lead through the implementation."]
+  ["LEAD JOURNEY","Follow an inquiry as it becomes an actionable CRM record."],
+  ["QUALIFICATION","Run the six-stage scoring and routing workflow."],
+  ["DECISION","See why this lead is prioritized and which action is assigned."],
+  ["OPERATIONS","Watch the new decision update the operational workspace."],
+  ["RECOVERY","Inspect how a connection failure becomes a visible recovery requirement."],
+  ["SYSTEM TRACE","Trace the request through validation, rules, CRM state, and next action."]
 ];
 function updateTourProgress(index,total,{fraction=0,beat=""}={}){
   const safeFraction=Math.max(0,Math.min(1,Number(fraction)||0));
@@ -514,16 +530,16 @@ function endTour(){
   storyDirector?.cancelAll();
   guided=false;cancelled=true;resetTourFocus();
   $("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");
-  $("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';
+  $("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span class="guided-btn-play" aria-hidden="true">▶</span><span class="guided-btn-label">Watch LeadFlow in action</span>';
   $("#tourProgressBar").style.width="0%";
 }
 function finishTour(){
   guided=false;cancelled=false;resetTourFocus();
   $("#tourProgressBar").style.width="100%";
   $("#tourChapter").textContent="COMPLETE";
-  $("#tourLabel").textContent="Walkthrough complete";
-  $("#tourBeat").textContent="Workflow, operations, safety, and architecture are now in their settled states.";
-  setTimeout(()=>{if(!guided){$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';$("#tourProgressBar").style.width="0%"}},900);
+  $("#tourLabel").textContent="Product tour complete";
+  $("#tourBeat").textContent="Lead journey, operations, recovery, and system trace are complete.";
+  setTimeout(()=>{if(!guided){$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span class="guided-btn-play" aria-hidden="true">▶</span><span class="guided-btn-label">Watch LeadFlow in action</span>';$("#tourProgressBar").style.width="0%"}},900);
 }
 function tourHoldMs(ms){
   return delay(matchMedia("(prefers-reduced-motion: reduce)").matches?Math.min(320,ms):ms);
@@ -542,7 +558,7 @@ async function runGuidedWalkthrough(){
   if(guided||running)return;
   guided=true;cancelled=false;
   storyDirector?.cancelAll();
-  $("#guidedDemo").disabled=true;$("#guidedDemo").innerHTML='<span>●</span> Walkthrough running';
+  $("#guidedDemo").disabled=true;$("#guidedDemo").innerHTML='<span class="guided-btn-play guided-btn-live" aria-hidden="true">●</span><span class="guided-btn-label">Product tour in progress</span>';
   $("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");
   const total=6;
 
@@ -590,31 +606,21 @@ $("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
 $("#guidedDemo").addEventListener("click",runGuidedWalkthrough);
 $("#workflowReplay")?.addEventListener("click",()=>{workflowStoryPlayed=true;workflowStoryObserver?.disconnect();playWorkflowStory()});
 let workflowStoryPlayed=false;
-let workflowStoryObserver=null;
-if("IntersectionObserver" in window){
-  workflowStoryObserver=new IntersectionObserver(entries=>{
-    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.42);
-    if(!hit||workflowStoryPlayed)return;
-    workflowStoryPlayed=true;
-    playWorkflowStory();
-    workflowStoryObserver.disconnect();
-  },{threshold:[.42]});
-  workflowStoryObserver.observe($("#workflow"));
-}
+let workflowStoryObserver=createStoryArrivalObserver($("#workflow"),()=>{
+  if(workflowStoryPlayed)return;
+  workflowStoryPlayed=true;
+  workflowStoryObserver?.disconnect();
+  playWorkflowStory();
+},{dwellMs:720,rootMargin:"-22% 0px -34% 0px"});
 function playArchitectureStory(options={}){return storyDirector?.playArchitectureStory({lead:workflowStoryLead(),...options})||Promise.resolve({status:"complete",story:"architecture"})}
 $("#architectureReplay")?.addEventListener("click",()=>{architectureStoryPlayed=true;architectureStoryObserver?.disconnect();playArchitectureStory()});
 let architectureStoryPlayed=false;
-let architectureStoryObserver=null;
-if("IntersectionObserver" in window){
-  architectureStoryObserver=new IntersectionObserver(entries=>{
-    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.3);
-    if(!hit||architectureStoryPlayed)return;
-    architectureStoryPlayed=true;
-    playArchitectureStory();
-    architectureStoryObserver.disconnect();
-  },{threshold:[.3]});
-  architectureStoryObserver.observe($("#architecture"));
-}
+let architectureStoryObserver=createStoryArrivalObserver($("#architecture"),()=>{
+  if(architectureStoryPlayed)return;
+  architectureStoryPlayed=true;
+  architectureStoryObserver?.disconnect();
+  playArchitectureStory();
+},{dwellMs:760,rootMargin:"-22% 0px -34% 0px"});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();

@@ -64,9 +64,9 @@ try:
     print("REDUCED_CHAPTERS",chapters)
     print("REDUCED_FINAL",final)
     names=[x[1]["chapter"] for x in chapters]
-    for name in ["RUN IT FOR REAL","WHY 92?","OPERATIONS","SAFETY","UNDER THE HOOD","COMPLETE"]:
+    for name in ["QUALIFICATION","DECISION","OPERATIONS","RECOVERY","SYSTEM TRACE","COMPLETE"]:
         assert name in names,(name,names)
-    first_run=next(st for _,st in chapters if st["chapter"]=="RUN IT FOR REAL")
+    first_run=next(st for _,st in chapters if st["chapter"]=="QUALIFICATION")
     assert first_run["workflow"]=="complete",first_run
     assert final["exec"]=="COMPLETE",final
     assert final["workflow"]=="complete" and final["operations"]=="complete" and final["reliability"]=="complete" and final["architecture"]=="complete",final
@@ -112,12 +112,12 @@ try:
         if not st["open"] and time.monotonic()-start>5:break
         time.sleep(.12)
     by={st["chapter"]:(t,st) for t,st in events}
-    for name in ["FOLLOW THE LEAD","RUN IT FOR REAL","WHY 92?","OPERATIONS","SAFETY","UNDER THE HOOD","COMPLETE"]:
+    for name in ["LEAD JOURNEY","QUALIFICATION","DECISION","OPERATIONS","RECOVERY","SYSTEM TRACE","COMPLETE"]:
         assert name in by,(name,events)
-    assert by["RUN IT FOR REAL"][1]["workflow"]=="complete",by
-    assert by["WHY 92?"][1]["exec"]=="COMPLETE",by
-    assert by["SAFETY"][1]["operations"]=="complete",by
-    assert by["UNDER THE HOOD"][1]["reliability"]=="complete",by
+    assert by["QUALIFICATION"][1]["workflow"]=="complete",by
+    assert by["DECISION"][1]["exec"]=="COMPLETE",by
+    assert by["RECOVERY"][1]["operations"]=="complete",by
+    assert by["SYSTEM TRACE"][1]["reliability"]=="complete",by
     assert by["COMPLETE"][1]["architecture"]=="complete",by
     total=time.monotonic()-start
     assert total>15,("tour raced",total,events)

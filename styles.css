@@ -3424,3 +3424,70 @@ html[data-theme=light] .reliability-actions [data-edge="timeout"]:hover{
 }
 
 #generateBlueprint{min-height:45px}
+
+/* V3 arrival/tour refinement — visible product-tour CTA */
+.hero-actions #guidedDemo.guided-btn{
+  min-height:46px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:10px 16px;
+  border:1px solid #4FAE7C;
+  border-radius:10px;
+  background:#153B2A;
+  color:#F2FFF8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 26px rgba(0,0,0,.16);
+  font-weight:700;
+  opacity:1;
+}
+.hero-actions #guidedDemo.guided-btn:hover{
+  border-color:#6EE0A6;
+  background:#1A4933;
+  color:#FFFFFF;
+  transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 13px 30px rgba(0,0,0,.2);
+}
+.guided-btn-play{
+  width:26px;
+  height:26px;
+  flex:0 0 26px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#62E6A7;
+  color:#0B2518;
+  font-size:11px;
+  box-shadow:0 0 0 4px rgba(98,230,167,.10);
+  transition:transform .22s ease,box-shadow .22s ease,background-color .22s ease;
+}
+.hero-actions #guidedDemo:hover .guided-btn-play{
+  transform:scale(1.06);
+  box-shadow:0 0 0 6px rgba(98,230,167,.12);
+}
+.guided-btn-live{
+  background:#F2C66D;
+  color:#342507;
+  box-shadow:0 0 0 4px rgba(242,198,109,.10);
+}
+.guided-btn-label{white-space:nowrap}
+.hero-actions #guidedDemo:disabled{opacity:.88;cursor:wait}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{
+  background:#155D3D;
+  border-color:#155D3D;
+  color:#FFFFFF;
+  box-shadow:0 9px 24px rgba(21,93,61,.18);
+}
+html[data-theme=light] .guided-btn-play{
+  background:#E8FFF2;
+  color:#155D3D;
+  box-shadow:0 0 0 4px rgba(232,255,242,.16);
+}
+@media(max-width:680px){
+  .hero-actions #guidedDemo.guided-btn{width:100%;padding:11px 16px}
+  .guided-btn-label{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero-actions #guidedDemo.guided-btn,.guided-btn-play{transition:none!important}
+}

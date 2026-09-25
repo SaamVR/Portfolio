@@ -45,7 +45,7 @@
         <div class="hero-actions">
           <a class="primary-btn" href="#demo">Run the workflow <span>↓</span></a>
           <button class="secondary-btn" id="openCrmHero" type="button">Explore the CRM</button>
-          <button class="guided-btn" id="guidedDemo" type="button"><span>▶</span> Guided walkthrough</button>
+          <button class="guided-btn product-tour-btn" id="guidedDemo" type="button" aria-label="Watch LeadFlow in action"><span class="guided-btn-play" aria-hidden="true">▶</span><span class="guided-btn-label">Watch LeadFlow in action</span></button>
         </div>
         <div class="hero-proof"><span>Live API</span><i></i><span>Rules-based scoring</span><i></i><span>Browser-local CRM</span><i></i><span>End-to-end build</span></div>
       </div>
@@ -71,7 +71,7 @@
         <button id="workflowReplay" class="secondary-btn story-replay" type="button">Replay flow <span aria-hidden="true">↻</span></button>
       </div>
       <div class="workflow-story-track">
-        <span id="workflowStoryPacket" class="story-packet workflow-story-packet" aria-hidden="true"><i></i><b>LEAD</b></span>
+        <span id="workflowStoryPacket" class="story-packet workflow-story-packet incoming" data-tone="incoming" aria-hidden="true"><i></i><b>NEW INQUIRY</b></span>
         <div class="workflow-map">
           <article class="workflow-stage" data-story-stage="capture"><span class="step-num">01</span><div class="icon">↳</div><h3>Capture</h3><p>Collect a lead from a form or adapted inbound source.</p></article>
           <div class="connector workflow-story-connector"><i></i></div>
@@ -289,7 +289,7 @@
         <button id="architectureReplay" class="secondary-btn story-replay" type="button">Replay trace <span aria-hidden="true">↻</span></button>
       </div>
       <div class="architecture-story-stage">
-        <span id="architecturePayload" class="architecture-payload story-packet main">LEAD</span>
+        <span id="architecturePayload" class="architecture-payload story-packet main arch-tone-request" data-tone="request">REQUEST</span>
         <span id="architectureRulesPayload" class="architecture-payload story-packet branch rules">SCORE</span>
         <span id="architectureCrmPayload" class="architecture-payload story-packet branch crm">STATE</span>
         <div class="architecture">
@@ -455,12 +455,12 @@
   <div class="tour-status" id="tourStatus" aria-hidden="true">
     <span id="tourIndex">1 / 6</span>
     <div class="tour-status-copy">
-      <small id="tourChapter">FOLLOW THE LEAD</small>
-      <b id="tourLabel">Preparing walkthrough…</b>
-      <span id="tourBeat">Ready to start the story.</span>
+      <small id="tourChapter">LEAD JOURNEY</small>
+      <b id="tourLabel">Preparing product tour…</b>
+      <span id="tourBeat">Ready to follow the lead journey.</span>
       <div class="tour-progress" aria-hidden="true"><i id="tourProgressBar"></i></div>
     </div>
-    <button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button>
+    <button id="cancelTour" type="button" aria-label="Exit product tour">×</button>
   </div>
   <script src="./dashboard.js"></script>
   <script src="./storytelling.js"></script>

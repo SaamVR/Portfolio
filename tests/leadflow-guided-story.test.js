@@ -31,7 +31,7 @@ test("guided cancellation aborts all story directors and clears story focus",()=
 });
 
 test("guided chapter copy describes the six storytelling chapters",()=>{
-  for(const text of ["FOLLOW THE LEAD","RUN IT FOR REAL","WHY 92?","OPERATIONS","SAFETY","UNDER THE HOOD"]){
+  for(const text of ["LEAD JOURNEY","QUALIFICATION","DECISION","OPERATIONS","RECOVERY","SYSTEM TRACE"]){
     assert.ok(app.includes(text),text);
   }
 });
