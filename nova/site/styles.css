@@ -834,7 +834,7 @@ body[data-range="design"][data-design-detail="cushion"] .hotspot[data-hotspot="c
 body[data-range="design"][data-design-detail="hinge"] .hotspot[data-hotspot="headband"],
 body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="controls"]{
   opacity:1;
-  pointer-events:auto;
+  pointer-events:none;
 }
 body[data-range="design"][data-design-detail="cushion"] .hotspot[data-hotspot="cushion"] span,
 body[data-range="design"][data-design-detail="hinge"] .hotspot[data-hotspot="headband"] span,
