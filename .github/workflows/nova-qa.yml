@@ -568,6 +568,12 @@ jobs:
             const samples=[];
             for(const progress of [.16,.18,.20,.22,.24,.26,.279]){
               await scrollProgress(page,progress);
+              // The render adapter intentionally damps camera/product transforms. Measure
+              // continuity only after that authored state has actually converged; otherwise
+              // CI frame cadence can compare two different points on the damping curve.
+              await page.waitForTimeout(900);
+              const range=await page.evaluate(()=>document.body.dataset.range);
+              if(range!=='design') throw new Error('V3 continuity sample left Design range '+JSON.stringify({progress,range}));
               const sample=await page.evaluate(async p=>{
                 const ids=['cushion','headband','controls'];
                 const read=()=>Object.fromEntries(ids.map(id=>{
@@ -578,15 +584,15 @@ jobs:
                 let previous=read();
                 let stableFrames=0;
                 let frames=0;
-                while(frames<120 && stableFrames<5){
+                while(frames<180 && stableFrames<8){
                   await new Promise(resolve=>requestAnimationFrame(resolve));
                   const next=read();
                   const maxDelta=Math.max(...ids.map(id=>Math.hypot(next[id].x-previous[id].x,next[id].y-previous[id].y)));
-                  stableFrames=maxDelta<=.6 ? stableFrames+1 : 0;
+                  stableFrames=maxDelta<=.18 ? stableFrames+1 : 0;
                   previous=next;
                   frames++;
                 }
-                if(stableFrames<5) throw new Error('V3 Design motion did not converge before continuity sample '+JSON.stringify({progress:p,frames}));
+                if(stableFrames<8) throw new Error('V3 Design motion did not converge before continuity sample '+JSON.stringify({progress:p,frames}));
                 return {
                   progress:p,
                   cushion:previous.cushion,
@@ -607,8 +613,8 @@ jobs:
                 jumps.push({from:samples[i-1].progress,to:samples[i].progress,id,jump});
               }
             }
-            if(maxJump>80) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
             fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify({maxJump,samples,jumps},null,2));
+            if(maxJump>80) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
             await context.close();
           }
 
