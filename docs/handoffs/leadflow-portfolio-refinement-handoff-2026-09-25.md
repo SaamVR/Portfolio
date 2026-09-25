@@ -755,3 +755,52 @@ Final verification:
   - protected `/v2/` and `/v1/` remain unchanged.
 
 Treat `712c6f03... / c2bbea78...` as the final LeadFlow V3 professional-product-motion application freeze. Later documentation-only commits do not change deployed application bytes.
+
+## V3 professional motion / arrival / reliability refinement — 2026-09-25
+
+Source:
+- Production source commit: `4d2bb37cb282120b5d7791d838bd0dfbc5e05d9a`
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Immutable verified deployment: https://aa6c8f81.leadflow-ai-bhy.pages.dev/
+- `/v1/` and `/v2/` remained unchanged.
+
+Behavior:
+- Workflow, CRM workspace, Reliability, and Architecture story sections now auto-start after a 1000ms central-viewport dwell.
+- Leaving a story section and returning replays it from the beginning.
+- While `Watch LeadFlow in action` is running, autonomous arrival playback is suppressed and the guided product tour remains the single animation director.
+- Manual replay or Scenario inspection cancels only that section's pending arrival timer; it does not disable future leave-and-return autoplay.
+- Replay controls are icon-only 44x44 accessible buttons with tooltip/ARIA labels.
+
+TRY THE WORKFLOW:
+- Desktop composition is viewport-aware.
+- Verified at 1440x900: section 824px high, workflow panel bottom ~840px.
+- Verified at 1024x900: section 824px high, workflow panel bottom ~827px.
+- No horizontal overflow.
+- Mid-width desktop execution rail uses reduced vertical chrome while preserving >=12px information text.
+
+Reliability:
+- Scenario Story uses dimensional graphite/neutral cards with perspective, bevel/highlight, and semantic scenario palettes.
+- Duplicate = blue detection / green resolved state.
+- CRM timeout = red failure / amber recovery requirement.
+- Human review = amber intervention / visible safe state.
+- Final incident beat remains the visual focal state after the story completes.
+- Light theme has dedicated pale blue/red/amber active surfaces rather than inherited dark cards.
+- Timeout boundary copy remains `DELIVERY RETRY REQUIRES A CONNECTED CRM`.
+
+Professionalization:
+- Root V3 visible copy no longer presents the product as a demo/showcase.
+- Workflow token semantics: NEW INQUIRY → VERIFIED → score/status → SALES REVIEW/HUMAN REVIEW/NURTURE.
+- Lead Operations donut, score bars, source-quality bars, urgency mix, and interaction emphasis animate from real browser-local state.
+- Scenario Story is pointer- and keyboard-scrubbable.
+- Architecture uses semantic REQUEST → VALID → SCORE + CRM STATE → READY color states.
+
+Verification:
+- Node suite: 84/84 PASS.
+- Guided product-tour runtime: PASS in reduced and normal motion; normal run ~25.7s.
+- Arrival/re-entry runtime: first start after 1s; leave/return produces a second start after the same dwell.
+- Professional polish runtime: PASS; 0 browser exceptions.
+- Story accessibility runtime: 0 sub-12px story text, 0 measured contrast failures, no mobile overflow, 44px replay controls.
+- Reliability runtime: duplicate/review/timeout PASS at 1440 and 390; final beat remains focused.
+- Public immutable + canonical runtime: PASS.
+- Public 1024 workflow layout fits the 900px viewport.
+- Public canonical/immutable arrival counters verified 0→1 on first dwell and 1→2 after leave/return.
