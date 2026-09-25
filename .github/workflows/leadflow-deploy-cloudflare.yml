@@ -24,11 +24,18 @@ jobs:
         run: |
           set -euo pipefail
           node --check app.js
+          node --check dashboard.js
+          node --check storytelling.js
           node --check functions/api/qualify.js
+          node --check v3/app.js
+          node --check functions/v3/api/qualify.js
           grep -q "LeadFlow — Lead Qualification" index.html
+          grep -q "LEADFLOW V4 — WARM INDUSTRIAL PALETTE" styles.css
           grep -q "deterministic-qualification-v2" functions/api/qualify.js
-          grep -q "v1/api/qualify" v1/app.js
-          test -f functions/v1/api/qualify.js
+          grep -q "/v3/api/qualify" v3/app.js
+          grep -q "deterministic-qualification-v2" functions/v3/api/qualify.js
+          grep -q "deterministic-qualification-v2" functions/v2/api/qualify.js
+          grep -q "deterministic-qualification-v1" functions/v1/api/qualify.js
 
       - name: Require Cloudflare credentials
         run: |
@@ -41,8 +48,10 @@ jobs:
           set -euo pipefail
           rm -rf /tmp/leadflow-deploy
           mkdir -p /tmp/leadflow-deploy
-          cp index.html app.js styles.css favicon.svg /tmp/leadflow-deploy/
+          cp index.html app.js dashboard.js storytelling.js styles.css favicon.svg /tmp/leadflow-deploy/
           cp -R v1 /tmp/leadflow-deploy/v1
+          cp -R v2 /tmp/leadflow-deploy/v2
+          cp -R v3 /tmp/leadflow-deploy/v3
           cp -R functions /tmp/leadflow-deploy/functions
 
       - name: Deploy Cloudflare Pages
@@ -50,22 +59,34 @@ jobs:
         run: |
           set -euo pipefail
           cd /tmp/leadflow-deploy
-          npx wrangler@4 pages deploy . --project-name leadflow-ai --branch main --commit-hash "$GITHUB_SHA" --commit-message "LeadFlow refined portfolio + preserved v1" | tee /tmp/deploy.log
+          npx wrangler@4 pages deploy . --project-name leadflow-ai --branch main --commit-hash "$GITHUB_SHA" --commit-message "LeadFlow V4 warm industrial + preserved v1/v2/v3" | tee /tmp/deploy.log
           url=$(grep -Eo 'https://[^ ]+\.pages\.dev' /tmp/deploy.log | tail -1)
           test -n "$url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke test refined root and v1
+      - name: Smoke test V4 root and preserved versions
         run: |
           set -euo pipefail
           url="${{ steps.deploy.outputs.url }}"
           root=$(curl -fsSL "$url/")
-          old=$(curl -fsSL "$url/v1/")
+          dashboard=$(curl -fsSL "$url/dashboard.js")
+          storytelling=$(curl -fsSL "$url/storytelling.js")
+          v3=$(curl -fsSL "$url/v3/")
+          v2=$(curl -fsSL "$url/v2/")
+          v1=$(curl -fsSL "$url/v1/")
           api=$(curl -fsSL "$url/api/qualify")
+          v3api=$(curl -fsSL "$url/v3/api/qualify")
+          v2api=$(curl -fsSL "$url/v2/api/qualify")
           v1api=$(curl -fsSL "$url/v1/api/qualify")
           echo "$root" | grep -q "LeadFlow — Lead Qualification"
-          echo "$old" | grep -q "LeadFlow AI"
+          echo "$dashboard" | grep -q "LeadFlowDashboard"
+          echo "$storytelling" | grep -q "LeadFlowStorytelling"
+          echo "$v3" | grep -q "LeadFlow — Lead Qualification"
+          echo "$v2" | grep -q "LeadFlow — Lead Qualification"
+          echo "$v1" | grep -q "LeadFlow AI"
           echo "$api" | grep -q "deterministic-qualification-v2"
+          echo "$v3api" | grep -q "deterministic-qualification-v2"
+          echo "$v2api" | grep -q "deterministic-qualification-v2"
           echo "$v1api" | grep -q "deterministic-qualification-v1"
 
       - name: Capture QA screenshots
@@ -73,9 +94,9 @@ jobs:
           set -euo pipefail
           url="${{ steps.deploy.outputs.url }}"
           mkdir -p /tmp/leadflow-qa
-          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/root-desktop.png "$url/"
-          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=390,844 --screenshot=/tmp/leadflow-qa/root-mobile-390.png "$url/"
-          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v1-desktop.png "$url/v1/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v4-root-desktop.png "$url/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=390,844 --screenshot=/tmp/leadflow-qa/v4-root-mobile-390.png "$url/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v3-desktop.png "$url/v3/"
 
       - name: Upload QA screenshots
         uses: actions/upload-artifact@v4
