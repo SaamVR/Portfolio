@@ -649,3 +649,66 @@ Final verification after replay hardening:
 - Public replay verification: zero browser exceptions.
 
 Treat `8efe9aaf... / 237287ed...` as the final LeadFlow V3 professional-product-motion application freeze. The later documentation-only handoff commit does not change deployed application bytes. Keep `/v2/` and `/v1/` preserved unless explicitly requested.
+
+## LeadFlow V3 creative-director product refinement — 2026-09-25
+
+### Production freeze
+
+- Verified product source SHA: `6d9e49ddbc2f43bef15a258eb7aa70d00827e67e`
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Immutable deployment: https://791be817.leadflow-ai-bhy.pages.dev/
+- Root `/` is the refined V3.
+- `/v2/` remains the frozen pre-V3 production experience.
+- `/v1/` remains the legacy frozen version.
+- Deployment completed with Wrangler `4.140.0` using an isolated npm cache; the previously problematic shared npm cache was not used.
+
+### Creative-director refinement
+
+- Re-audited the product section by section in settled desktop state and again at 390px in light/dark mode. Each section was refined before moving to the next.
+- Hero: stronger proof/readability and a mobile-specific 2×2 serpentine lead-flow composition rather than compressed desktop geometry.
+- Capabilities: stronger bridge into the story, readable hierarchy, restrained hover response.
+- Business problem: semantic narrative color system — friction/coral, LeadFlow/emerald, human oversight/amber.
+- Workflow: semantic token transformation `NEW INQUIRY → VERIFIED → score/status → SALES REVIEW`, color-matched connector trails, denser mobile cards.
+- Live qualification: professional operational/privacy copy; no user-facing demo/showcase language.
+- Lead Operations: donut, score trend, source quality and urgency infographics animate on state change; hover/focus cross-highlights related categories without changing the data.
+- Scenario Story: interactive Trigger → Detection → Response → Final state scrubbing with pointer/keyboard controls, semantic color states, vertical mobile incident rail, and connected-delivery boundary wording.
+- Architecture: color-coded `REQUEST → VALID → SCORE + CRM STATE → READY`; branch outputs dock outside node titles and merge before the final READY state.
+- ROI: animated baseline → post-automation → net value transitions while retaining the underlying calculator formulas.
+- Blueprint: collapsed state now contributes `Trigger → Rules → Action` to the story before opening the planning tool.
+- Product Delivery: stronger two-part composition on desktop and stacked surface transition on mobile.
+- Related system: reframed as `NEXT OPERATIONAL SYSTEM` with practical ecosystem language.
+- Final CTA: product-oriented actions `Run the workflow` and `Open operations CRM`.
+- User-visible prototype language such as demo/demonstration/showcase/simulated/illustrative/prototype is absent from V3; compatibility IDs such as `#demo` and localStorage keys remain internal only.
+
+### Final QA evidence
+
+- Node regression suite: **76/76 PASS**.
+- Professional-copy/story runtime: PASS.
+- Workflow story runtime: PASS.
+- Lead Operations story runtime: PASS.
+- Reliability story runtime: PASS.
+- Architecture story runtime: PASS.
+- Creative ROI/Blueprint runtime: PASS.
+- Architecture branch geometry: SCORE and CRM STATE do not overlap node titles.
+- Guided Walkthrough: PASS; richer event-driven story completes in approximately 29 seconds and waits for each story director.
+- Responsive release matrix: dark/light × 390/768/1024/1440 PASS.
+- Visible text below 12px: **0** in all release-matrix viewports/themes.
+- Whole-page contrast: **0 failures** in dark/light at 1440 and 390.
+- No document-level mobile overflow.
+- Primary story/control touch targets are ≥44px; Blueprint generate control is 45px.
+- Qualification outcomes remain hot=92, review=64, nurture=33.
+- Public root assets on both canonical and immutable domains match local source `6d9e49dd...` byte-for-byte.
+- Public V2 assets match the frozen V2 source byte-for-byte.
+- Public APIs remain:
+  - root: `deterministic-qualification-v2`, Sarah=92
+  - V2: `deterministic-qualification-v2`, Sarah=92
+  - V1: `deterministic-qualification-v1`, Sarah=92
+- Final public 390px browser verification passed on canonical and immutable:
+  - no banned staged/prototype words in rendered text
+  - practical browser-local privacy copy visible
+  - Workflow final token = `SALES REVIEW`
+  - Reliability final boundary = `DELIVERY RETRY REQUIRES A CONNECTED CRM`
+  - Architecture final token = `READY`
+  - zero browser exceptions.
+
+Treat `6d9e49dd...` and immutable deployment `791be817...` as the final LeadFlow V3 product-presentation freeze. Future work should start from this state unless a new V4 is explicitly requested.
