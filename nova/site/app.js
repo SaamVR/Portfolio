@@ -375,6 +375,8 @@ function render(now=performance.now()){
   publishState(composed);
   if(rendererAvailable && adapter){
     adapter.apply(composed,dt);
+    const renderedPose=adapter.getAnimationPose?.();
+    if(Number.isFinite(renderedPose)) document.body.dataset.renderedPose=renderedPose.toFixed(4);
     renderer.render(scene,camera);
   }
   requestAnimationFrame(render);
