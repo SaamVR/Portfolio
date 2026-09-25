@@ -225,10 +225,11 @@ jobs:
               await page.waitForFunction(expected=>document.body.dataset.controlInput===expected,id);
               const state=await page.evaluate(()=>({
                 active:document.body.dataset.controlInput,
-                current:[...document.querySelectorAll('[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput),
+                count:document.querySelectorAll('[data-control-input]').length,
+                current:[...new Set([...document.querySelectorAll('[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput))],
                 marker:document.querySelector('[data-hotspot="controls"]')?.dataset.visible
               }));
-              if(state.current.length!==1||state.current[0]!==id||state.marker!=='true'){
+              if(state.count!==3||state.current.length!==1||state.current[0]!==id||state.marker!=='true'){
                 throw new Error(prefix+' V3 control sequence mismatch '+JSON.stringify({expected:id,state}));
               }
               await page.screenshot({path:'nova-qa/'+prefix+'_control_'+id+'.png'});
@@ -285,7 +286,7 @@ jobs:
             const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
             const {page}=await readyPage(context,'mobile-interactions');
 
-            await scrollProgress(page,.18);
+            await scrollProgress(page,.15);
             const hotspot=page.locator('[data-hotspot="cushion"]');
             await page.waitForFunction(()=>document.querySelector('[data-hotspot="cushion"]')?.dataset.visible==='true');
             await hotspot.tap();
