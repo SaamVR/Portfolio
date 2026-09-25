@@ -447,7 +447,7 @@ jobs:
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'compact-case-study');
             await scrollProgress(page,.985);
-            await page.waitForTimeout(500);
+            await page.waitForFunction(()=>document.body.dataset.range==='behind' && Number(document.body.dataset.visualProgress||0)>=.96,{timeout:7000});
             const state=await page.evaluate(()=>{
               const behind=document.querySelector('#behind');
               const caseStudy=document.querySelector('#case-study');
