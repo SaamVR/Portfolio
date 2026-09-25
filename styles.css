@@ -1431,3 +1431,583 @@ html[data-theme=light] .crm-pipeline-section{background:#F4F7F5}
     animation:none!important;
   }
 }
+
+/* 2026-09-25 FINAL SHOWCASE FREEZE
+   Art direction: fewer boxes, stronger rhythm, semantic action color, readable metadata. */
+:root{
+  --surface-page:#08110E;
+  --surface-raised:#0C1813;
+  --surface-focus:#10231B;
+  --meta-readable:#9AAFA4;
+  --border-quiet:#2A3D34;
+}
+html[data-theme=light]{
+  --surface-page:#F5F8F6;
+  --surface-raised:#FFFFFF;
+  --surface-focus:#E7F0EA;
+  --meta-readable:#536B5E;
+  --border-quiet:#BDCEC4;
+}
+
+/* Persistent reading orientation for the long-form case study. */
+.nav{overflow:visible}
+.presentation-progress{
+  position:absolute;
+  left:0;right:0;bottom:-1px;
+  height:2px;
+  overflow:hidden;
+  background:transparent;
+  pointer-events:none;
+}
+.presentation-progress span{
+  display:block;
+  width:100%;height:100%;
+  transform:scaleX(0);
+  transform-origin:left center;
+  background:var(--accent-readable,var(--accent));
+  transition:transform .12s linear;
+}
+
+/* Hero: two primary choices + one quiet presentation action. */
+.hero-actions .guided-btn{
+  border:0;
+  background:transparent;
+  color:var(--text-secondary);
+  box-shadow:none;
+  padding-inline:8px;
+}
+.hero-actions .guided-btn:hover{
+  border:0;
+  background:transparent;
+  color:var(--text-primary);
+  transform:none;
+}
+html[data-theme=light] .hero-actions .guided-btn,
+html[data-theme=light] .hero-actions .guided-btn:hover{background:transparent}
+
+/* Hero workflow choreography: green is system flow; red remains the outcome/attention cue. */
+.signal{
+  background:var(--accent-readable,var(--accent));
+  animation-duration:6.6s;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-readable,var(--accent)) 12%,transparent);
+}
+.s2{animation-delay:2.2s}.s3{animation-delay:4.4s}
+.flow-node{
+  animation:heroNodeState 6.6s ease-in-out infinite;
+  transition:border-color .25s ease,background-color .25s ease,transform .25s ease;
+}
+.n1{animation-delay:0s}.n2{animation-delay:1.1s}.n3{animation-delay:2.8s}.n4{animation-delay:4.6s}
+@keyframes heroNodeState{
+  0%,13%,100%{border-color:#355A49;background:#0C1915}
+  17%,32%{border-color:var(--accent-readable,var(--accent));background:#10251C}
+  38%,100%{border-color:#355A49;background:#0C1915}
+}
+.fc-two{animation:heroFollowupState 6.6s ease-in-out infinite}
+@keyframes heroFollowupState{
+  0%,63%,100%{opacity:.72;transform:translateY(4px)}
+  70%,86%{opacity:1;transform:none}
+}
+.mini-terminal span{color:var(--meta-readable)}
+.panel-top{color:var(--meta-readable)}
+
+/* More deliberate page rhythm. Feature sections get room; proof/support sections compress. */
+.client-brief{padding-top:76px;padding-bottom:78px}
+#workflow{padding-top:82px;padding-bottom:86px}
+#demo{padding-top:102px;padding-bottom:104px}
+#workspace{padding-top:94px;padding-bottom:90px}
+#reliability{padding-top:74px;padding-bottom:44px;border-bottom:0}
+#architecture{padding-top:46px;padding-bottom:76px}
+#roi{padding-top:82px;padding-bottom:82px}
+.blueprint-section{padding-top:38px;padding-bottom:38px}
+.case-section{padding-top:70px;padding-bottom:70px}
+.portfolio-next{padding-top:42px;padding-bottom:24px}
+.portfolio-next+.section{padding-top:18px;padding-bottom:34px}
+.section-head{margin-bottom:38px}
+
+/* One editorial workflow rail on desktop instead of four equal floating cards. */
+@media(min-width:681px){
+  .workflow-map{
+    gap:0;
+    padding:0 8px;
+    border:1px solid var(--border-quiet);
+    border-radius:11px;
+    background:var(--surface-raised);
+    overflow:hidden;
+  }
+  .workflow-map article{
+    min-height:188px;
+    padding:25px 18px 22px;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible;
+  }
+  .workflow-map article::before{display:none}
+  .workflow-map article:hover{
+    transform:none;
+    background:var(--surface-focus)!important;
+  }
+  .workflow-map .icon{margin:27px 0 14px}
+  .connector{
+    height:2px;
+    background:#315044;
+  }
+  .connector i{
+    background:var(--accent-readable,var(--accent));
+    animation-duration:4.8s;
+  }
+}
+.workflow-map article:nth-of-type(4) .icon{
+  background:#132C23;
+  color:var(--accent-readable,var(--accent));
+}
+.brief-grid article:nth-child(2)::before{background:var(--accent)}
+.workflow-map article:nth-of-type(4)::before{background:var(--accent)}
+
+/* Pre-run result has designed structure rather than empty space. */
+.result-empty{
+  align-content:start;
+  gap:14px;
+}
+.result-awaiting{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+}
+.result-awaiting>div:last-child{display:grid;gap:3px}
+.result-awaiting span{
+  font:600 12px/1.3 var(--font-mono);
+  letter-spacing:.06em;
+  color:var(--meta-readable);
+}
+.result-awaiting b{font-size:16px}
+.result-preview-skeleton{
+  width:100%;
+  display:grid;
+  gap:9px;
+  margin-top:4px;
+}
+.result-preview-skeleton i{
+  display:block;
+  height:8px;
+  border-radius:999px;
+  background:var(--line);
+  opacity:.7;
+}
+.result-preview-skeleton i:nth-child(2){width:82%}
+.result-preview-skeleton i:nth-child(3){width:62%}
+
+/* Reliability + architecture read as one engineering chapter. */
+.engineering-combo-start .section-head,
+.engineering-combo-end .section-head{margin-bottom:30px}
+.engineering-combo-start .reliability-lab,
+.engineering-combo-end .architecture,
+.engineering-combo-end .stack-configurator,
+.engineering-combo-end .engineering-proof{
+  border-color:var(--border-quiet);
+}
+.engineering-combo-end .implementation-proof article{
+  border:0;
+  border-top:1px solid var(--border-quiet);
+  border-radius:0;
+  background:transparent;
+  padding-inline:4px;
+}
+.engineering-combo-end .implementation-proof article::before{display:none}
+.arch-source,.arch-core,.arch-column>div{transition:border-color .2s ease,background-color .2s ease}
+.arch-source:hover,.arch-core:hover,.arch-column>div:hover{
+  border-color:#547565;
+  background:var(--surface-focus);
+}
+
+/* Tertiary information must remain readable. */
+.step-num,.arch-arrow,.blueprint-flow>i,.ops-activity-row time,.exec-step em,.calc-result>p{
+  color:var(--meta-readable)!important;
+}
+.reliability-log :is(code,span){color:var(--meta-readable)}
+.roi-track-row span{color:var(--text-secondary)!important}
+
+/* Blueprint is an optional supporting tool, collapsed by default. */
+.blueprint-disclosure{
+  border:1px solid var(--border-quiet);
+  border-radius:11px;
+  background:var(--surface-raised);
+  overflow:hidden;
+}
+.blueprint-disclosure>summary{
+  list-style:none;
+  cursor:pointer;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:32px;
+  align-items:center;
+  padding:28px 30px;
+}
+.blueprint-disclosure>summary::-webkit-details-marker{display:none}
+.blueprint-disclosure>summary h2{
+  margin:6px 0 7px;
+  font-size:clamp(26px,2.5vw,34px);
+}
+.blueprint-disclosure>summary p:not(.tag){
+  margin:0;
+  max-width:700px;
+  color:var(--text-secondary);
+  font-size:14px;
+}
+.blueprint-summary-action{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-height:44px;
+  padding:8px 0 8px 16px;
+  color:var(--text-primary);
+  font-size:13px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.blueprint-summary-action i{
+  display:grid;
+  place-items:center;
+  width:34px;height:34px;
+  border:1px solid var(--line2);
+  border-radius:7px;
+  font-style:normal;
+  transition:transform .2s ease;
+}
+.blueprint-disclosure[open] .blueprint-summary-action i{transform:rotate(45deg)}
+.blueprint-disclosure .blueprint-layout{
+  border:0;
+  border-top:1px solid var(--border-quiet);
+  border-radius:0;
+  box-shadow:none;
+}
+.bp-node{color:var(--text-secondary);background:var(--surface-focus);border-color:var(--line2)}
+.bp-node.selected{
+  color:var(--accent-readable,var(--accent));
+  border-color:var(--accent-readable,var(--accent));
+  background:var(--surface-focus);
+}
+.blueprint-flow>i{font-size:13px!important}
+html[data-theme=light] .bp-node{
+  background:#FFFFFF;
+  color:#243D31;
+  border-color:#9FB5A8;
+}
+html[data-theme=light] .bp-node.selected{
+  background:#123426;
+  color:#F7FAF8;
+  border-color:#123426;
+}
+html[data-theme=light] .blueprint-flow>i{color:#536B5E!important}
+html[data-theme=light] .blueprint-editor-head small{color:#536B5E}
+html[data-theme=light] .blueprint-disclosure{background:#F8FBF9}
+
+/* Closing sequence becomes one deliberate ending instead of three disconnected blocks. */
+.portfolio-next-card{
+  max-width:none;
+  border-left:3px solid var(--accent-readable,var(--accent));
+  border-radius:11px;
+  padding:28px 30px;
+}
+.portfolio-next-tags{margin:18px 0}
+.final-cta{
+  border-radius:11px;
+  padding:34px 36px;
+  background:#102219;
+}
+.final-cta>div>p:not(.tag){color:#C7D8CF!important}
+.final-cta .tag{color:#9EE7BF!important}
+.final-cta h2{color:#F7FAF8}
+html[data-theme=light] .final-cta{background:#123426;color:#F7FAF8}
+html[data-theme=light] .final-cta>div>p:not(.tag){color:#C7D8CF!important}
+html[data-theme=light] .final-cta .tag{color:#9EE7BF!important}
+.footer{
+  min-height:82px;
+  color:var(--meta-readable);
+}
+.footer a{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding:8px 2px;
+}
+
+/* Fitts: all common interactive inputs get a usable target, not just coarse-pointer devices. */
+button,.primary-btn,.secondary-btn,.guided-btn,.nav-cta,
+input:not([type=range]):not([type=checkbox]),select{
+  min-height:44px;
+}
+.blueprint-editor-controls button,.crm-top-actions button,.reliability-actions button{min-height:44px!important}
+
+/* Mobile: edit the experience, don't merely stack the desktop one. */
+@media(max-width:680px){
+  .client-brief{padding-top:52px;padding-bottom:54px}
+  #workflow,#demo,#workspace,#roi{padding-top:58px;padding-bottom:58px}
+  #reliability{padding-top:54px;padding-bottom:30px}
+  #architecture{padding-top:32px;padding-bottom:54px}
+  .case-section{padding-top:52px;padding-bottom:52px}
+  .portfolio-next{padding-top:30px;padding-bottom:16px}
+  .portfolio-next+.section{padding-top:12px;padding-bottom:26px}
+  .hero-actions .guided-btn{
+    width:auto;
+    align-self:flex-start;
+    padding-inline:4px;
+  }
+  .hero-proof{margin-top:24px}
+  .trust-grid{gap:14px}
+  .blueprint-disclosure>summary{
+    grid-template-columns:1fr;
+    gap:14px;
+    padding:22px;
+  }
+  .blueprint-summary-action{
+    justify-content:space-between;
+    padding-left:0;
+    white-space:normal;
+  }
+  .blueprint-disclosure .blueprint-layout{grid-template-columns:1fr}
+  .ops-table-wrap{
+    overflow:visible;
+    border:0;
+    background:transparent;
+  }
+  .ops-table{
+    min-width:0;
+    display:block;
+  }
+  .ops-table thead{display:none}
+  .ops-table tbody{
+    display:grid;
+    gap:10px;
+  }
+  .ops-table tbody tr{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px 14px;
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--surface-raised);
+  }
+  .ops-table tbody td{
+    display:grid;
+    grid-template-columns:88px minmax(0,1fr);
+    align-items:baseline;
+    gap:8px;
+    padding:2px 0;
+    border:0;
+    min-width:0;
+  }
+  .ops-table tbody td::before{
+    content:attr(data-label);
+    font:600 12px/1.35 var(--font-mono);
+    color:var(--meta-readable);
+  }
+  .ops-table tbody td:first-child,
+  .ops-table tbody td:nth-child(2),
+  .ops-table tbody td:nth-child(5),
+  .ops-table tbody td:nth-child(6){grid-column:1/-1}
+  .ops-table tbody td:nth-child(3),
+  .ops-table tbody td:nth-child(4){
+    grid-template-columns:1fr;
+    gap:3px;
+  }
+  .ops-table tbody td:nth-child(3)::before,
+  .ops-table tbody td:nth-child(4)::before{display:block}
+  .ops-table tbody td:first-child b{font-size:15px}
+  .ops-table tbody td:first-child small{font-size:12px}
+  .implementation-proof{gap:0}
+  .implementation-proof article{padding-block:15px}
+  .portfolio-next-card{padding:22px}
+  .final-cta{padding:26px 22px}
+}
+
+/* Light-theme islands and control states stay explicit rather than inheriting muted page tokens. */
+html[data-theme=light] .step-num,
+html[data-theme=light] .arch-arrow,
+html[data-theme=light] .ops-activity-row time,
+html[data-theme=light] .exec-step em,
+html[data-theme=light] .calc-result>p{color:#536B5E!important}
+
+/* Motion serves explanation; global presentation reveals should never make readers wait. */
+.reveal-on-scroll{
+  transition-duration:.5s!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .presentation-progress span{transition:none}
+  .flow-node,.fc-two{animation:none!important}
+}
+
+/* Final audit corrections: explicit theme motion, readable metadata, true target sizes. */
+:root{--meta-readable:#A6B8AF}
+html[data-theme=light]{--meta-readable:#536B5E}
+
+.fc-one small,.fc-one span{color:#FFFFFF!important}
+.fc-two{animation:heroFollowupState 6.6s ease-in-out infinite}
+.fc-two small,.fc-two b{color:var(--text-primary)!important}
+@keyframes heroFollowupState{
+  0%,63%,100%{transform:translateY(4px)}
+  70%,86%{transform:none}
+}
+.fc-two .spark{color:#FFFFFF!important}
+
+.architecture small,.implementation-proof small,.engineering-grid small,
+.stack-config-copy small,.blueprint-editor-head small{
+  color:var(--meta-readable)!important;
+}
+
+html[data-theme=light] .flow-node{
+  animation-name:heroNodeLightState;
+  color:#17342A;
+}
+html[data-theme=light] .flow-node b{color:#17342A}
+html[data-theme=light] .flow-node small,
+html[data-theme=light] .flow-node span{color:#536B5E!important}
+@keyframes heroNodeLightState{
+  0%,13%,100%{border-color:#9FB5A8;background:#FFFFFF}
+  17%,32%{border-color:#0B6D45;background:#E7F0EA}
+  38%,100%{border-color:#9FB5A8;background:#FFFFFF}
+}
+
+.demo-presets button,
+.ops-toolbar-actions .secondary-btn,
+.ops-technical-details summary,
+.bp-node{
+  min-height:44px!important;
+}
+.theme-toggle,.crm-sidebar button,.drawer-close{min-width:44px!important}
+.ops-technical-details summary{
+  display:flex;
+  align-items:center;
+  padding-block:10px;
+}
+
+/* Final showcase: secondary architecture detail is available without dominating the story. */
+.architecture-more{
+  margin-top:20px;
+  border:1px solid var(--border-quiet);
+  border-radius:10px;
+  background:var(--surface-raised);
+  overflow:hidden;
+}
+.architecture-more>summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  min-height:60px;
+  padding:14px 18px;
+}
+.architecture-more>summary::-webkit-details-marker{display:none}
+.architecture-more>summary>div{display:grid;gap:3px}
+.architecture-more>summary small{
+  font:600 12px/1.3 var(--font-mono);
+  color:var(--accent-readable,var(--accent));
+  letter-spacing:.04em;
+}
+.architecture-more>summary b{font-size:14px;color:var(--text-primary)}
+.architecture-more>summary>span{
+  display:grid;
+  place-items:center;
+  width:34px;height:34px;
+  flex:0 0 auto;
+  border:1px solid var(--line2);
+  border-radius:7px;
+  transition:transform .2s ease;
+}
+.architecture-more[open]>summary>span{transform:rotate(45deg)}
+.architecture-more-content{
+  padding:0 16px 16px;
+  border-top:1px solid var(--border-quiet);
+}
+.architecture-more-content .stack-configurator{margin-top:16px}
+@media(max-width:680px){
+  .architecture-more{margin-top:14px}
+  .architecture-more>summary{padding:13px 14px}
+  .architecture-more-content{padding:0 12px 12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .architecture-more>summary>span{transition:none}
+}
+
+/* Mobile storytelling compression: compact timeline + discoverable analytics rail. */
+@media(max-width:680px){
+  .workflow-map{
+    gap:0;
+    position:relative;
+  }
+  .workflow-map article{
+    display:grid;
+    grid-template-columns:40px 1fr;
+    grid-template-rows:auto auto auto;
+    column-gap:14px;
+    row-gap:3px;
+    min-height:0;
+    padding:16px 17px;
+  }
+  .workflow-map article .step-num{
+    grid-column:2;
+    grid-row:1;
+    align-self:end;
+  }
+  .workflow-map article .icon{
+    grid-column:1;
+    grid-row:1 / 4;
+    align-self:center;
+    margin:0;
+    width:38px;
+    height:38px;
+  }
+  .workflow-map article h3{
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+  }
+  .workflow-map article p{
+    grid-column:2;
+    grid-row:3;
+    margin:2px 0 0;
+  }
+  .workflow-map .connector{
+    height:18px;
+    margin:0 0 0 18px;
+  }
+
+  .ops-analytics-secondary{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    overscroll-behavior-inline:contain;
+    padding:10px 18% 5px 10px;
+    scrollbar-width:none;
+  }
+  .ops-analytics-secondary::-webkit-scrollbar{display:none}
+  .ops-analytics-secondary>.ops-panel{
+    flex:0 0 min(78vw,286px);
+    scroll-snap-align:start;
+    min-height:190px;
+  }
+}
+
+/* Last visibility gate: readable hero metadata and optional-tool controls. */
+.flow-node small,.flow-node span{color:#A6B8AF!important}
+html[data-theme=light] .flow-node small,
+html[data-theme=light] .flow-node span{color:#536B5E!important}
+.fc-two small,.fc-two b{color:#F3F7F4!important}
+html[data-theme=light] .fc-two small,
+html[data-theme=light] .fc-two b{color:#F3F7F4!important}
+#bpMoveLeft,#bpMoveRight{min-width:44px!important}
+.stack-config-flow i{color:var(--meta-readable)}
+
+/* KPI values are data, not metadata. */
+.ops-score-value #opsAverage{
+  font:inherit!important;
+  color:inherit!important;
+  line-height:inherit!important;
+}

@@ -178,7 +178,7 @@ function renderOps(){
   $("#opsImmediateRate").textContent=model.immediate.pct+"% ASAP";
   renderDistribution(model);renderScoreTrend(model);renderActionQueue(model);renderSourceQuality(model);renderUrgency(model);
   $("#opsPipelineCount").textContent=Math.min(5,model.total)+" records";
-  $("#opsPipelineRows").innerHTML=leads.length?leads.slice(0,5).map(l=>'<tr><td><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td>'+escapeHtml(sourceForLead(l))+'</td><td><strong class="ops-score-cell">'+l.score+'</strong></td><td><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td>'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
+  $("#opsPipelineRows").innerHTML=leads.length?leads.slice(0,5).map(l=>'<tr><td data-label="Lead"><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td data-label="Source">'+escapeHtml(sourceForLead(l))+'</td><td data-label="Score"><strong class="ops-score-cell">'+l.score+'</strong></td><td data-label="Status"><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td data-label="Timeline">'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td data-label="Next action"><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
   $("#opsLastSync").textContent="Synced now";
   renderOpsActivity();
   replayDashboardMotion();
@@ -283,14 +283,32 @@ if("IntersectionObserver" in window){
 
 /* Active-section orientation for the long-form presentation. */
 const navSectionLinks=[...document.querySelectorAll(".desktop-nav a[href^='#']")];
-if("IntersectionObserver" in window){
-  const navObserver=new IntersectionObserver(entries=>{
-    const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
-    if(!visible)return;
-    navSectionLinks.forEach(link=>link.classList.toggle("is-active",link.getAttribute("href")==="#"+visible.target.id));
-  },{threshold:[.18,.35,.55],rootMargin:"-18% 0px -58% 0px"});
-  navSectionLinks.forEach(link=>{
+const presentationProgressBar=document.querySelector("#presentationProgressBar");
+function updateReadingState(){
+  const navHeight=document.querySelector(".nav")?.getBoundingClientRect().height||78;
+  const readingLine=navHeight+52;
+  let activeTarget=null;
+  for(const link of navSectionLinks){
     const target=document.querySelector(link.getAttribute("href"));
-    if(target)navObserver.observe(target);
-  });
+    if(!target)continue;
+    if(target.getBoundingClientRect().top<=readingLine)activeTarget=target;
+  }
+  if(!activeTarget){
+    activeTarget=navSectionLinks.map(link=>document.querySelector(link.getAttribute("href"))).filter(Boolean).sort((a,b)=>Math.abs(a.getBoundingClientRect().top-readingLine)-Math.abs(b.getBoundingClientRect().top-readingLine))[0]||null;
+  }
+  navSectionLinks.forEach(link=>link.classList.toggle("is-active",!!activeTarget&&link.getAttribute("href")==="#"+activeTarget.id));
+  if(presentationProgressBar){
+    const scrollable=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+    presentationProgressBar.style.transform="scaleX("+Math.max(0,Math.min(1,scrollY/scrollable))+")";
+  }
 }
+let readingStateQueued=false;
+function requestReadingState(){
+  if(readingStateQueued)return;
+  readingStateQueued=true;
+  requestAnimationFrame(()=>{readingStateQueued=false;updateReadingState()});
+}
+addEventListener("scroll",requestReadingState,{passive:true});
+addEventListener("resize",requestReadingState,{passive:true});
+navSectionLinks.forEach(link=>link.addEventListener("click",()=>setTimeout(updateReadingState,420)));
+updateReadingState();
