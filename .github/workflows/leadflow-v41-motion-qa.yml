@@ -1,0 +1,45 @@
+name: LeadFlow V4.1 Motion QA
+
+on:
+  push:
+    branches:
+      - leadflow/v4.1-motion-fluidity
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Full Node regression
+        run: node --test tests/*.test.js
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check storytelling.js
+          node --check dashboard.js
+      - name: Browser audit dependencies
+        run: python3 -m pip install --quiet websocket-client
+      - name: Start local presentation server
+        run: |
+          python3 -m http.server 8805 >/tmp/leadflow-v41-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8805/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/leadflow-v41-http.log
+          exit 1
+      - name: Guided tour motion audit
+        run: python3 tests/leadflow_v41_motion_runtime_audit.py
+      - name: V4 responsive regression
+        run: python3 tests/leadflow_v4_release_matrix.py
+      - name: V4 contrast regression
+        run: python3 tests/leadflow_v4_whole_page_contrast_audit.py
+      - name: Upload chapter motion captures
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-v41-motion-review
+          path: /tmp/leadflow-v41-motion
+          if-no-files-found: error
+          retention-days: 7
