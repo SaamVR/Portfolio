@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { getGlobalProgress, getRangeState, sampleTimeline } from './runtime/timeline.js';
+import { EXPERIENCE_RANGES, getGlobalProgress, getRangeState, sampleTimeline } from './runtime/timeline.js';
 import { createInteractionState, composeVisualState } from './runtime/composer.js';
 import { createRenderAdapter } from './runtime/render-adapter.js';
 import { createEnvironment } from './runtime/environment.js';
@@ -9,6 +9,7 @@ import { createFoldController } from './interactions/fold-controller.js';
 import { createInspectionController } from './interactions/inspection-controller.js';
 import { createHotspotController } from './interactions/hotspot-controller.js';
 import { createModeController } from './interactions/mode-controller.js';
+import { detailStepForProgress, detailProgressForStep } from './interactions/detail-controller.js';
 
 const canvas = document.querySelector('#webgl');
 const runtimeState = document.querySelector('#runtimeState');
@@ -40,6 +41,7 @@ let listeningMode = 'spatial';
 let noiseMode = 'adaptive';
 let foldState = 'open';
 let inspectionView = 'front';
+let detailStep = 'cushion';
 let scrollActivityUntil = 0;
 
 let renderer=null;
@@ -307,7 +309,8 @@ function publishState(state){
     listeningMode,
     noiseMode,
     foldState,
-    inspectionView:interactionState.inspection?.view || inspectionView
+    inspectionView:interactionState.inspection?.view || inspectionView,
+    detailStep
   };
   updateProductUI(state);
 }
@@ -334,6 +337,12 @@ function updateInteractionInfluences(base,dt,now){
     : {mode:noiseMode,weight:0};
 
   if(hotspotController && (base.range==='design' || base.range==='inspect')){
+    if(base.range==='design'){
+      const nextDetail=detailStepForProgress(base.rangeProgress);
+      if(nextDetail!==detailStep) detailStep=nextDetail;
+      if(base.rangeProgress<.86) hotspotController.focus(detailStep);
+      else hotspotController.clear();
+    }
     centerGroup.updateWorldMatrix(true,false);
     hotspotController.update({
       modelRoot:centerGroup,
@@ -395,7 +404,14 @@ const actions={
     foldController.begin(state,currentComposedState?.product.pose ?? .24);
   },
   focusHotspot(id){
+    detailStep=id || detailStep;
     hotspotController?.focus(id);
+  },
+  showDetail(step){
+    detailStep=step;
+    const [start,end]=EXPERIENCE_RANGES.design;
+    scrollToProgress(start+(end-start)*detailProgressForStep(step));
+    hotspotController?.focus(step);
   },
   clearHotspot(){
     hotspotController?.clear();
