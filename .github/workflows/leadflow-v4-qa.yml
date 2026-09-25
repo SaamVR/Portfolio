@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: V4 palette and preservation contract
         run: node --test tests/leadflow-v4-palette.test.js
+      - name: Deployment preservation contract
+        run: node --test tests/leadflow-v4-deploy-contract.test.js
       - name: Syntax
         run: |
           node --check app.js
