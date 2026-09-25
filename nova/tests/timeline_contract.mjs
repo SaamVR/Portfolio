@@ -223,3 +223,8 @@ for(let p=.12;p<.58;p+=.005){
   adapterSmooth.apply(b,.016);
   assert.ok(time > first && time < b.product.pose*10, `V3 mixer pose must ease toward target instead of hard-snapping; first=${first}, next=${time}, target=${b.product.pose*10}`);
 }
+
+
+const v3FormClearance=sampleTimeline(.65,'desktop');
+assert.ok(v3FormClearance.product.position[0] >= .28,
+  `V3 Form open product should stay right of the explanatory copy, got x=${v3FormClearance.product.position[0]}`);
