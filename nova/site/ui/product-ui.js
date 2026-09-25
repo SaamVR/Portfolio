@@ -105,10 +105,10 @@ export function bindProductUI(nextActions={}){
     });
   });
 
-  document.querySelectorAll('[data-control-input]').forEach(button=>{
+  document.querySelectorAll('.control-input[data-control-input]').forEach(button=>{
     button.addEventListener('click',()=>{
       manualControlInput=button.dataset.controlInput;
-      document.querySelectorAll('[data-control-input]').forEach(item=>{
+      document.querySelectorAll('.control-input[data-control-input]').forEach(item=>{
         item.setAttribute('aria-current',String(item===button));
       });
       document.body.dataset.controlInput=manualControlInput;
@@ -234,7 +234,7 @@ export function updateProductUI(state){
     const automatic=CONTROL_ORDER[Math.min(CONTROL_ORDER.length-1,Math.floor((state?.rangeProgress||0)*CONTROL_ORDER.length))];
     const active=manualControlInput || automatic;
     document.body.dataset.controlInput=active;
-    document.querySelectorAll('[data-control-input]').forEach(item=>{
+    document.querySelectorAll('.control-input[data-control-input]').forEach(item=>{
       item.setAttribute('aria-current',String(item.dataset.controlInput===active));
     });
   }else{
