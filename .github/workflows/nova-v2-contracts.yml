@@ -30,3 +30,6 @@ jobs:
           if [ -f nova/tests/interaction_contract.mjs ]; then
             node nova/tests/interaction_contract.mjs
           fi
+          if [ -f nova/tests/render_adapter_contract.mjs ]; then
+            node nova/tests/render_adapter_contract.mjs
+          fi
