@@ -340,7 +340,7 @@ def test_v3_scroll_progress_is_damped_for_smooth_motion():
     assert "SCROLL_DAMPING" in app
 
 def test_v3_meta_and_product_summary_are_project_ready():
-    assert 'content="NOVA is a real-time interactive 3D headphone visualization built from a measured GLTF asset and verified browser runtime."' in html
+    assert 'content="NOVA is an interactive 3D over-ear headphone experience focused on comfort geometry, articulation, folding form and direct product inspection."' in html
     assert "Project specifications" in html
     for phrase in ["31.3K triangles","14 skinned meshes","36-joint rig","12 × 1K WebP maps","1.86 MB GLTF"]:
         assert phrase in html
