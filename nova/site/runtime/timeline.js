@@ -70,17 +70,16 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // V3 detail philosophy: hold the physical rig steady while Cushion/Hinge/Controls
-  // are being explained. The camera and lighting create the Design motion; the
-  // authored source clip opens only after the detail sequence leaves the screen.
+  // Keep physical articulation narrative-led and single-directional:
+  // stable Design study -> one opening action -> quiet product study -> final recession.
   [0.000,.240],[0.045,.270],[0.090,.290],[0.120,.300],
-  [0.160,.300],[0.180,.300],[0.200,.300],[0.240,.300],[0.280,.300],
+  [0.160,.300],[0.200,.300],[0.240,.300],[0.280,.300],
   [0.300,.400],[0.320,.520],[0.340,.640],[0.360,.720],
-  [0.410,.710],[0.450,.740],
-  [0.490,.700],[0.540,.760],[0.580,.720],
-  [0.620,.680],[0.670,.770],[0.720,.720],
-  [0.760,.680],[0.790,.740],[0.830,.700],[0.860,.730],
-  [0.900,.760],[0.945,.690],[0.960,.720],
+  [0.410,.730],[0.450,.740],
+  [0.490,.735],[0.540,.725],[0.580,.720],
+  [0.620,.720],[0.670,.720],[0.720,.720],
+  [0.760,.720],[0.790,.720],[0.830,.720],[0.860,.720],
+  [0.900,.720],[0.945,.720],[0.960,.720],
   [0.985,.670],[1.000,.640]
 ];
 
