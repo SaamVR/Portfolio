@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat runtime/sync/chunk-* > /tmp/leadflow-shippable.b64
+          cat             runtime/sync/chunk-000             runtime/sync/chunk-001             runtime/sync/chunk-002             runtime/sync/chunk-003-part-0             runtime/sync/chunk-003-part-1             runtime/sync/chunk-003-part-2             runtime/sync/chunk-003-part-3             runtime/sync/chunk-004             runtime/sync/chunk-005             runtime/sync/chunk-006             runtime/sync/chunk-007             > /tmp/leadflow-shippable.b64
           base64 -d /tmp/leadflow-shippable.b64 > /tmp/leadflow-shippable.tar.xz
           test "$(wc -c < /tmp/leadflow-shippable.tar.xz)" = "45000"
           echo "e7f465d32e83fd7dfd499c9eb4c2904855bbfe357edbce4192187ad1ed9f8b7d  /tmp/leadflow-shippable.tar.xz" | sha256sum -c -
