@@ -306,3 +306,9 @@ html[data-theme=light] .footer{background:#F3F6F9!important;border-top-color:#C0
 html[data-theme=light] .crm-shell,html[data-theme=light] .crm-main,html[data-theme=light] .lead-drawer,html[data-theme=light] .followup-dialog{background:#F3F7FA!important;border-color:#C0CCD8!important}
 html[data-theme=light] .crm-sidebar{background:#E9F0F6!important;border-right-color:#C0CCD8!important}
 html[data-theme=light] .crm-panel-card,html[data-theme=light] .automation-card,html[data-theme=light] .run-history,html[data-theme=light] .integration-row,html[data-theme=light] .crm-overview-kpis article,html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#C0CCD8!important}
+
+html[data-theme=light] .case-copy>p,
+html[data-theme=light] .case-list span,
+html[data-theme=light] .project-stack,
+html[data-theme=light] .project-meta{color:#43586A!important}
+html[data-theme=light] .case-grid>div:first-child::after{color:#506273!important;border-color:#AFC2D3!important}
