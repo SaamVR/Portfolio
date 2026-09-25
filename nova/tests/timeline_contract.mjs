@@ -97,9 +97,9 @@ const designPose=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
 const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
 const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
-assert.ok(Math.abs(designClosePoseB-designClosePoseA) >= .06,
-  `Design close pass should visibly advance the source clip like V1; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
-const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
+assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .025,
+  `V3 Design detail pass must hold a stable physical pose while callouts are active; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
+const commercialOpenSamples=[.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
   assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
@@ -198,3 +198,20 @@ for(const [label,points,minSpan] of [
   const span=Math.max(...poses)-Math.min(...poses);
   assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
 }
+
+
+const v3DesignPoses=[.16,.18,.20,.22,.24,.26].map(p=>sampleTimeline(p,'desktop').product.pose);
+const v3DesignSpread=Math.max(...v3DesignPoses)-Math.min(...v3DesignPoses);
+assert.ok(v3DesignSpread<=.05,`V3 Design detail sequence must stay physically stable; pose spread=${v3DesignSpread}`);
+
+const v3BridgePoints=[];
+for(let p=.28;p<=.3601;p+=.01) v3BridgePoints.push(Number(p.toFixed(2)));
+const v3BridgePoses=v3BridgePoints.map(p=>sampleTimeline(p,'desktop').product.pose);
+for(let i=1;i<v3BridgePoses.length;i++){
+  const delta=Math.abs(v3BridgePoses[i]-v3BridgePoses[i-1]);
+  assert.ok(delta<=.08,`V3 Design→Sound source-pose bridge must not snap; ${v3BridgePoints[i-1]}→${v3BridgePoints[i]} delta=${delta}`);
+}
+assert.ok(v3BridgePoses.at(-1)-v3BridgePoses[0]>=.30,
+  'V3 Design→Sound bridge should still deliver a meaningful open-pose transition after details clear');
+assert.ok(sampleTimeline(.26,'desktop').product.pose<=.34,
+  'V3 large source-pose movement must not begin while the Design detail rail is active');
