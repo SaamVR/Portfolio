@@ -4064,3 +4064,34 @@ html[data-theme=light] .footer{background:#E8E7E0;border-top-color:#C2C6BF}
   .leadflow-v4 *{transition-duration:.001ms!important}
 }
 
+
+
+/* V4 browser-verified contrast corrections */
+.event-empty{color:#819088}
+html[data-theme=light] .panel-top{color:#48584F!important}
+html[data-theme=light] .healthy{color:#1A6245!important}
+html[data-theme=light] .fc-two .spark{
+  background:#813D32!important;
+  color:#FFFFFF!important;
+}
+html[data-theme=light] .workflow-map article:nth-of-type(1) .icon{
+  background:#555E58!important;color:#FFFFFF!important;
+}
+html[data-theme=light] .workflow-map article:nth-of-type(2) .icon{
+  background:#84600D!important;color:#FFFFFF!important;
+}
+html[data-theme=light] .workflow-map article:nth-of-type(3) .icon{
+  background:#1F6B4B!important;color:#FFFFFF!important;
+}
+html[data-theme=light] .workflow-map article:nth-of-type(4) .icon{
+  background:#8B3E33!important;color:#FFFFFF!important;
+}
+html[data-theme=light] .final-cta{
+  background-color:#193126;
+  background-image:linear-gradient(135deg,#19382A 0%,#26302A 62%,#3B211B 100%);
+  color:#F7FAF8;
+}
+html[data-theme=light] .final-cta .tag{color:#F2C962!important}
+html[data-theme=light] .final-cta h2{color:#F7FAF8!important}
+html[data-theme=light] .final-cta>div>p:not(.tag){color:#D4DDD7!important}
+html[data-theme=light] .event-empty{color:#526158!important}
