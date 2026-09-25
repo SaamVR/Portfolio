@@ -387,3 +387,11 @@ def test_v3_design_shows_only_one_marker_at_a_time():
 def test_v3_mobile_design_uses_stable_selector_rail_not_moving_marker_taps():
     compact = css.replace(" ", "").replace("\n", "")
     assert 'body[data-range="design"].hotspot[data-visible="true"]{pointer-events:none!important' in compact
+
+
+def test_v3_hero_leads_with_supported_physical_product_details_not_runtime_numbers():
+    hero = html[html.index('id="hero"'):html.index('id="design"')]
+    for phrase in ["deep circumaural cushions","articulated yokes","fold-in geometry","earcup control surface"]:
+        assert phrase in hero
+    for phrase in ["31.3K triangles","1.86 MB","36-joint rig"]:
+        assert phrase not in hero
