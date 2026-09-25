@@ -76,14 +76,13 @@ def test_stage_geometry_matches_global_timeline():
             assert f".stage--{name}{{min-height:{height}" in compact
 
 
-def test_notify_concept_has_visible_accessible_panel():
-    assert 'id="notifyConcept"' in html
-    assert 'id="notifyPanel"' in html
-    assert 'aria-controls="notifyPanel"' in html
-    assert 'role="dialog"' in html
-    assert 'aria-modal="true"' in html
-    assert 'id="notifyClose"' in html
-    assert 'body[data-notify-concept="open"] .interest-panel' in css
+def test_v3_removes_fake_notification_demo_but_keeps_real_dialogs_accessible():
+    assert 'id="notifyConcept"' not in html
+    assert 'id="notifyPanel"' not in html
+    assert 'id="productFactsPanel"' in html
+    assert 'id="guidedTourPanel"' in html
+    assert html.count('role="dialog"') >= 2
+    assert html.count('aria-modal="true"') >= 2
 
 
 def test_chapter_background_is_state_driven():
@@ -271,7 +270,8 @@ def test_r13_case_study_uses_single_compact_transition():
     assert ".case-study{position:relative;z-index:24;min-height:155svh;padding:9svh" in compact
 
 def test_r13_portability_copy_explains_product_benefit():
-    assert "Fold the earcups inward for a more compact carry shape" in html
+    assert "Fold the earcups inward for a compact travel profile" in html
+    assert "carrying case" in html
     assert "Hold the folded pose" in html
 
 def test_r13_validation_evidence_is_client_facing_and_measured_not_marketing():
