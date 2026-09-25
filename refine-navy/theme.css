@@ -24,12 +24,7 @@
   --line:#30445A;
   --line2:#445E78;
 }
-body{
-  background:
-    radial-gradient(circle at 88% 3%,rgba(226,182,75,.04),transparent 24%),
-    radial-gradient(circle at 9% 34%,rgba(118,169,218,.07),transparent 26%),
-    var(--bg);
-}
+body{background:var(--bg);}
 .grid{
   background-image:
     linear-gradient(rgba(118,169,218,.035) 1px,transparent 1px),
@@ -90,12 +85,7 @@ html[data-theme=light]{
   --line:#C1CDD8;
   --line2:#A7B8C7;
 }
-html[data-theme=light] body{
-  background:
-    radial-gradient(circle at 88% 3%,rgba(166,109,5,.035),transparent 24%),
-    radial-gradient(circle at 8% 34%,rgba(40,95,147,.05),transparent 24%),
-    var(--bg);
-}
+html[data-theme=light] body{background:var(--bg);}
 html[data-theme=light] .nav{background:rgba(243,246,249,.92);border-bottom-color:#C3CFDA}
 html[data-theme=light] .brand-mark{background:#DFEAF4;border-color:#91ABC3;color:#245B8F;box-shadow:inset 0 -2px 0 #D4AF59}
 html[data-theme=light] .primary-btn{background:#285F93;color:#FFF}
@@ -316,3 +306,136 @@ html[data-theme=light] .case-grid>div:first-child::after{color:#506273!important
 .number-field span{color:#B3C4D3!important}
 
 html[data-theme=light] .number-field span{color:#506273!important}
+
+
+/* LEADFLOW REFINE — NEUTRAL CANVAS
+   Large surfaces are neutral graphite / cool white-grey.
+   Navy remains an identity accent, not a page-background tint.
+*/
+:root{
+  --bg:#111315;
+  --bg2:#181A1C;
+  --card:#1D2022;
+  --card2:#24272A;
+  --surface-1:#1D2022;
+  --surface-2:#151719;
+  --surface-3:#24272A;
+  --text:#F3F4F4;
+  --text-soft:#D8DBDD;
+  --muted:#A7AEB2;
+  --meta-readable:#ADB4B8;
+  --line:#34383B;
+  --line2:#4B5155;
+}
+body{background:var(--bg)!important}
+.grid{
+  background-image:
+    linear-gradient(rgba(118,124,128,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(118,124,128,.035) 1px,transparent 1px)!important;
+}
+.ambient-a,.ambient-b{opacity:0!important}
+.nav{background:rgba(17,19,21,.92)!important;border-bottom-color:#34383B!important}
+.band{background:#181A1C!important}
+.trust-band{background:#17191B!important;border-color:#34383B!important}
+.brief-grid article,.workflow-map article{background:#1D2022!important;border-color:#3A3F42!important}
+#demo .demo-layout{background:#151719!important;border-color:#3A3F42!important}
+.ops-dashboard{background:#151719!important;border-color:#3A3F42!important}
+.ops-input-panel,.ops-panel,.ops-kpis article{background:#1D2022!important;border-color:#3A3F42!important}
+.ops-console{background:#121416!important}
+.reliability-lab{background:linear-gradient(180deg,#1B1E20,#141617)!important;border-color:#3A3F42!important}
+.arch-source,.arch-core,.arch-column>div{background:#1D2022!important;border-color:#3A3F42!important}
+#roi .calculator{background:#181A1C!important;border-color:#3A3F42!important}
+#roi .calc-result{background:#202326!important;border-color:#414649!important}
+.blueprint-disclosure{background:#1D2022!important;border-color:#3A3F42!important}
+.blueprint-output{background:#17191B!important}
+.case-section{background:linear-gradient(90deg,#151719 0 49%,#1B1D1F 49% 100%)!important}
+.portfolio-next-card{
+  background:linear-gradient(145deg,rgba(255,255,255,.026),rgba(255,255,255,.012)),#1B1D1F!important;
+  border-color:#3B4043!important;
+}
+.footer{background:#141617!important;border-top-color:#34383B!important;color:#ADB4B8!important}
+.crm-shell,.crm-main,.lead-drawer,.followup-dialog{background:#17191B!important;border-color:#3A3F42!important}
+.crm-sidebar{background:#141617!important;border-right-color:#34383B!important}
+.crm-panel-card,.automation-card,.run-history,.integration-row,.crm-overview-kpis article,.analytics-summary article{
+  background:#1D2022!important;border-color:#3A3F42!important;
+}
+.crm-table th{background:#202326!important}
+.crm-table td{border-color:#34383B!important}
+
+html[data-theme=light]{
+  --bg:#F6F7F7;
+  --bg2:#EEF0F0;
+  --card:#FFFFFF;
+  --card2:#F4F5F5;
+  --surface-1:#FFFFFF;
+  --surface-2:#F2F3F3;
+  --surface-3:#EAECED;
+  --text:#222629;
+  --text-soft:#3E4549;
+  --muted:#5F686D;
+  --meta-readable:#626B70;
+  --line:#CDD2D4;
+  --line2:#AEB6BA;
+}
+html[data-theme=light] body{background:#F6F7F7!important}
+html[data-theme=light] .grid{
+  background-image:
+    linear-gradient(rgba(91,99,104,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(91,99,104,.045) 1px,transparent 1px)!important;
+}
+html[data-theme=light] .nav{background:rgba(248,249,249,.94)!important;border-bottom-color:#D4D8DA!important}
+html[data-theme=light] .band{background:#EEF0F0!important}
+html[data-theme=light] .trust-band{background:#F1F2F2!important;border-color:#D1D5D7!important}
+html[data-theme=light] .brief-grid article,
+html[data-theme=light] .workflow-map article{background:#FFFFFF!important;border-color:#D1D5D7!important}
+html[data-theme=light] #demo .demo-layout{background:#FFFFFF!important;border-color:#CDD2D4!important}
+html[data-theme=light] .lead-form,
+html[data-theme=light] .execution-card,
+html[data-theme=light] .result-card{background:#FFFFFF!important}
+html[data-theme=light] .ops-dashboard{background:#F8F9F9!important;border-color:#CDD2D4!important}
+html[data-theme=light] .ops-input-panel,
+html[data-theme=light] .ops-panel,
+html[data-theme=light] .ops-kpis article{background:#FFFFFF!important;border-color:#D1D5D7!important}
+html[data-theme=light] .ops-console{background:#F3F4F4!important}
+html[data-theme=light] .reliability-lab{background:#FFFFFF!important;border-color:#CDD2D4!important}
+html[data-theme=light] .arch-source,
+html[data-theme=light] .arch-core,
+html[data-theme=light] .arch-column>div{background:#FFFFFF!important;border-color:#D1D5D7!important}
+html[data-theme=light] #roi .calculator{background:#FFFFFF!important;border-color:#CDD2D4!important}
+html[data-theme=light] #roi .calc-inputs{background:#FFFFFF!important}
+html[data-theme=light] #roi .calc-result{background:#F2F3F3!important;border-color:#CDD2D4!important}
+html[data-theme=light] .number-field{background:#FAFBFB!important;border-color:#C9CFD2!important}
+html[data-theme=light] .roi-track{background:#DDE1E3!important}
+html[data-theme=light] .blueprint-disclosure{background:#FFFFFF!important;border-color:#CDD2D4!important}
+html[data-theme=light] .blueprint-output{background:#F4F5F5!important}
+html[data-theme=light] .blueprint-summary-flow span,
+html[data-theme=light] .bp-node,
+html[data-theme=light] .blueprint-editor-controls button{background:#F8F9F9!important;border-color:#C8CED1!important}
+html[data-theme=light] .case-section{
+  background:linear-gradient(90deg,#F8F9F9 0 49%,#F0F2F2 49% 100%)!important;
+}
+@media(max-width:680px){
+  html[data-theme=light] .case-section{
+    background:linear-gradient(180deg,#F8F9F9 0 40%,#F0F2F2 40% 100%)!important;
+  }
+}
+html[data-theme=light] .portfolio-next-card{
+  background:#F1F3F3!important;
+  border-color:#CCD1D3!important;
+  border-left-color:var(--accent)!important;
+}
+html[data-theme=light] .footer{background:#EEF0F0!important;border-top-color:#CDD2D4!important;color:#626B70!important}
+html[data-theme=light] .crm-shell,
+html[data-theme=light] .crm-main,
+html[data-theme=light] .lead-drawer,
+html[data-theme=light] .followup-dialog{background:#F8F9F9!important;border-color:#CDD2D4!important}
+html[data-theme=light] .crm-sidebar{background:#EEF0F0!important;border-right-color:#CDD2D4!important}
+html[data-theme=light] .crm-panel-card,
+html[data-theme=light] .automation-card,
+html[data-theme=light] .run-history,
+html[data-theme=light] .integration-row,
+html[data-theme=light] .crm-overview-kpis article,
+html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#CDD2D4!important}
+html[data-theme=light] .crm-table th{background:#F1F3F3!important}
+html[data-theme=light] .crm-table td{border-color:#D5D9DB!important}
+
