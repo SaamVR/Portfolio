@@ -14,6 +14,14 @@ https://v3.nova-interactive-portfolio.pages.dev/
 Immutable Cloudflare deployment:
 https://c2c5a95c.nova-interactive-portfolio.pages.dev
 
+Cloudflare deployment ID:
+`c2c5a95c-72ad-490f-b206-41656ea53b4f`
+
+Cloudflare-reported source:
+`63af14a`
+
+This file is the canonical NOVA V3 completion handoff. The earlier duplicate release-completion handoff was removed after the newer exact-source deployment superseded its immutable URL; Git history retains that record.
+
 Do not replace root production, V2, or the /v1/ archive unless the user explicitly asks.
 
 ## Exact deployed site source
