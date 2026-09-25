@@ -1,0 +1,111 @@
+/* LEADFLOW REFINE — BROWN
+   Espresso / dark cocoa replaces the production green identity.
+   Yellow remains review/attention; brick remains action/failure.
+*/
+:root{
+  --v4-green:#B98667;
+  --v4-green-deep:#563826;
+  --v4-green-soft:#332219;
+  --accent:#B98667;
+  --accent2:#D7A98A;
+  --accent-readable:#D8AA88;
+  --story-focus-ring:rgba(185,134,103,.28);
+  --bg:#120F0D;
+  --bg2:#1A1512;
+  --card:#211A16;
+  --card2:#2A211C;
+  --surface-1:#1C1714;
+  --surface-2:#14100E;
+  --surface-3:#2A211C;
+  --text:#F4EEE9;
+  --text-soft:#D8CDC5;
+  --muted:#B0A39A;
+  --line:#4B3B32;
+  --line2:#675247;
+}
+body{
+  background:
+    radial-gradient(circle at 88% 3%,rgba(226,182,75,.045),transparent 24%),
+    radial-gradient(circle at 9% 34%,rgba(185,134,103,.075),transparent 26%),
+    var(--bg);
+}
+.grid{
+  background-image:
+    linear-gradient(rgba(185,134,103,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(185,134,103,.035) 1px,transparent 1px);
+}
+.ambient-a{background:#7A4F36;opacity:.09}
+.nav{background:rgba(18,15,13,.9);border-bottom-color:#46372F}
+.brand-mark{color:#D8AA88;background:#2B1F19;border-color:#73513D;box-shadow:inset 0 -2px 0 rgba(226,182,75,.5)}
+.primary-btn{background:#B98667;color:#1A100B;box-shadow:0 10px 28px rgba(185,134,103,.16)}
+.hero .eyebrow,.hero h1 span{color:#D8AA88}
+.glass-panel{background:linear-gradient(150deg,#241B17,#120F0D);border-color:#59463B;box-shadow:0 36px 110px rgba(0,0,0,.42),inset 0 2px 0 rgba(185,134,103,.12)}
+.flow-orbit{background:radial-gradient(circle at 50% 48%,rgba(185,134,103,.09),transparent 44%)}
+.flow-node{background:#211A16;border-color:#554238}
+.flow-node.n3{border-color:#8A624B}
+.connector i,.signal{background:#B98667}
+#demo .execution-card{box-shadow:inset 0 2px 0 rgba(185,134,103,.78)}
+.backend-proof.live .backend-dot{background:#B98667}
+.ops-dashboard{background:#15110F;border-color:#514037;box-shadow:0 30px 90px rgba(0,0,0,.28),inset 0 2px 0 rgba(185,134,103,.10)}
+.ops-kpis article:nth-child(1){box-shadow:inset 0 2px 0 rgba(185,134,103,.78)}
+#reliability{--incident-safe:#B98667}
+.arch-core{box-shadow:inset 0 2px 0 rgba(185,134,103,.78)}
+#roi .roi-primary strong{color:#D8AA88}
+.final-cta{background:linear-gradient(135deg,#352219 0%,#241A15 58%,#2A1715 100%);border-color:#6A5145}
+.final-cta:before{background:linear-gradient(#B98667 0 54%,var(--v4-yellow) 54% 78%,var(--v4-brick) 78%)}
+.footer{background:#15110F;border-top-color:#49392F}
+.hero-actions #guidedDemo.guided-btn{border-color:#8B624B;background:#34231B;color:#FFF6EF}
+.hero-actions #guidedDemo.guided-btn:hover{border-color:#B98667;background:#432C21;color:#FFF}
+.guided-btn-play{background:#B98667;color:#20120B;box-shadow:0 0 0 4px rgba(185,134,103,.12)}
+.hero-actions #guidedDemo:hover .guided-btn-play{box-shadow:0 0 0 6px rgba(185,134,103,.14)}
+.story-active{--story-focus-ring:rgba(185,134,103,.28)}
+#workflow .workflow-stage[data-story-tone="verified"].story-focus,
+#workflow .workflow-stage[data-story-tone="ready"].story-focus{border-color:#B98667!important;box-shadow:inset 0 3px 0 #B98667,0 12px 32px rgba(0,0,0,.14)!important}
+@keyframes heroNodeState{
+  0%,13%,100%{border-color:#554238;background:#211A16}
+  17%,32%{border-color:#B98667;background:#302219}
+  38%,100%{border-color:#554238;background:#211A16}
+}
+
+html[data-theme=light]{
+  --v4-green:#7A4F36;
+  --v4-green-deep:#563522;
+  --v4-green-soft:#EDE0D7;
+  --accent:#7A4F36;
+  --accent2:#5F3B28;
+  --accent-readable:#70462F;
+  --story-focus-ring:rgba(122,79,54,.22);
+  --bg:#F5F0EB;
+  --bg2:#EDE5DE;
+  --card:#FFFCF9;
+  --card2:#F1E8E1;
+  --surface-1:#FFFCF9;
+  --surface-2:#F2EAE4;
+  --surface-3:#E8DDD5;
+  --text:#2A211C;
+  --text-soft:#4A3A31;
+  --muted:#66574E;
+  --line:#CEC0B6;
+  --line2:#B7A398;
+}
+html[data-theme=light] body{
+  background:
+    radial-gradient(circle at 88% 3%,rgba(166,109,5,.04),transparent 24%),
+    radial-gradient(circle at 8% 34%,rgba(122,79,54,.055),transparent 24%),
+    var(--bg);
+}
+html[data-theme=light] .nav{background:rgba(245,240,235,.92);border-bottom-color:#D0C2B8}
+html[data-theme=light] .brand-mark{background:#EEE1D8;border-color:#B99B87;color:#70462F;box-shadow:inset 0 -2px 0 #D4AF59}
+html[data-theme=light] .primary-btn{background:#7A4F36;color:#FFF}
+html[data-theme=light] .hero .eyebrow,
+html[data-theme=light] .hero h1 span{color:#70462F}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{background:#70462F;border-color:#70462F;color:#FFF}
+html[data-theme=light] .guided-btn-play{background:#F7EAE1;color:#70462F;box-shadow:0 0 0 4px rgba(112,70,47,.12)}
+html[data-theme=light] .flow-node.n3{border-color:#8E654E}
+html[data-theme=light] .final-cta{
+  background-color:#2B1E18!important;
+  background-image:linear-gradient(135deg,#3A251B 0%,#2A201B 62%,#3B211B 100%)!important;
+}
+html[data-theme=light] #workflow .workflow-stage[data-story-tone="verified"].story-focus,
+html[data-theme=light] #workflow .workflow-stage[data-story-tone="ready"].story-focus{border-color:#7A4F36!important;box-shadow:inset 0 3px 0 #7A4F36,0 12px 32px rgba(71,47,34,.12)!important}
