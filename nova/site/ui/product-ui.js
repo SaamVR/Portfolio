@@ -13,13 +13,13 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'Spatial opens the presentation for a wider, more immersive listening feel.',
-  focus:'Focus reduces surrounding motion so attention stays tightly centered.',
-  ambient:'Ambient keeps the visual field open to the world around you.'
+  spatial:'Spatial widens the visual field and keeps the product centered.',
+  focus:'Focus reduces visual distraction so the product reads more clearly.',
+  ambient:'Ambient keeps surrounding context visible while the product remains present.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
-  transparency:'Transparency represents awareness and a more open connection to the environment.'
+  adaptive:'Adaptive tightens the scene and reduces surrounding visual activity.',
+  transparency:'Transparency opens the scene and keeps environmental context visible.'
 };
 
 const actions = {};
