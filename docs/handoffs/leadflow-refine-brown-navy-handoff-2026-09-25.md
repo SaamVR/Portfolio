@@ -134,3 +134,63 @@ Live verification passed on immutable and canonical:
 5. Any future palette changes must keep yellow as review/attention and brick red as urgency/failure unless explicitly redesigned.
 6. Do not overwrite the preservation branch.
 7. Use immutable deployment `f6242701` as the rollback point for this release.
+
+## Neutral canvas refinement — 2026-09-25
+
+A second palette refinement was applied to both variants to remove the large brown/navy environmental tint while retaining each identity color as an accent system.
+
+Authoritative refinement:
+- PR #31 — Refine LeadFlow variants with neutral white-grey canvas
+- reviewed branch head: `9e61d1880ebc579da19e7c80c4bf0f1b093fbe14`
+- squash merge: `3fc85ff2a2a6ca438a1ec65e8411b52526cdabd1`
+- preservation branch: `preserve/leadflow-neutral-canvas-d75eb77f-20260925`
+- immutable deployment: https://d75eb77f.leadflow-ai-bhy.pages.dev/
+- canonical deployment: https://leadflow-ai-bhy.pages.dev/
+
+Refined canvas:
+- fresh visits to both variants are light-first
+- light page background: `#F6F7F7`
+- light bands: `#EEF0F0`
+- light cards: `#FFFFFF`
+- dark page background: `#111315`
+- dark bands: `#181A1C`
+- dark cards: `#1D2022`
+
+Identity colors are still preserved:
+- brown dark accent `#B98667`
+- brown light accent `#7A4F36`
+- navy dark accent `#76A9DA`
+- navy light accent `#285F93`
+- yellow remains review / attention
+- brick red remains urgency / failure
+
+Large environmental surfaces now use neutral white-grey or graphite:
+- body / section canvas
+- nav chrome
+- trust band
+- workflow and brief cards
+- demo container
+- operations dashboard
+- reliability
+- architecture
+- ROI / calculator
+- blueprint planner
+- case-study split
+- portfolio-next card
+- footer
+- CRM workspace shells and cards
+
+Verification:
+- GitHub Actions run https://github.com/SaamVR/Portfolio/actions/runs/36184374172 PASS
+- neutral-canvas variant contract PASS
+- full Node regression PASS
+- brown + navy responsive interaction matrices PASS
+- brown + navy whole-page contrast audits PASS
+- brown + navy full six-chapter guided motion audits PASS
+- visual capture PASS
+- live immutable and canonical source byte checks PASS
+- root green production remains preserved
+- V1 / V2 / V3 routes and qualification engine versions remain intact
+
+For future palette work, treat immutable deployment `d75eb77f` and product commit `3fc85ff2a2a6ca438a1ec65e8411b52526cdabd1` as the current brown/navy baseline.
+
