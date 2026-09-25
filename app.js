@@ -572,7 +572,7 @@ function tourHoldMs(ms){
 async function waitForWorkflowCompletion(timeout=12000){
   const started=performance.now();
   while(!cancelled&&performance.now()-started<timeout){
-    const done=$("#steps .exec-step.done").length;
+    const done=document.querySelectorAll("#steps .exec-step.done").length;
     if(guided)updateTourProgress(2,6,{fraction:Math.min(.96,Math.max(.08,done/6)),beat:done?done+" of 6 execution stages complete":"Submitting the lead…"});
     if($("#execStatus").textContent==="COMPLETE"&&!running){if(guided)updateTourProgress(2,6,{fraction:1,beat:"All six execution stages complete"});return true}
     await delay(90);
