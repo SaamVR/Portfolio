@@ -5,6 +5,7 @@ on:
     branches:
       - "nova/v2-*"
       - "nova/v3"
+      - "nova/v3-*"
     paths:
       - ".github/workflows/nova-v2-contracts.yml"
       - "nova/site/**"
