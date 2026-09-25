@@ -75,3 +75,33 @@ for(const variant of variants){
     for(const selector of required)assert.ok(css.includes(selector),variant.slug+" missing "+selector);
   });
 }
+
+
+for(const variant of variants){
+  test(variant.slug+" recolors the full environmental chrome, not only accent tokens",()=>{
+    const css=read(variant.slug+"/theme.css");
+    const required=[
+      "--surface-raised:",
+      "--surface-focus:",
+      "--border-quiet:",
+      "--text-secondary:",
+      "--status-nurture:",
+      ".theme-toggle-track",
+      ".theme-toggle-thumb",
+      ".mini-terminal",
+      ".float-card",
+      ".trust-band",
+      "#roi .calculator",
+      ".calc-result",
+      ".number-field",
+      ".blueprint-disclosure",
+      ".blueprint-summary-flow span",
+      ".blueprint-output",
+      ".case-section",
+      ".portfolio-next-card",
+      ".final-cta .tag",
+      ".crm-shell"
+    ];
+    for(const selector of required)assert.ok(css.includes(selector),variant.slug+" missing environment override "+selector);
+  });
+}
