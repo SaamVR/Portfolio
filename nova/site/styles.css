@@ -776,3 +776,102 @@ body[data-guided-tour="open"] .guided-tour{transform:none}
   .stage--hero .hero-actions .gesture-hint{display:none}
   .stage--hero .hero-actions .button{padding-left:14px;padding-right:14px}
 }
+
+
+/* V3 sequential engineering-detail presentation. */
+.design-detail-sequence{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  width:min(620px,46vw);
+  margin-top:26px;
+}
+.design-detail-sequence button{
+  min-height:92px;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-rows:auto 1fr;
+  column-gap:10px;
+  row-gap:7px;
+  padding:14px 15px;
+  border:1px solid rgba(15,14,12,.14);
+  background:rgba(255,255,255,.18);
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .28s ease,background .28s ease,opacity .28s ease,transform .28s ease;
+}
+.design-detail-sequence button>span{
+  font:700 9px/1 var(--mono);
+  letter-spacing:.1em;
+  color:#8b8176;
+}
+.design-detail-sequence button>strong{
+  font:700 11px/1 var(--mono);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.design-detail-sequence button>small{
+  grid-column:1/-1;
+  font-size:12px;
+  line-height:1.45;
+  color:#615a52;
+}
+.design-detail-sequence button[aria-pressed="true"]{
+  border-color:var(--copper);
+  background:rgba(166,108,69,.08);
+  transform:translateY(-2px);
+}
+.design-detail-sequence button[aria-pressed="true"]>span{color:var(--copper)}
+
+body[data-range="design"] .hotspot-layer .hotspot{
+  opacity:.12;
+  pointer-events:none;
+  transition:opacity .32s ease;
+}
+body[data-range="design"] .hotspot-layer .hotspot span{opacity:0}
+body[data-range="design"][data-design-detail="cushion"] .hotspot[data-hotspot="cushion"],
+body[data-range="design"][data-design-detail="hinge"] .hotspot[data-hotspot="headband"],
+body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="controls"]{
+  opacity:1;
+  pointer-events:auto;
+}
+body[data-range="design"][data-design-detail="cushion"] .hotspot[data-hotspot="cushion"] span,
+body[data-range="design"][data-design-detail="hinge"] .hotspot[data-hotspot="headband"] span,
+body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="controls"] span{opacity:1}
+
+.reference-disclosure{
+  margin:24px 0 0;
+  padding:16px 18px;
+  border-left:2px solid var(--copper);
+  background:rgba(166,108,69,.07);
+  font-size:14px;
+  line-height:1.65;
+  color:#514b44;
+}
+.reference-source{
+  margin:30px 0 0;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+  font-size:13px;
+  line-height:1.6;
+  color:#5c554d;
+}
+.reference-source a{border-bottom:1px solid currentColor}
+
+@media (max-width:700px){
+  .design-detail-sequence{
+    width:calc(100vw - 44px);
+    grid-template-columns:1fr;
+    gap:5px;
+    margin-top:18px;
+  }
+  .design-detail-sequence button{
+    min-height:64px;
+    grid-template-columns:28px 74px 1fr;
+    grid-template-rows:1fr;
+    align-items:center;
+    padding:10px 12px;
+  }
+  .design-detail-sequence button>small{grid-column:auto;font-size:11px}
+}
