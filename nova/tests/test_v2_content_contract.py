@@ -342,3 +342,10 @@ def test_v3_meta_and_product_summary_are_project_ready():
     assert "Premium over-ear benchmark" in html
     assert "30–60 h battery class" in html
     assert "254–293 g benchmark" in html
+
+
+def test_v3_mobile_design_uses_compact_three_selector_rail():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--design.design-detail-rail{grid-template-columns:repeat(3,minmax(0,1fr))" in compact
+    assert ".stage--design.design-detail-railbuttonsmall{display:none}" in compact
+    assert ".stage--design.interaction-note{display:none}" in compact
