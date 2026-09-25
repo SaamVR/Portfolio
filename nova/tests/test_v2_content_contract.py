@@ -335,3 +335,25 @@ def test_v3_mobile_design_detail_sequence_is_a_single_swipeable_rail():
     assert ".design-detail-sequence{display:flex;width:calc(100vw-22px)" in compact
     assert "overflow-x:auto" in compact
     assert ".design-detail-sequencebutton{flex:00min(250px,74vw)" in compact
+
+
+def test_v3_reference_specs_include_real_world_caveats_and_controls():
+    for phrase in [
+        "LDAC: up to 26 hrs NC on / 36 hrs NC off",
+        "Multipoint: 2 devices",
+        "Touch sensor panel",
+        "NC/AMB button",
+        "Bluetooth is unavailable while the supplied headphone cable is connected",
+        "Approx. 254 g / 8.96 oz",
+        "30 mm / 1.18 in",
+    ]:
+        assert phrase in html
+    assert "helpguide.sony.net/mdr/2984" in html
+
+def test_v3_design_cards_are_stable_controls_and_hotspots_are_annotations():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'body[data-range="design"].hotspot-layer.hotspot{opacity:.12;pointer-events:none' in compact
+    assert 'data-detail-id="cushion"' in html
+    assert 'data-detail-id="hinge"' in html
+    assert 'data-detail-id="controls"' in html
+    assert "actions.selectDesignDetail" in ui_js
