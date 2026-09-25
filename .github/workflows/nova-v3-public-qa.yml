@@ -1,0 +1,148 @@
+name: NOVA V3 Public QA
+
+on:
+  push:
+    branches: ["nova/v3-production-refinement"]
+    paths:
+      - ".github/workflows/nova-v3-public-qa.yml"
+      - "nova/v3-public-qa-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NOVA_V3_URL: https://v3.nova-interactive-portfolio.pages.dev/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Audit deployed V3
+        run: |
+          cat > nova/v3-public-qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          fs.mkdirSync('nova-v3-public-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          const url=process.env.NOVA_V3_URL;
+          const errors=[];
+
+          async function ready(context,label,path=''){
+            const page=await context.newPage();
+            page.on('pageerror',e=>errors.push(label+': pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error') errors.push(label+': console: '+m.text());});
+            page.on('requestfailed',r=>errors.push(label+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||'')));
+            await page.goto(url+path,{waitUntil:'networkidle',timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:25000});
+            return page;
+          }
+
+          async function scrollProgress(page,p){
+            await page.evaluate(progress=>{
+              document.documentElement.style.scrollBehavior='auto';
+              const behind=document.querySelector('#behind');
+              const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              scrollTo(0,max*progress);
+            },p);
+            await page.waitForFunction(target=>{
+              const behind=document.querySelector('#behind');
+              const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              return Math.abs(scrollY/max-target)<.004;
+            },p,{timeout:4000});
+            await page.waitForTimeout(380);
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await ready(context,'desktop');
+            const basics=await page.evaluate(()=>({
+              title:document.title,
+              model:document.body.dataset.modelState,
+              hero:document.body.innerText.includes('Hear beyond.'),
+              story:document.body.innerText.includes('Designed like a launch.'),
+              runtime:document.querySelector('#runtimeState')?.textContent||'',
+              notify:Boolean(document.querySelector('#notifyConcept,#notifyPanel,#notifyDemoForm'))
+            }));
+            if(basics.model!=='ready'||!basics.hero||!basics.story||!basics.runtime.includes('LIVE')||basics.notify){
+              throw new Error('desktop V3 runtime invalid '+JSON.stringify(basics));
+            }
+
+            await scrollProgress(page,.16);
+            for(const [p,id,file] of [
+              [.16,'cushion','design_cushion.png'],
+              [.215,'headband','design_headband.png'],
+              [.265,'controls','design_controls.png']
+            ]){
+              await scrollProgress(page,p);
+              await page.waitForFunction(key=>document.body.dataset.designDetail===key,id);
+              const state=await page.evaluate(key=>({
+                detail:document.body.dataset.designDetail,
+                card:document.querySelector('[data-detail-card="'+key+'"]')?.getAttribute('aria-pressed'),
+                opacity:Number(getComputedStyle(document.querySelector('[data-hotspot="'+key+'"]')).opacity)
+              }),id);
+              if(state.detail!==id||state.card!=='true'||state.opacity<.8) throw new Error('deployed V3 design detail invalid '+JSON.stringify({id,state}));
+              await page.screenshot({path:'nova-v3-public-qa/'+file});
+            }
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/benchmark.*design brief/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            const benchmark=await page.evaluate(()=>({
+              sony:document.body.innerText.includes('Sony WH-1000XM6'),
+              senn:document.body.innerText.includes('Sennheiser MOMENTUM 4'),
+              bose:document.body.innerText.includes('Bose QuietComfort Ultra 2nd Gen'),
+              target:document.body.innerText.includes('Design target — not a lab measurement'),
+              sources:document.querySelectorAll('.benchmark-sources a').length
+            }));
+            if(!benchmark.sony||!benchmark.senn||!benchmark.bose||!benchmark.target||benchmark.sources<3) throw new Error('deployed V3 benchmark invalid '+JSON.stringify(benchmark));
+            await page.screenshot({path:'nova-v3-public-qa/benchmark_desktop.png'});
+            await context.close();
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+            const page=await ready(context,'mobile');
+            await page.getByRole('button',{name:/menu/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.mobileNav==='open');
+            await page.screenshot({path:'nova-v3-public-qa/mobile_nav.png'});
+            await page.keyboard.press('Escape');
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/benchmark.*design brief/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-v3-public-qa/benchmark_mobile.png'});
+            await context.close();
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:1024,height:768}});
+            const page=await ready(context,'v1','v1/');
+            const v1=await page.evaluate(()=>({
+              title:document.title,
+              model:document.body.dataset.modelState,
+              film:document.body.innerText.includes('Scroll-controlled product film')
+            }));
+            if(v1.model!=='ready'||!v1.film) throw new Error('V1 archive invalid on V3 '+JSON.stringify(v1));
+            await context.close();
+          }
+
+          await browser.close();
+          fs.writeFileSync('nova-v3-public-qa/result.json',JSON.stringify({url,errors},null,2));
+          if(errors.length) throw new Error('V3 public browser errors:\n'+errors.join('\n'));
+          JS
+          node nova/v3-public-qa.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-v3-public-qa
+          path: nova-v3-public-qa
+          retention-days: 7
