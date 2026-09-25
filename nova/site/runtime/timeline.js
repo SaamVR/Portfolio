@@ -50,9 +50,9 @@ const KEYFRAMES = [
 
   // Resolution restores a bold commercial hero before the technical reveal intentionally recedes.
   {p:0.90, pose:.22, pos:[0,.015,0], scale:1.06, yaw:-.02, pitch:0, cam:[.08,.09,4.45], target:[0,.02,0], fov:26.8, exposure:1.08, hemi:1.95, key:4.65, fill:1.32, rim:8.0, warm:4.9, keyColor:0xffeedb, rimColor:0xcc774b, keyPos:[3.45,4.05,5.25], tone:.12, spatial:.04, spread:.53, adaptive:0, openness:.75, motion:.15},
-  {p:0.945, pose:.20, pos:[0,.025,0], scale:1.07, yaw:-.04, pitch:0, cam:[.05,.10,4.38], target:[0,.03,0], fov:26.5, exposure:1.07, hemi:2.0, key:4.55, fill:1.35, rim:7.8, warm:4.8, keyColor:0xffefdc, rimColor:0xce794c, keyPos:[3.5,4.1,5.3], tone:.10, spatial:.01, spread:.51, adaptive:0, openness:.75, motion:.12},
+  {p:0.945, pose:.20, pos:[0,.025,0], scale:1.07, yaw:-.04, pitch:0, cam:[.05,.10,4.38], target:[0,.03,0], fov:26.8, exposure:1.07, hemi:2.0, key:4.55, fill:1.35, rim:7.8, warm:4.8, keyColor:0xffefdc, rimColor:0xce794c, keyPos:[3.5,4.1,5.3], tone:.10, spatial:.01, spread:.51, adaptive:0, openness:.75, motion:.12},
   {p:0.96, pose:.20, pos:[0,.02,0], scale:1.06, yaw:-.03, pitch:0, cam:[.04,.10,4.58], target:[0,.02,0], fov:27.2, exposure:1.06, hemi:2.0, key:4.35, fill:1.35, rim:7.3, warm:4.6, keyColor:0xffefdc, rimColor:0xcf7a4d, keyPos:[3.5,4.1,5.4], tone:.08, spatial:0, spread:.5, adaptive:0, openness:.75, motion:.10},
-  {p:1.00, pose:.16, pos:[.18,-.06,0], scale:.88, yaw:.06, pitch:0, cam:[.08,.10,5.8], target:[.06,-.03,0], fov:31, exposure:1.08, hemi:1.35, key:4.2, fill:.9, rim:8.0, warm:4.2, keyColor:0xffe6d2, rimColor:0xb86c40, keyPos:[3.1,3.7,5.0], tone:.55, spatial:.08, spread:.52, adaptive:0, openness:.7, motion:.08}
+  {p:1.00, pose:.16, pos:[.18,-.06,0], scale:.88, yaw:.06, pitch:0, cam:[.08,.10,5.8], target:[.06,-.03,0], fov:30, exposure:1.08, hemi:1.35, key:4.2, fill:.9, rim:8.0, warm:4.2, keyColor:0xffe6d2, rimColor:0xb86c40, keyPos:[3.1,3.7,5.0], tone:.55, spatial:.08, spread:.52, adaptive:0, openness:.7, motion:.08}
 ];
 
 export function getGlobalProgress(scrollY, scrollHeight, viewportHeight){
@@ -108,8 +108,8 @@ function segment(progress){
 
 function applyCompositionInfluences(state,p){
   const spatial=windowWeight(p,.28,.32,.43,.49);
-  const adaptive=windowWeight(p,.42,.47,.565,.58);
-  const resolution=windowWeight(p,.82,.87,.945,.965);
+  const adaptive=windowWeight(p,.42,.47,.535,.60);
+  const resolution=windowWeight(p,.82,.87,.915,.965);
   const behind=ramp(p,.962,.988);
 
   // Camera framing does the heavy lifting so the product itself stays spatially stable.
