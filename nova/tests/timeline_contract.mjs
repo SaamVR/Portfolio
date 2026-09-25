@@ -97,8 +97,8 @@ const designPose=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
 const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
 const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
-assert.ok(Math.abs(designClosePoseB-designClosePoseA) >= .06,
-  `Design close pass should visibly advance the source clip like V1; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
+assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
+  `V3 Design close pass must not snap the source rig; delta=${Math.abs(designClosePoseB-designClosePoseA)}`);
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
@@ -198,3 +198,21 @@ for(const [label,points,minSpan] of [
   const span=Math.max(...poses)-Math.min(...poses);
   assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
 }
+
+
+// V3 motion-continuity contract: no accordion reversals or abrupt rig scrubbing.
+const v3DesignPoints=[.16,.18,.20,.22,.24,.26,.28];
+const v3DesignPoses=v3DesignPoints.map(p=>sampleTimeline(p,'desktop').product.pose);
+for(let i=1;i<v3DesignPoses.length;i++){
+  assert.ok(v3DesignPoses[i] >= v3DesignPoses[i-1]-.004,
+    `V3 Design pose must progress smoothly without reversing; ${v3DesignPoses[i-1]} -> ${v3DesignPoses[i]}`);
+}
+let v3MaxPoseStep=0;
+let v3Prev=sampleTimeline(.16,'desktop').product.pose;
+for(let p=.162;p<=.36+1e-9;p+=.002){
+  const pose=sampleTimeline(p,'desktop').product.pose;
+  v3MaxPoseStep=Math.max(v3MaxPoseStep,Math.abs(pose-v3Prev));
+  v3Prev=pose;
+}
+assert.ok(v3MaxPoseStep <= .020,
+  `V3 source-pose scrub must remain continuous through Design→Sound; max .002-scroll step=${v3MaxPoseStep}`);
