@@ -78,6 +78,12 @@ const DT=1/60;
     'manual inspection yaw must not pan the camera away from the centered product');
   assert.equal(composed.camera.position[1],base.camera.position[1],
     'manual inspection pitch must not pan the camera vertically out of frame');
+  assert.ok(Math.abs(composed.camera.position[2]-(base.camera.position[2]+.18))<1e-9,
+    'inspection framing may only dolly out enough to preserve the full product');
+  assert.ok(Math.abs(composed.camera.target[1]-(base.camera.target[1]+.34))<1e-9,
+    'inspection framing should move the look target up so the product sits lower in the viewport');
+  assert.equal(composed.camera.target[0],base.camera.target[0],
+    'inspection framing must not steal lateral composition from the authored timeline');
   assert.equal(composed.product.yaw,base.product.yaw,
     'inspection yaw must not contaminate authored timeline yaw');
   assert.equal(composed.product.pitch,base.product.pitch,
