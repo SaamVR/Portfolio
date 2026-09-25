@@ -688,6 +688,7 @@ html[data-theme=light]{
   color:var(--navy-primary-strong)!important;
   font-weight:650!important;
 }
+html:not([data-theme=light]) .nav{background:#141414!important}
 html[data-theme=light] .nav{
   background:#FAFAFA!important;
   border-bottom-color:#D6D6D6!important;
