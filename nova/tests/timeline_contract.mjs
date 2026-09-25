@@ -191,19 +191,34 @@ assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment
   'R13 Noise-control scene should communicate change through the environment');
 
 
-// R14 / V1-motion restoration: source animation must keep breathing through the
-// commercial chapters even when screen-space yaw/position remain intentionally calm.
-for(const [label,points,minSpan] of [
-  ['Sound',[.34,.36,.40,.44],.035],
-  ['Adaptive',[.47,.49,.54,.57],.045],
-  ['Form',[.60,.64,.67,.71],.055],
-  ['Inspect',[.74,.76,.79,.84],.045],
-  ['Resolution',[.87,.90,.93,.945],.055]
+// R14 / V3 narrative articulation: concentrate source-clip motion into deliberate
+// physical beats instead of making the rig "breathe" open/closed under every chapter.
+const r14SoundStart=sampleTimeline(.34,'desktop').product.pose;
+const r14SoundEnd=sampleTimeline(.44,'desktop').product.pose;
+assert.ok(r14SoundEnd-r14SoundStart >= .08,
+  `R14 Sound should retain the expressive one-way opening action; delta=${r14SoundEnd-r14SoundStart}`);
+
+const r14AdaptiveStart=sampleTimeline(.45,'desktop').product.pose;
+const r14AdaptiveEnd=sampleTimeline(.58,'desktop').product.pose;
+assert.ok(r14AdaptiveStart-r14AdaptiveEnd >= .015 && r14AdaptiveStart-r14AdaptiveEnd <= .035,
+  `R14 Adaptive should settle the opened rig subtly in one direction; delta=${r14AdaptiveStart-r14AdaptiveEnd}`);
+
+for(const [label,start,end,maxSpan] of [
+  ['Form',.58,.72,.025],
+  ['Inspect',.72,.86,.018],
+  ['Resolution',.86,.96,.018]
 ]){
-  const poses=points.map(p=>sampleTimeline(p,'desktop').product.pose);
+  const poses=[];
+  for(let p=start;p<=end+1e-9;p+=(end-start)/20) poses.push(sampleTimeline(p,'desktop').product.pose);
   const span=Math.max(...poses)-Math.min(...poses);
-  assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
+  assert.ok(span <= maxSpan,
+    `R14 ${label} should keep physical articulation stable while its own interaction/camera system owns motion; pose span=${span}`);
 }
+
+const r14BehindStart=sampleTimeline(.96,'desktop').product.pose;
+const r14BehindEnd=sampleTimeline(1,'desktop').product.pose;
+assert.ok(r14BehindStart-r14BehindEnd >= .07,
+  `R14 Behind handoff should retain a deliberate final closing/recession; delta=${r14BehindStart-r14BehindEnd}`);
 
 
 // V3 motion-continuity contract: no accordion reversals or abrupt rig scrubbing.
