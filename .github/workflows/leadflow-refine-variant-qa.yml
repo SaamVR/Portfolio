@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - leadflow/refine-brown-navy
+      - leadflow/refine-neutral-canvas
   workflow_dispatch:
 
 permissions:
