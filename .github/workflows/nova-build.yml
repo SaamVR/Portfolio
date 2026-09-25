@@ -1,8 +1,8 @@
-name: NOVA Production Bundle
+name: NOVA V3 Production Bundle
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: ["nova/v3-real-product"]
     paths:
       - ".github/workflows/nova-build.yml"
       - "nova/site/**"
@@ -38,7 +38,7 @@ jobs:
           cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
           cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
 
-      - name: Validate V2 production bundle
+      - name: Validate V3 production bundle
         run: |
           set -euo pipefail
           test -f nova/site/index.html
@@ -72,7 +72,7 @@ jobs:
           assert len(g["skins"][0]["joints"]) == 36
           assert len(g["animations"]) == 3
           assert all((root/"assets"/img["uri"]).exists() for img in g["images"])
-          print("NOVA V2 production bundle verified")
+          print("NOVA V3 production bundle verified")
           PY
           du -sh nova/site
           find nova/site -maxdepth 4 -type f | sort
