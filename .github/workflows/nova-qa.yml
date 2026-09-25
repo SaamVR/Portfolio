@@ -157,14 +157,16 @@ jobs:
               const minSpanX=prefix==='mobile'?50:100;
               const minSpanY=prefix==='mobile'?35:60;
               await page.screenshot({path:'nova-qa/'+prefix+'_product_presence_'+String(progress).replace('.','')+'.png'});
+              const intentionalDesignCrop=state.range==='design';
+              const landmarksOk=intentionalDesignCrop
+                ? state.frame.nearViewport>=3 && state.frame.inViewport>=2 && state.frame.earcupsInViewport>=1
+                : state.frame.inViewport>=3 && state.frame.earcupsInViewport>=2;
               if(
-                state.frame.nearViewport<3 ||
-                state.frame.inViewport<2 ||
-                state.frame.earcupsInViewport<1 ||
+                !landmarksOk ||
                 state.frame.spanX<minSpanX ||
                 state.frame.spanY<minSpanY
               ){
-                throw new Error(prefix+' product not recognizably framed '+JSON.stringify({minSpanX,minSpanY,state}));
+                throw new Error(prefix+' product not recognizably framed '+JSON.stringify({minSpanX,minSpanY,intentionalDesignCrop,state}));
               }
             }
             fs.writeFileSync('nova-qa/'+prefix+'_product_presence.json',JSON.stringify(results,null,2));
