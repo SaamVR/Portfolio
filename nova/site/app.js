@@ -216,7 +216,7 @@ function hideHotspots(){
 function rebuildAdapter(){
   if(!rendererAvailable) return;
   adapter=createRenderAdapter({
-    THREE,camera,presentation,orientation:inspectionGroup,mixer,clipDuration,renderer,lights,environment,orientationX
+    THREE,camera,presentation,inspection:inspectionGroup,mixer,clipDuration,renderer,lights,environment,orientationX
   });
 }
 
