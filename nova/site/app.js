@@ -319,7 +319,7 @@ function updateInteractionInfluences(base,dt,now){
 
   const foldInfluenceBefore=foldController.getInfluence();
   foldController.update(dt,{
-    scrollActive:foldInfluenceBefore.active && now < scrollActivityUntil,
+    scrollActive:foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil,
     timelinePose:base.product.pose
   });
 
