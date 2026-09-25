@@ -1,9 +1,14 @@
 const clamp01=v=>Math.max(0,Math.min(1,v));
+const easeVec=(current,target,alpha)=>{
+  for(let i=0;i<3;i++) current[i] += ((target?.[i]||0)-current[i])*alpha;
+};
 
 export function createHotspotController({THREE,camera,anchors={},elements={}}={}){
   if(!THREE?.Vector3) throw new Error('hotspot controller requires THREE.Vector3');
   const world=new THREE.Vector3();
   const boundsBox=THREE.Box3 ? new THREE.Box3() : null;
+  const currentCameraOffset=[0,0,0];
+  const currentTargetOffset=[0,0,0];
   let focused=null;
   let weight=0;
 
@@ -15,7 +20,6 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
     },
     clear(){
       focused=null;
-      weight=0;
     },
     update({modelRoot,viewport={width:1,height:1},dt=1/60}={}){
       const width=Math.max(1,viewport.width||1);
@@ -51,16 +55,28 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
         }
         el.setAttribute?.('aria-expanded',String(focused===id));
       }
-      const target=focused?1:0;
-      weight += (target-weight)*Math.min(1,Math.max(0,dt)*8);
+
+      const step=Math.max(0,Number(dt)||0);
+      const alpha=Math.min(1,step*7);
+      const targetWeight=focused?1:0;
+      weight += (targetWeight-weight)*alpha;
+
+      const anchor=focused?anchors[focused]:null;
+      easeVec(currentCameraOffset,anchor?.cameraOffset||[0,0,0],alpha);
+      easeVec(currentTargetOffset,anchor?.targetOffset||[0,0,0],alpha);
+
+      if(!focused && weight<.001){
+        weight=0;
+        currentCameraOffset.fill(0);
+        currentTargetOffset.fill(0);
+      }
     },
     getInfluence(){
-      const anchor=focused?anchors[focused]:null;
       return {
         weight:clamp01(weight),
         id:focused,
-        cameraOffset:[...(anchor?.cameraOffset||[0,0,0])],
-        targetOffset:[...(anchor?.targetOffset||[0,0,0])]
+        cameraOffset:[...currentCameraOffset],
+        targetOffset:[...currentTargetOffset]
       };
     }
   };
