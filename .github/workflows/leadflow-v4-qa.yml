@@ -23,3 +23,19 @@ jobs:
           node --check dashboard.js
           node --check storytelling.js
           node --check functions/api/qualify.js
+          node --check v3/app.js
+          node --check functions/v3/api/qualify.js
+      - name: Browser audit dependencies
+        run: |
+          python3 -m pip install --quiet websocket-client
+          command -v google-chrome
+      - name: Start local product server
+        run: |
+          python3 -m http.server 8805 >/tmp/leadflow-v4-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8805/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/leadflow-v4-http.log
+          exit 1
+      - name: Real-browser responsive and interaction matrix
+        run: python3 tests/leadflow_v3_release_matrix.py
+      - name: Real-browser whole-page contrast
+        run: python3 tests/leadflow_v3_whole_page_contrast_audit.py
