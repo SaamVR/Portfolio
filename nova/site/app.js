@@ -276,38 +276,33 @@ function resize(){
 }
 
 function measureProductFrame(){
-  if(!rendererAvailable || !model) return null;
-  model.updateMatrixWorld(true);
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity,vertices=0;
-  const point=new THREE.Vector3();
-  model.traverse(obj=>{
-    if(!obj.isMesh || !obj.visible || obj.name==='Circle013_0' || obj.name==='Circle.013_0') return;
-    const position=obj.geometry?.attributes?.position;
-    if(!position) return;
-    for(let i=0;i<position.count;i++){
-      obj.getVertexPosition(i,point);
-      point.applyMatrix4(obj.matrixWorld).project(camera);
-      if(!Number.isFinite(point.x)||!Number.isFinite(point.y)||!Number.isFinite(point.z)) continue;
-      const x=(point.x+1)*.5*innerWidth;
-      const y=(1-point.y)*.5*innerHeight;
-      minX=Math.min(minX,x); minY=Math.min(minY,y);
-      maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
-      vertices++;
-    }
+  if(!rendererAvailable || !model || !hotspotController) return null;
+  centerGroup.updateWorldMatrix(true,false);
+  const points=hotspotController.measure({
+    modelRoot:centerGroup,
+    viewport:{width:innerWidth,height:innerHeight}
   });
-  if(!vertices) return null;
-  const left=minX,top=minY,right=maxX,bottom=maxY;
-  const width=Math.max(0,right-left);
-  const height=Math.max(0,bottom-top);
-  const visibleLeft=Math.max(0,left);
-  const visibleTop=Math.max(0,top);
-  const visibleRight=Math.min(innerWidth,right);
-  const visibleBottom=Math.min(innerHeight,bottom);
-  const visibleArea=Math.max(0,visibleRight-visibleLeft)*Math.max(0,visibleBottom-visibleTop);
-  const area=Math.max(1,width*height);
+  const entries=Object.entries(points).filter(([,p])=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+  if(entries.length<3) return null;
+  const xs=entries.map(([,p])=>p.x);
+  const ys=entries.map(([,p])=>p.y);
+  const inside=([,p])=>p.x>=0&&p.x<=innerWidth&&p.y>=0&&p.y<=innerHeight;
+  const near=([,p])=>p.x>=-innerWidth*.12&&p.x<=innerWidth*1.12&&p.y>=-innerHeight*.12&&p.y<=innerHeight*1.12;
+  const inViewport=entries.filter(inside).length;
+  const nearViewport=entries.filter(near).length;
+  const earcupsInViewport=['cushion','controls'].filter(id=>{
+    const p=points[id];
+    return p&&p.x>=0&&p.x<=innerWidth&&p.y>=0&&p.y<=innerHeight;
+  }).length;
   return {
-    left,top,right,bottom,width,height,vertices,
-    visibleRatio:visibleArea/area,
+    points,
+    inViewport,
+    nearViewport,
+    earcupsInViewport,
+    left:Math.min(...xs),top:Math.min(...ys),
+    right:Math.max(...xs),bottom:Math.max(...ys),
+    spanX:Math.max(...xs)-Math.min(...xs),
+    spanY:Math.max(...ys)-Math.min(...ys),
     viewport:{width:innerWidth,height:innerHeight}
   };
 }
