@@ -10,7 +10,7 @@ const readAutomation=()=>safeJSON(AUTOMATION_KEY,DEFAULT_AUTOMATION);
 const saveJSON=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-function applyTheme(theme){const next=theme==="light"?"light":"dark";document.documentElement.dataset.theme=next;$("#themeToggle").setAttribute("aria-pressed",String(next==="light"));const meta=$('meta[name="theme-color"]');if(meta)meta.content=next==="light"?"#F5F8F6":"#0B1110"}
+function applyTheme(theme){const next=theme==="light"?"light":"dark";document.documentElement.dataset.theme=next;const toggle=$("#themeToggle"),label=$("#themeToggleLabel");if(toggle){toggle.setAttribute("aria-pressed",String(next==="light"));toggle.setAttribute("aria-label",next==="light"?"Switch to dark theme":"Switch to light theme")}if(label)label.textContent=next==="light"?"Light":"Dark";const meta=$('meta[name="theme-color"]');if(meta)meta.content=next==="light"?"#F5F8F6":"#0B1110"}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)}catch{return null}})()||"dark");
 $("#themeToggle").addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem(THEME_KEY,next)}catch{}});
 const starter=[
@@ -221,7 +221,29 @@ function renderCRM(){
   replayCrmOverviewMotion();
 }
 
-function renderAnalytics(){const total=Math.max(1,leads.length),hot=leads.filter(l=>l.status==="hot").length,review=leads.filter(l=>l.status==="review").length,nurture=leads.filter(l=>l.status==="nurture").length,avg=leads.length?Math.round(leads.reduce((s,l)=>s+l.score,0)/leads.length):0,high=leads.length?Math.round(leads.filter(l=>l.intent==="High").length/leads.length*100):0,urgent=leads.length?Math.round(leads.filter(l=>l.timeline==="asap").length/leads.length*100):0;$("#analyticsAvg").textContent=avg;$("#analyticsIntent").textContent=high+"%";$("#analyticsUrgent").textContent=urgent+"%";$("#analyticsTotal").textContent=leads.length+" lead"+(leads.length===1?"":"s");[["Hot",hot],["Review",review],["Nurture",nurture]].forEach(([n,v])=>{$("#bar"+n).style.width=Math.round(v/total*100)+"%";$("#bar"+n+"Value").textContent=v});$("#scoreBandFill").style.width=avg+"%";$("#scoreBandMarker").style.left="calc("+avg+"% - 5px)";const settings=readSettings();$("#analyticsInsight").textContent=avg>=settings.hot?"The current demo pipeline is weighted toward higher-priority opportunities.":avg>=settings.review?"The demo pipeline is mixed, with a meaningful share of leads needing review.":"Most current demo leads are early-stage and better suited to nurture."}
+function renderAnalytics(){
+  const enriched=leads.map(l=>({...l,source:sourceForLead(l),action:l.action||nextActionLabel(l)}));
+  const model=window.LeadFlowDashboard.buildDashboardModel(enriched);
+  $("#analyticsAvg").textContent=model.averageScore;
+  $("#analyticsIntent").textContent=model.statusPct.hot+"%";
+  $("#analyticsReview").textContent=model.status.review;
+  $("#analyticsUrgent").textContent=model.immediate.pct+"%";
+  $("#analyticsTotal").textContent=model.total+" lead"+(model.total===1?"":"s");
+  renderDistribution(model,"#analyticsDistribution","#analyticsDistributionLegend");
+  renderScoreTrend(model,"#analyticsScoreTrend");
+  renderSourceQuality(model,"#analyticsSourceQuality");
+  renderUrgency(model,"#analyticsUrgencyMix");
+  $("#scoreBandFill").style.width=model.averageScore+"%";
+  $("#scoreBandMarker").style.left="calc("+model.averageScore+"% - 6px)";
+  const settings=readSettings();
+  $("#analyticsInsight").textContent=!model.total
+    ?"Run the interactive workflow to populate analytics from browser-local CRM records."
+    :model.averageScore>=settings.hot
+      ?"The current pipeline average sits in the high-priority range. Review immediate sales handoffs first."
+      :model.averageScore>=settings.review
+        ?"The pipeline average sits in the review range. Prioritize the human-review queue while high-score leads move to sales review."
+        :"The current pipeline is weighted toward nurture. Focus on intent and urgency before escalating sales follow-up.";
+}
 function renderHistory(){const rows=leads.slice(0,5).map(l=>`<div class="run-history-row"><span class="run-dot ${l.status}"></span><div><b>${escapeHtml(l.name)} · ${escapeHtml(l.company)}</b><small>Qualification → demo CRM → ${l.status==="hot"?"sales review":"routing prepared"}</small></div><em>${escapeHtml(l.created)}</em></div>`).join("");$("#runHistoryRows").innerHTML=rows||'<div class="crm-empty" style="display:block">No workflow runs yet.</div>';$("#runHistoryCount").textContent=leads.length+" run"+(leads.length===1?"":"s")}
 function renderAll(){renderCRM();renderAnalytics();renderHistory();renderOps()}
 const crmTitles={leads:"Lead Operations",analytics:"Pipeline Analytics",automations:"Automation Control",settings:"Workspace Settings"};function switchCrmView(view){const next=crmTitles[view]?view:"leads";$$('.crm-nav-btn').forEach(b=>b.classList.toggle("active",b.dataset.crmView===next));$$('.crm-view').forEach(p=>p.classList.toggle("active",p.dataset.crmPanel===next));$("#crmViewTitle").textContent=crmTitles[next];$("#leadDrawer").classList.remove("open");if(next==="analytics")renderAnalytics();if(next==="automations")renderHistory();if(next==="leads"){const main=$(".crm-main");if(main)main.scrollTop=0;setTimeout(()=>$("#crmSearch").focus({preventScroll:true}),60)}}
@@ -231,7 +253,76 @@ const settingsEls={hot:$("#hotThreshold"),review:$("#reviewThreshold"),owner:$("
 function openCrm(){crmReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;renderAll();$("#crmModal").classList.add("open");$("#crmModal").setAttribute("aria-hidden","false");document.body.style.overflow="hidden";switchCrmView("leads")}function closeCrm(){$("#crmModal").classList.remove("open");$("#crmModal").setAttribute("aria-hidden","true");$("#leadDrawer").classList.remove("open");document.body.style.overflow="";if(crmReturnFocus?.isConnected)crmReturnFocus.focus()}["#openCrmTop","#openCrmHero","#openCrmResult","#openCrmFinal","#opsOpenCrm"].forEach(id=>$(id)?.addEventListener("click",()=>{openCrm();if(id==="#openCrmResult"&&currentLead)setTimeout(()=>openLead(currentLead.id),120)}));$("#closeCrm").addEventListener("click",closeCrm);$("#closeCrmTop").addEventListener("click",closeCrm);$("#crmModal").addEventListener("click",e=>{if(e.target===$("#crmModal"))closeCrm()});$("#crmSearch").addEventListener("input",renderCRM);$("#crmFilter").addEventListener("change",renderCRM);
 function closeLeadDrawer(){$("#leadDrawer").classList.remove("open");$$('#crmRows tr').forEach(r=>{r.classList.remove('selected');r.removeAttribute('aria-current')});if(drawerReturnFocus?.isConnected)drawerReturnFocus.focus()}$("#closeDrawer").addEventListener("click",closeLeadDrawer);function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;drawerReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;$("#drawerName").textContent=l.name;$("#drawerCompany").textContent=l.company;$("#drawerScore").textContent=l.score;$("#drawerStatus").textContent=l.status==="hot"?"HIGH PRIORITY":l.status==="review"?"NEEDS REVIEW":"NURTURE";$("#drawerNeed").textContent=l.need;$("#drawerBudget").textContent=l.budgetLabel;$("#drawerTimeline").textContent=l.timelineLabel;$("#drawerSummary").textContent=l.summary;$("#drawerFollowup").textContent=l.followup;$$('#crmRows tr').forEach(r=>{const sel=r.dataset.id===id;r.classList.toggle('selected',sel);if(sel)r.setAttribute('aria-current','true');else r.removeAttribute('aria-current')});$("#leadDrawer").classList.add("open");setTimeout(()=>$("#closeDrawer").focus(),40)}
 $("#showFollowup").addEventListener("click",()=>{if(!currentLead)return;followupReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;$("#followupTitle").textContent="Follow-up draft for "+currentLead.name;$("#followupSubject").textContent=currentLead.subject;$("#followupBody").textContent=currentLead.followup;$("#followupModal").classList.add("open");$("#followupModal").setAttribute("aria-hidden","false");setTimeout(()=>$("#closeFollowup").focus(),40)});function closeFollow(){$("#followupModal").classList.remove("open");$("#followupModal").setAttribute("aria-hidden","true");if(followupReturnFocus?.isConnected)followupReturnFocus.focus()}$("#closeFollowup").addEventListener("click",closeFollow);$("#followupModal").addEventListener("click",e=>{if(e.target===$("#followupModal"))closeFollow()});
-let guided=false,cancelled=false;function endTour(){guided=false;cancelled=true;$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough'}$("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});$("#guidedDemo").addEventListener("click",async()=>{if(guided||running)return;guided=true;cancelled=false;$("#guidedDemo").disabled=true;$("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");const steps=[["#demo","1 / 4","Run a lead through the visible workflow"],["#resultCard","2 / 4","Inspect the score and routing rationale"],["#workspace","3 / 4","Review how the CRM workspace updates"],["#architecture","4 / 4","See what is implemented versus illustrative"]];for(const [sel,idx,label] of steps){if(cancelled)break;$("#tourIndex").textContent=idx;$("#tourLabel").textContent=label;document.querySelector(sel)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});await delay(1300)}if(!cancelled)endTour()});
+let guided=false,cancelled=false;
+function setTourStatus(index,total,label){
+  $("#tourIndex").textContent=index+" / "+total;
+  $("#tourLabel").textContent=label;
+  $("#tourProgressBar").style.width=Math.round(index/total*100)+"%";
+}
+function resetTourFocus(){
+  $$(".tour-focus").forEach(el=>el.classList.remove("tour-focus"));
+}
+function focusTourTarget(selector){
+  resetTourFocus();
+  const target=document.querySelector(selector);
+  if(target)target.classList.add("tour-focus");
+  return target;
+}
+function endTour(){
+  guided=false;cancelled=true;resetTourFocus();
+  $("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");
+  $("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';
+  $("#tourProgressBar").style.width="0%";
+}
+function finishTour(){
+  guided=false;cancelled=false;resetTourFocus();
+  $("#tourProgressBar").style.width="100%";
+  $("#tourLabel").textContent="Walkthrough complete";
+  setTimeout(()=>{if(!guided){$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';$("#tourProgressBar").style.width="0%"}},700);
+}
+function tourHoldMs(ms){
+  return delay(matchMedia("(prefers-reduced-motion: reduce)").matches?Math.min(360,ms):ms);
+}
+async function waitForWorkflowCompletion(timeout=12000){
+  const started=performance.now();
+  while(!cancelled&&performance.now()-started<timeout){
+    if($("#execStatus").textContent==="COMPLETE"&&!running)return true;
+    await delay(90);
+  }
+  return false;
+}
+async function visitTourStep(selector,index,total,label,hold){
+  if(cancelled)return false;
+  setTourStatus(index,total,label);
+  const target=focusTourTarget(selector);
+  target?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  await tourHoldMs(hold);
+  return !cancelled;
+}
+async function runGuidedWalkthrough(){
+  if(guided||running)return;
+  guided=true;cancelled=false;
+  $("#guidedDemo").disabled=true;$("#guidedDemo").innerHTML='<span>●</span> Walkthrough running';
+  $("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");
+  const total=6;
+  if(!await visitTourStep("#workflow",1,total,"Watch the four-stage workflow complete a full motion cycle",5200))return;
+  setTourStatus(2,total,"Run a real example through all six execution stages");
+  focusTourTarget("#demo")?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  await tourHoldMs(650);
+  $('[data-lead-preset="hot"]')?.click();
+  $("#leadForm").requestSubmit();
+  const completed=await waitForWorkflowCompletion();
+  if(!completed||cancelled){if(!cancelled)endTour();return}
+  await tourHoldMs(900);
+  if(!await visitTourStep("#resultCard",3,total,"Read the completed score, rationale, and prepared next action",2600))return;
+  renderOps();replayDashboardMotion();
+  if(!await visitTourStep("#workspace",4,total,"Let the CRM analytics and operational dashboard finish updating",4200))return;
+  if(!await visitTourStep("#reliability",5,total,"Review exception handling and human-review safeguards",3000))return;
+  if(!await visitTourStep("#architecture",6,total,"Finish on the implemented architecture and system boundaries",3400))return;
+  if(!cancelled)finishTour();
+}
+$("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
+$("#guidedDemo").addEventListener("click",runGuidedWalkthrough);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();

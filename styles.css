@@ -2038,3 +2038,438 @@ html[data-theme=light] .fc-two b{color:#F3F7F4!important}
 }
 
 .blueprint-summary-action i{font-size:16px!important;line-height:1}
+
+/* 2026-09-25 targeted final polish: CRM analytics, full-width nav, theme switch, guided tour */
+
+/* Full-screen navigation shell. */
+.nav{
+  width:100%;
+  max-width:none;
+  height:76px;
+  padding:0;
+  position:sticky;
+  top:0;
+  z-index:40;
+  border-bottom:1px solid rgba(151,181,166,.16);
+  background:rgba(8,17,14,.92);
+  backdrop-filter:blur(18px) saturate(135%);
+  -webkit-backdrop-filter:blur(18px) saturate(135%);
+  box-shadow:0 8px 32px rgba(0,0,0,.08);
+}
+.nav-inner{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:28px;
+  padding:0 clamp(18px,3.4vw,56px);
+}
+.nav .desktop-nav{
+  justify-self:center;
+  gap:clamp(18px,2vw,30px);
+  font-size:14px;
+  font-weight:520;
+}
+.nav .brand{font-size:17px}
+.nav .nav-actions{justify-self:end}
+html[data-theme=light] .nav{
+  background:rgba(247,250,248,.93);
+  border-bottom-color:rgba(21,93,61,.18);
+  box-shadow:0 8px 32px rgba(23,52,42,.06);
+}
+
+/* Animated appearance toggle. */
+.theme-toggle{
+  min-width:104px;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:9px;
+  padding:7px 11px 7px 8px;
+  border-radius:999px;
+  border:1px solid #365548;
+  background:#0D1B16;
+  color:#DDE8E2;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.12);
+  transition:border-color .28s ease,background-color .28s ease,box-shadow .28s ease,transform .28s ease;
+}
+.theme-toggle:hover{
+  transform:translateY(-1px);
+  border-color:#5C806E;
+  background:#10221B;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 28px rgba(0,0,0,.18);
+}
+.theme-toggle-track{
+  position:relative;
+  flex:0 0 44px;
+  width:44px;
+  height:26px;
+  border-radius:999px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#10261E,#173A2A);
+  box-shadow:inset 0 0 0 1px rgba(142,240,186,.16);
+  transition:background .4s ease,box-shadow .4s ease;
+}
+.theme-toggle-track::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.7;
+  background:
+    radial-gradient(circle at 72% 30%,rgba(255,255,255,.65) 0 1px,transparent 1.4px),
+    radial-gradient(circle at 82% 62%,rgba(255,255,255,.45) 0 1px,transparent 1.4px),
+    radial-gradient(circle at 61% 72%,rgba(255,255,255,.35) 0 1px,transparent 1.4px);
+  transition:opacity .3s ease;
+}
+.theme-toggle-thumb{
+  position:absolute;
+  z-index:1;
+  left:3px;
+  top:3px;
+  width:20px;
+  height:20px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#EAF7F0;
+  color:#133A2B;
+  box-shadow:0 3px 9px rgba(0,0,0,.28);
+  transition:transform .42s cubic-bezier(.22,.75,.2,1),background-color .3s ease,color .3s ease;
+}
+.theme-toggle-thumb::before{
+  content:"☾";
+  font:700 13px/1 "Instrument Sans",sans-serif;
+  transform:translateY(-.5px);
+}
+.theme-toggle-label{
+  min-width:31px;
+  text-align:left;
+  font:650 13px/1 "Instrument Sans",sans-serif;
+  letter-spacing:-.01em;
+}
+html[data-theme=light] .theme-toggle{
+  background:#FFFFFF;
+  color:#17342A;
+  border-color:#A8C0B3;
+  box-shadow:0 7px 22px rgba(28,65,48,.09);
+}
+html[data-theme=light] .theme-toggle:hover{background:#F4F9F6;border-color:#6E9A82}
+html[data-theme=light] .theme-toggle-track{
+  background:linear-gradient(135deg,#DDF2E6,#BDE2CD);
+  box-shadow:inset 0 0 0 1px rgba(21,93,61,.15);
+}
+html[data-theme=light] .theme-toggle-track::after{opacity:0}
+html[data-theme=light] .theme-toggle-thumb{
+  transform:translateX(18px) rotate(180deg);
+  background:#145D3E;
+  color:#F7FAF8;
+}
+html[data-theme=light] .theme-toggle-thumb::before{
+  content:"☀";
+  transform:rotate(-180deg);
+}
+
+/* CRM typography system: information is never treated as decorative microtext. */
+.crm-main{font-family:"Instrument Sans",sans-serif}
+.crm-topbar small{font:600 12.5px/1.35 "IBM Plex Mono",monospace!important;letter-spacing:.035em}
+.crm-topbar h3{font-size:30px;line-height:1.08;letter-spacing:-.035em}
+.crm-top-actions{font-size:12.5px;line-height:1.4}
+.crm-top-actions button{font-size:12.5px;font-weight:600;min-height:44px;padding:9px 13px}
+.crm-metrics span,.crm-metrics small{font-size:12.5px!important;line-height:1.45}
+.crm-metrics b{font-size:30px;letter-spacing:-.035em}
+.crm-table th{font:600 12px/1.4 "IBM Plex Mono",monospace!important;letter-spacing:.025em}
+.crm-table td{font-size:13.5px;line-height:1.45}
+.crm-status{font-size:11.5px}
+.crm-empty{font-size:13px}
+.crm-panel-head small,.crm-panel-head>span{font:600 12.5px/1.4 "IBM Plex Mono",monospace!important}
+.crm-panel-head b{font-size:15.5px;line-height:1.3;margin-top:4px}
+.automation-header small,.automation-header>span{font-size:12px!important}
+.automation-header h4{font-size:23px}
+.automation-copy b{font-size:14px}
+.automation-copy p{font-size:13px;line-height:1.45}
+.automation-copy small{font-size:12px;line-height:1.4}
+.automation-toggle em{font-size:12px}
+.run-history-row b{font-size:13px}
+.run-history-row small,.run-history-row em{font-size:12px;line-height:1.4}
+.setting-field,.setting-select{font-size:13px}
+.setting-switch b{font-size:14px}
+.setting-switch small{font-size:12.5px;line-height:1.45}
+.integration-row b{font-size:13px}
+.integration-row small{font-size:12px}
+.integration-row em{font-size:11.5px}
+.settings-actions>span{font-size:12px}
+.lead-drawer>small,.drawer-followup span{font-size:12px!important}
+.drawer-fields span{font-size:12.5px}
+.drawer-fields b,.drawer-followup p{font-size:13.5px;line-height:1.5}
+.drawer-score span,.drawer-score em{font-size:12px}
+
+/* Pipeline Analytics v2 */
+.crm-analytics-v2{padding:2px 0 28px}
+.crm-analytics-v2 .analytics-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:20px 0 12px;
+}
+.crm-analytics-v2 .analytics-summary article{
+  position:relative;
+  min-height:124px;
+  padding:18px 19px;
+  overflow:hidden;
+  border:1px solid #2C473A;
+  border-radius:10px;
+  background:#0B1713;
+}
+.crm-analytics-v2 .analytics-summary article::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:#345749;
+}
+.crm-analytics-v2 .analytics-summary article:nth-child(2)::before{background:var(--red)}
+.crm-analytics-v2 .analytics-summary article:nth-child(3)::before{background:var(--amber)}
+.crm-analytics-v2 .analytics-summary article:nth-child(4)::before{background:var(--accent)}
+.crm-analytics-v2 .analytics-summary article>span{
+  display:block;
+  font-size:13px;
+  line-height:1.35;
+  font-weight:600;
+  color:#A7BBB0;
+}
+.crm-analytics-v2 .analytics-summary article>small{
+  display:block;
+  font-size:13px;
+  line-height:1.4;
+  color:#91A79C;
+}
+.crm-analytics-v2 .analytics-summary strong{
+  display:block;
+  margin:9px 0 6px;
+  font-size:34px;
+  line-height:1;
+  letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;
+  color:#F1F7F4;
+}
+.crm-analytics-v2 .analytics-primary-grid{
+  display:grid;
+  grid-template-columns:minmax(330px,.82fr) minmax(0,1.45fr);
+  gap:12px;
+}
+.crm-analytics-v2 .analytics-secondary-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-top:12px;
+}
+.crm-analytics-v2 .analytics-panel{
+  min-width:0;
+  padding:18px 19px;
+  border-radius:10px;
+  background:#0B1713;
+}
+.crm-analytics-v2 .crm-distribution-layout{
+  display:grid;
+  grid-template-columns:minmax(145px,180px) 1fr;
+  align-items:center;
+  gap:20px;
+  min-height:188px;
+}
+.crm-analytics-v2 .ops-donut svg{width:min(164px,100%)}
+.crm-analytics-v2 .ops-score-trend{min-height:188px}
+.crm-analytics-v2 .ops-score-trend svg{min-height:188px}
+.crm-analytics-v2 .ops-score-trend text,
+.crm-analytics-v2 .ops-donut text{font-size:12px}
+.crm-analytics-v2 .ops-legend-row b,
+.crm-analytics-v2 .ops-queue-row b,
+.crm-analytics-v2 .ops-quality-row b,
+.crm-analytics-v2 .ops-urgency-list b{font-size:13px}
+.crm-analytics-v2 .ops-legend-row small,
+.crm-analytics-v2 .ops-queue-row small,
+.crm-analytics-v2 .ops-quality-row span,
+.crm-analytics-v2 .ops-quality-row small,
+.crm-analytics-v2 .ops-urgency-list small{font-size:12px!important;line-height:1.35}
+.crm-analytics-v2 .ops-legend-row strong,
+.crm-analytics-v2 .ops-quality-row strong,
+.crm-analytics-v2 .ops-urgency-list strong{font-size:13px}
+.crm-analytics-v2 .analytics-score-band{
+  height:12px;
+  margin:28px 0 10px;
+}
+.crm-analytics-v2 .score-band-labels{
+  font:500 12px/1.35 "IBM Plex Mono",monospace;
+  color:#93A99E;
+}
+.crm-analytics-v2 .panel-copy{
+  margin:20px 0 0;
+  font-size:13.5px;
+  line-height:1.6;
+  color:#A9BCB2;
+}
+
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article{
+  background:#FFFFFF;
+  border-color:#B9CEC2;
+}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>span{color:#314D3F}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>small{color:#526C5E}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary strong{color:#102A1E}
+html[data-theme=light] .crm-analytics-v2 .analytics-panel{
+  background:#FFFFFF;
+  border-color:#B9CEC2;
+}
+html[data-theme=light] .crm-analytics-v2 .score-band-labels{color:#4D6759}
+html[data-theme=light] .crm-analytics-v2 .panel-copy{color:#415C4E}
+
+/* Guided walkthrough: allow each motion/execution phase to finish before moving on. */
+.tour-status{
+  min-width:min(430px,calc(100vw - 36px));
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:12px;
+  padding:12px 13px;
+  border-radius:12px;
+  background:rgba(10,25,19,.96);
+  backdrop-filter:blur(14px);
+}
+.tour-status>span{
+  min-width:38px;
+  font:600 12px/1.4 "IBM Plex Mono",monospace!important;
+  color:var(--accent);
+}
+.tour-status-copy{display:grid;gap:8px;min-width:0}
+.tour-status b{font-size:13px;line-height:1.35}
+.tour-status button{
+  width:38px;height:38px;
+  display:grid;place-items:center;
+  border:1px solid var(--line)!important;
+  border-radius:9px!important;
+  font-size:18px;
+}
+.tour-progress{
+  width:100%;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#21342C;
+}
+.tour-progress i{
+  display:block;
+  width:0;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,var(--accent),#65D99D);
+  box-shadow:0 0 14px rgba(142,240,186,.36);
+  transition:width .45s cubic-bezier(.22,.75,.2,1);
+}
+.tour-focus{
+  scroll-margin-top:98px;
+}
+html[data-theme=light] .tour-status{
+  background:rgba(255,255,255,.96);
+  box-shadow:0 15px 45px rgba(28,65,48,.12);
+}
+html[data-theme=light] .tour-progress{background:#D9E7DF}
+html[data-theme=light] .tour-progress i{background:linear-gradient(90deg,#0B6D45,#41B878)}
+
+@media(max-width:1080px){
+  .nav-inner{grid-template-columns:auto 1fr auto;padding-inline:20px}
+}
+@media(max-width:680px){
+  .nav{height:70px}
+  .nav-inner{gap:9px;padding:0 14px}
+  .nav .brand{font-size:16px}
+  .nav .brand-mark{width:36px;height:36px}
+  .theme-toggle{
+    min-width:82px;
+    min-height:44px;
+    gap:7px;
+    padding:6px 8px 6px 6px;
+  }
+  .theme-toggle-track{flex-basis:40px;width:40px;height:24px}
+  .theme-toggle-thumb{width:18px;height:18px}
+  html[data-theme=light] .theme-toggle-thumb{transform:translateX(16px) rotate(180deg)}
+  .theme-toggle-label{min-width:28px;font-size:12px}
+  .nav-cta{padding-inline:11px;font-size:12.5px!important}
+  .nav-cta span{font-size:12.5px}
+  .crm-topbar h3{font-size:27px}
+  .crm-analytics-v2 .analytics-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px;
+    margin-top:18px;
+  }
+  .crm-analytics-v2 .analytics-summary article{min-height:112px;padding:15px}
+  .crm-analytics-v2 .analytics-summary strong{font-size:31px}
+  .crm-analytics-v2 .analytics-primary-grid,
+  .crm-analytics-v2 .analytics-secondary-grid{grid-template-columns:1fr}
+  .crm-analytics-v2 .crm-distribution-layout{grid-template-columns:1fr;gap:12px}
+  .crm-analytics-v2 .ops-donut{display:grid;place-items:center}
+  .crm-analytics-v2 .analytics-panel{padding:16px}
+  .tour-status{left:10px;right:10px;bottom:10px;min-width:0}
+}
+@media(max-width:430px){
+  .nav-cta{padding-inline:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  .theme-toggle,.theme-toggle-track,.theme-toggle-thumb,.tour-progress i{transition:none!important}
+}
+
+/* Runtime typography cascade correction for Analytics v2. */
+.crm-analytics-v2 .analytics-summary article>small{font-size:13px!important}
+.crm-analytics-v2 .ops-legend-row small,
+.crm-analytics-v2 .ops-quality-row span,
+.crm-analytics-v2 .ops-quality-row small,
+.crm-analytics-v2 .ops-urgency-list small{font-size:12.5px!important}
+.crm-analytics-v2 .ops-score-trend text,
+.crm-analytics-v2 .ops-donut text{font-size:12.5px!important}
+.crm-analytics-v2 .score-band-labels{font-size:12.5px!important}
+@media(max-width:350px){
+  .theme-toggle-label{display:none}
+  .theme-toggle{min-width:48px;width:48px;padding-inline:4px;justify-content:center}
+}
+
+/* CRM-wide readability completion discovered in the post-redesign runtime audit. */
+.crm-overview-kpis b em,.drawer-score span{color:#A8BAB1!important}
+.automation-copy small,.run-history-row em{color:#8FA69B!important}
+.setting-field output{
+  min-height:36px;
+  font:600 13px/1 "IBM Plex Mono",monospace!important;
+  color:var(--accent)!important;
+}
+.integration-mark{font-size:12.5px!important;font-weight:600}
+.integration-row small{color:#82998D!important}
+.crm-status.hot{color:#FF979C;background:#32191D}
+.crm-status.review{color:#E4B35C;background:#302817}
+.crm-status.nurture{color:#B4C5BC;background:#1B2B24}
+html[data-theme=light] .crm-status.hot{color:#8D2730;background:#F7DADD}
+html[data-theme=light] .crm-status.review{color:#684300;background:#F4E6BF}
+html[data-theme=light] .crm-status.nurture{color:#314F40;background:#E1ECE5}
+html[data-theme=light] .automation-copy small,
+html[data-theme=light] .run-history-row em,
+html[data-theme=light] .integration-row small{color:#526B5D!important}
+
+/* Keep the Light/Dark label visible on normal mobile widths. */
+@media(min-width:351px) and (max-width:680px){
+  .theme-toggle{
+    min-width:82px!important;
+    width:auto!important;
+    padding:6px 8px 6px 6px!important;
+    justify-content:flex-start!important;
+  }
+  .theme-toggle-label{display:inline-block!important}
+}
+@media(max-width:350px){
+  .theme-toggle-label{display:none!important}
+  .theme-toggle{min-width:48px!important;width:48px!important;padding-inline:4px!important;justify-content:center!important}
+}
+html[data-theme=light] .crm-overview-kpis b em,
+html[data-theme=light] .drawer-score span{color:#526B5D!important}
+.nav-cta{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  white-space:nowrap;
+}
