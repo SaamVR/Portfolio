@@ -525,10 +525,31 @@ function focusTourTarget(selector){
   if(target)target.classList.add("tour-focus");
   return target;
 }
-function scrollTourTarget(selector){
+function waitForTourScrollSettle({timeout=1800,minWait=120,tolerance=.75,stableFrames=5}={}){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return Promise.resolve(!cancelled);
+  const started=performance.now();
+  let lastY=scrollY,stable=0;
+  return new Promise(resolve=>{
+    const sample=()=>{
+      if(cancelled){resolve(false);return}
+      const elapsed=performance.now()-started,nextY=scrollY;
+      if(elapsed>=minWait&&Math.abs(nextY-lastY)<=tolerance)stable+=1;else stable=0;
+      lastY=nextY;
+      if(stable>=stableFrames||elapsed>=timeout){resolve(!cancelled);return}
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+}
+async function scrollTourTarget(selector){
   const target=focusTourTarget(selector);
-  target?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
-  return target;
+  if(!target)return !cancelled;
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({behavior:reduced?"auto":"smooth",block:"center"});
+  if(reduced)return !cancelled;
+  const settled=await waitForTourScrollSettle();
+  if(settled&&!cancelled)await delay(70);
+  return settled&&!cancelled;
 }
 function endTour(){
   storyDirector?.cancelAll();
@@ -551,7 +572,7 @@ function tourHoldMs(ms){
 async function waitForWorkflowCompletion(timeout=12000){
   const started=performance.now();
   while(!cancelled&&performance.now()-started<timeout){
-    const done=$$("#executionSteps .exec-step.done").length;
+    const done=$("#steps .exec-step.done").length;
     if(guided)updateTourProgress(2,6,{fraction:Math.min(.96,Math.max(.08,done/6)),beat:done?done+" of 6 execution stages complete":"Submitting the lead…"});
     if($("#execStatus").textContent==="COMPLETE"&&!running){if(guided)updateTourProgress(2,6,{fraction:1,beat:"All six execution stages complete"});return true}
     await delay(90);
@@ -567,20 +588,20 @@ async function runGuidedWalkthrough(){
   const total=6;
 
   setTourChapter(1,total,...tourChapters[0]);
-  scrollTourTarget("#workflow");
+  if(!await scrollTourTarget("#workflow"))return;
   let storyResult=await playWorkflowStory(tourStoryOptions(1,total));
   if(cancelled||storyResult.status==="cancelled")return;
 
   setTourChapter(2,total,...tourChapters[1]);
-  scrollTourTarget("#demo");
-  await tourHoldMs(420);
+  if(!await scrollTourTarget("#demo"))return;
+  await tourHoldMs(260);
   $('[data-lead-preset="hot"]')?.click();
   $("#leadForm").requestSubmit();
   const completed=await waitForWorkflowCompletion();
   if(!completed||cancelled){if(!cancelled)endTour();return}
 
   setTourChapter(3,total,...tourChapters[2]);
-  scrollTourTarget("#resultCard");
+  if(!await scrollTourTarget("#resultCard"))return;
   updateTourProgress(3,total,{fraction:.35,beat:"92 / 100 · high priority"});
   await tourHoldMs(1100);
   updateTourProgress(3,total,{fraction:1,beat:"Sales review is prepared, not sent"});
@@ -588,17 +609,17 @@ async function runGuidedWalkthrough(){
 
   pendingOpsStory=false;
   setTourChapter(4,total,...tourChapters[3]);
-  scrollTourTarget("#workspace");
+  if(!await scrollTourTarget("#workspace"))return;
   storyResult=await playLeadOperationsStory(tourStoryOptions(4,total));
   if(cancelled||storyResult.status==="cancelled")return;
 
   setTourChapter(5,total,...tourChapters[4]);
-  scrollTourTarget("#reliability");
+  if(!await scrollTourTarget("#reliability"))return;
   storyResult=await playReliabilityStory("timeout",tourStoryOptions(5,total));
   if(cancelled||storyResult.status==="cancelled")return;
 
   setTourChapter(6,total,...tourChapters[5]);
-  scrollTourTarget("#architecture");
+  if(!await scrollTourTarget("#architecture"))return;
   storyResult=await playArchitectureStory(tourStoryOptions(6,total));
   if(cancelled||storyResult.status==="cancelled")return;
 
@@ -636,12 +657,13 @@ const revealTargets=[
   ...document.querySelectorAll(".portfolio-next-card"),
   ...document.querySelectorAll(".final-cta")
 ];
-revealTargets.forEach((el,i)=>{
-  el.classList.add("reveal-on-scroll");
-  const parent=el.parentElement;
-  if(parent?.classList.contains("brief-grid")||parent?.classList.contains("workflow-map")||parent?.classList.contains("implementation-proof")){
-    el.dataset.revealDelay=String((i%3)+1);
-  }
+revealTargets.forEach(el=>el.classList.add("reveal-on-scroll"));
+[".brief-grid",".workflow-map",".implementation-proof"].forEach(selector=>{
+  document.querySelectorAll(selector).forEach(group=>{
+    group.querySelectorAll(":scope > article").forEach((el,index)=>{
+      el.dataset.revealDelay=String(index+1);
+    });
+  });
 });
 if("IntersectionObserver" in window){
   const revealObserver=new IntersectionObserver(entries=>{
