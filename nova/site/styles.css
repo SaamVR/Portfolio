@@ -932,3 +932,77 @@ body[data-benchmark-panel="open"] .facts-panel{transform:none}
   .stage--design .design-detail-rail button[aria-pressed="true"]{transform:translateY(-2px)}
   .stage--design .interaction-note{display:none}
 }
+
+
+/* V3 factual project specifications + single-detail marker presentation. */
+.project-spec-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;
+  margin-top:30px;
+  border:1px solid rgba(15,14,12,.14);
+  background:rgba(15,14,12,.14);
+}
+.project-spec-grid article{
+  min-height:148px;
+  padding:22px;
+  background:#f0e9de;
+}
+.project-spec-grid strong{
+  display:block;
+  font:700 clamp(20px,2.1vw,30px)/1 var(--sans);
+  letter-spacing:-.035em;
+}
+.project-spec-grid span{
+  display:block;
+  margin-top:10px;
+  font:700 10px/1.25 var(--mono);
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:#786f65;
+}
+.project-spec-grid small{
+  display:block;
+  margin-top:16px;
+  font-size:13px;
+  line-height:1.5;
+  color:#5b554d;
+}
+.market-reference{
+  margin-top:40px;
+  padding-top:24px;
+  border-top:1px solid rgba(15,14,12,.15);
+}
+.market-reference h3{
+  margin:0;
+  font:700 clamp(28px,3.2vw,46px)/.98 var(--sans);
+  letter-spacing:-.045em;
+}
+.market-reference>p:not(.eyebrow){
+  max-width:680px;
+  margin:14px 0 0;
+  font-size:14px;
+  line-height:1.65;
+  color:#5b554d;
+}
+
+/* Design is a sequence, not three competing moving callouts. */
+body[data-range="design"] .hotspot{
+  opacity:0;
+  pointer-events:none;
+}
+body[data-range="design"][data-design-detail="cushion"] .hotspot[data-hotspot="cushion"][data-visible="true"],
+body[data-range="design"][data-design-detail="headband"] .hotspot[data-hotspot="headband"][data-visible="true"],
+body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="controls"][data-visible="true"]{
+  opacity:1;
+  pointer-events:auto;
+}
+body[data-range="design"] .hotspot:before{opacity:.24}
+body[data-range="design"] .hotspot[aria-expanded="true"]:before{opacity:.9}
+
+@media (max-width:700px){
+  .project-spec-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .project-spec-grid article{min-height:128px;padding:18px 16px}
+  .project-spec-grid strong{font-size:20px}
+  .project-spec-grid small{font-size:12px}
+}
