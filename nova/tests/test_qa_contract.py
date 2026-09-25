@@ -134,11 +134,11 @@ def test_r12_visual_qa_covers_webgl_failure_mobile_nav_facts_and_named_views():
     for token in [
         "rendererFailureAudit",
         "mobileNavAudit",
-        "productFactsAudit",
+        "v3ProductSpecsAudit",
         "inspectionViewsAudit",
         "STATIC MODE / 3D UNAVAILABLE",
         "mobile_nav.png",
-        "product_facts.png",
+        "v3_specs_desktop.png",
         "inspection_rear.png",
     ]:
         assert token in qa
@@ -178,9 +178,8 @@ def test_v3_visual_qa_covers_specs_details_and_motion_bridge():
         "v3MotionContinuityAudit",
         "v3_specs_desktop.png",
         "v3_specs_mobile.png",
-        "v3_detail_cushion.png",
-        "v3_detail_headband.png",
-        "v3_detail_controls.png",
+        "v3_detail_'+step+'.png",
+        "for(const step of ['cushion','headband','controls'])",
         "V3 Design detail rail out of sync",
         "V3 Design motion discontinuity",
     ]:
