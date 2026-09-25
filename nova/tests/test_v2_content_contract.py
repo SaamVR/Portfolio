@@ -382,3 +382,8 @@ def test_v3_design_shows_only_one_marker_at_a_time():
     assert 'body[data-range="design"].hotspot{opacity:0' in compact
     for detail in ["cushion","headband","controls"]:
         assert f'body[data-range="design"][data-design-detail="{detail}"].hotspot[data-hotspot="{detail}"]' in compact
+
+
+def test_v3_mobile_design_uses_stable_selector_rail_not_moving_marker_taps():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'body[data-range="design"].hotspot[data-visible="true"]{pointer-events:none!important' in compact
