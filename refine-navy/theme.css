@@ -985,3 +985,28 @@ html[data-theme=light] .final-cta{color:#242424!important}
 html[data-theme=light] .final-cta .tag{color:var(--navy-primary-strong)!important}
 html[data-theme=light] .final-cta h2{color:#242424!important}
 html[data-theme=light] .final-cta>div>p:not(.tag){color:#555555!important}
+
+/* Final visual hierarchy pass after screenshot review */
+.hero-actions #guidedDemo.guided-btn,
+.hero-actions #guidedDemo.guided-btn:hover{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+  color:#B8B8B8!important;
+}
+.hero-actions #guidedDemo.guided-btn:hover{color:var(--navy-primary)!important}
+.hero-actions #guidedDemo .guided-btn-label{color:inherit!important}
+.hero-actions #guidedDemo .guided-btn-play{
+  background:transparent!important;
+  color:var(--navy-primary)!important;
+  border:1px solid currentColor!important;
+  box-shadow:none!important;
+}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{color:#444444!important}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{color:var(--navy-primary-strong)!important}
+
+.trust-grid>div:first-child small,
+.capability span{color:var(--navy-primary)!important}
+.capability b{color:var(--text-primary,var(--text))!important}
