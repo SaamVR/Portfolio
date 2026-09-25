@@ -75,3 +75,62 @@ let guided=false,cancelled=false;function endTour(){guided=false;cancelled=true;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();
+
+/* Presentation reveal choreography */
+const revealTargets=[
+  ...document.querySelectorAll(".section-head"),
+  ...document.querySelectorAll(".brief-grid article"),
+  ...document.querySelectorAll(".workflow-map article"),
+  ...document.querySelectorAll(".demo-layout"),
+  ...document.querySelectorAll(".ops-dashboard"),
+  ...document.querySelectorAll(".reliability-lab"),
+  ...document.querySelectorAll(".architecture"),
+  ...document.querySelectorAll(".stack-configurator"),
+  ...document.querySelectorAll(".implementation-proof article"),
+  ...document.querySelectorAll(".calculator"),
+  ...document.querySelectorAll(".blueprint-layout"),
+  ...document.querySelectorAll(".case-grid"),
+  ...document.querySelectorAll(".portfolio-next-card"),
+  ...document.querySelectorAll(".final-cta")
+];
+revealTargets.forEach((el,i)=>{
+  el.classList.add("reveal-on-scroll");
+  const parent=el.parentElement;
+  if(parent?.classList.contains("brief-grid")||parent?.classList.contains("workflow-map")||parent?.classList.contains("implementation-proof")){
+    el.dataset.revealDelay=String((i%3)+1);
+  }
+});
+if("IntersectionObserver" in window){
+  const revealObserver=new IntersectionObserver(entries=>{
+    for(const entry of entries){
+      if(entry.isIntersecting){
+        entry.target.classList.add("is-visible");
+        revealObserver.unobserve(entry.target);
+      }
+    }
+  },{threshold:.12,rootMargin:"0px 0px -6% 0px"});
+  revealTargets.forEach(el=>revealObserver.observe(el));
+  const sectionObserver=new IntersectionObserver(entries=>{
+    for(const entry of entries){
+      if(entry.isIntersecting)entry.target.classList.add("is-section-visible");
+    }
+  },{threshold:.12});
+  document.querySelectorAll(".section").forEach(section=>sectionObserver.observe(section));
+}else{
+  revealTargets.forEach(el=>el.classList.add("is-visible"));
+  document.querySelectorAll(".section").forEach(section=>section.classList.add("is-section-visible"));
+}
+
+/* Active-section orientation for the long-form presentation. */
+const navSectionLinks=[...document.querySelectorAll(".desktop-nav a[href^='#']")];
+if("IntersectionObserver" in window){
+  const navObserver=new IntersectionObserver(entries=>{
+    const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+    if(!visible)return;
+    navSectionLinks.forEach(link=>link.classList.toggle("is-active",link.getAttribute("href")==="#"+visible.target.id));
+  },{threshold:[.18,.35,.55],rootMargin:"-18% 0px -58% 0px"});
+  navSectionLinks.forEach(link=>{
+    const target=document.querySelector(link.getAttribute("href"));
+    if(target)navObserver.observe(target);
+  });
+}

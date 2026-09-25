@@ -748,3 +748,411 @@ html[data-theme=light] .run-dot.hot{background:var(--action)}
 html[data-theme=light] .score-band{
   background:linear-gradient(90deg,#DDE7E1 0 55%,#EFE1BD 55% 80%,#E9B8B4 80%);
 }
+
+/* 2026-09-25 typography + presentation system */
+:root{
+  --font-ui:"Instrument Sans",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+html{font-size:16px}
+body{
+  font-family:var(--font-ui);
+  font-size:16px;
+  line-height:1.6;
+  font-optical-sizing:auto;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font-family:var(--font-ui)}
+h1,h2,h3,h4,.brand,.primary-btn,.secondary-btn,.guided-btn,.nav-cta{
+  font-family:var(--font-ui);
+}
+.eyebrow,.tag,.brand-mark,.hero-proof,.panel-top,.mini-terminal div,
+.trust-grid>div:first-child small,.capability span,.backend-proof b,.backend-proof em,
+.card-title>span,.execution-head>span,.execution-meta,.step-state,.exec-step em,
+.event-console-head,.event-row,.ai-summary span,.result-explain-grid>div>span,
+.factor-list em,.ops-panel-kicker small,.ops-status-icon,.ops-console-brand>span,
+.ops-console-state b,.ops-panel-head small,.ops-panel-head>span,.ops-chart-item>b,
+.ops-chart-item>span,.ops-table th,.ops-status,.ops-activity-row,.reliability-copy small,
+.reliability-actions button,.reliability-log>div,.architecture small,.arch-arrow,.stack span,
+.stack-config-copy small,.implementation-proof small,.engineering-proof summary span,
+.engineering-grid small,.engineering-grid pre,.calc-result>small,.bp-head small,
+.blueprint-editor-head span,.blueprint-editor-controls button,.case-list b,
+.portfolio-next-eyebrow,.portfolio-next-tags span,.crm-logo,.crm-topbar small,.crm-score,
+.crm-status,.crm-panel-head small,.crm-panel-head>span,.score-band-labels,
+.automation-header small,.automation-header>span,.automation-toggle em,.run-history-row em,
+.setting-field output,.integration-mark,.integration-row em,.drawer-score em,
+.message-preview small,.tour-status span{
+  font-family:var(--font-mono);
+}
+
+/* Primary reading hierarchy */
+.brand{font-size:17px;font-weight:700;letter-spacing:-.025em}
+.desktop-nav{font-size:14px;line-height:1.2}
+.theme-toggle,.nav-cta,.secondary-btn,.guided-btn,.primary-btn{
+  font-size:14px;
+  line-height:1.15;
+  min-height:44px;
+}
+.hero{padding-top:88px;padding-bottom:98px}
+.eyebrow,.tag{
+  font-size:11px;
+  line-height:1.45;
+  letter-spacing:.11em;
+}
+h1{
+  font-size:clamp(54px,5.4vw,74px);
+  line-height:.99;
+  letter-spacing:-.047em;
+  font-weight:650;
+}
+.hero-lede{
+  font-size:19px;
+  line-height:1.62;
+  max-width:640px;
+}
+.hero-proof{
+  font-size:10.5px;
+  line-height:1.5;
+  letter-spacing:.025em;
+  text-transform:none;
+}
+.panel-top{font-size:9.5px}
+.flow-node small{font-size:9px}
+.flow-node b{font-size:16px}
+.flow-node span{font-size:10.5px}
+.mini-terminal div{font-size:9.25px;line-height:1.45}
+.fc-one small{font-size:9px}.fc-one b{font-size:25px}.fc-one span{font-size:10px}
+.fc-two small{font-size:8.5px}.fc-two b{font-size:11px}
+
+/* Case-study rhythm */
+.trust-grid{min-height:116px}
+.trust-grid>div:first-child small{font-size:9.5px}
+.trust-grid>div:first-child strong{font-size:14.5px;line-height:1.45}
+.capability span{font-size:9.5px}
+.capability b{font-size:15.5px}
+.capability small{font-size:12px;line-height:1.45}
+.section{padding-top:104px;padding-bottom:104px}
+.section-head{margin-bottom:46px}
+h2,.section-head h2{
+  font-size:clamp(35px,3.5vw,48px);
+  line-height:1.06;
+  letter-spacing:-.038em;
+  font-weight:650;
+}
+.section-head>p{
+  font-size:17px;
+  line-height:1.68;
+}
+.brief-grid article{padding:26px}
+.brief-grid small{font-size:9.5px}
+.brief-grid b{font-size:20px;line-height:1.25}
+.brief-grid p{font-size:14px;line-height:1.68}
+.brief-grid strong{font-size:11.5px;line-height:1.45}
+.step-num{font-size:10px}
+.workflow-map h3{font-size:19px}
+.workflow-map p{font-size:14px;line-height:1.62}
+.backend-proof{padding:12px 14px}
+.backend-proof b{font-size:10px}
+.backend-proof small{font-size:10.5px}
+.backend-proof em{font-size:9.5px}
+
+/* Interactive demo: readable at normal viewing distance */
+.lead-form,.execution-card,.result-card{padding:30px}
+.card-title b{font-size:15px}
+.card-title small{font-size:13px;line-height:1.45}
+.demo-presets button{font-size:12px;min-height:36px}
+label{font-size:14px;line-height:1.4}
+input,textarea,select{font-size:15px;line-height:1.45}
+.form-error{font-size:13px}
+.microcopy{font-size:12px;line-height:1.55}
+.execution-head div{font-size:13.5px}
+.execution-head>span{font-size:9.5px}
+.execution-meta{font-size:10.5px;line-height:1.5}
+.exec-step{min-height:66px}
+.exec-step b{font-size:13.5px;line-height:1.35}
+.exec-step small{font-size:11.5px;line-height:1.4}
+.exec-step em{font-size:10px}
+.step-state{font-size:10px}
+.event-console-head{font-size:10px}
+.event-row{font-size:9.75px;line-height:1.5}
+.event-empty{font-size:12px}
+.result-empty b{font-size:16px}
+.result-empty p{font-size:13px;line-height:1.5}
+.temperature{font-size:9.5px}
+.score-top p{font-size:13px}
+.signal-grid span{font-size:11px}
+.signal-grid b{font-size:13px}
+.ai-summary span,.result-explain-grid>div>span{font-size:9.5px}
+.ai-summary p{font-size:13px;line-height:1.62}
+.result-explain-grid>div>b{font-size:12px;line-height:1.45}
+.result-explain-grid>div>small{font-size:11px}
+.factor-list>span{font-size:11px}
+.factor-list em{font-size:10.5px}
+
+/* CRM workspace preview: stop reading like a thumbnail */
+.ops-dashboard{grid-template-columns:300px 1fr}
+.ops-input-panel{padding:28px}
+.ops-panel-kicker small{font-size:9.5px}
+.ops-input-panel h3{font-size:27px}
+.ops-input-panel>p{font-size:14px;line-height:1.68}
+.ops-sync-flow span{font-size:12px;line-height:1.35}
+.ops-input-status b{font-size:12px}
+.ops-input-status small{font-size:11px}
+.ops-console{padding:23px}
+.ops-console-brand b{font-size:12.5px}
+.ops-console-brand small{font-size:10px}
+.ops-console-state b{font-size:9px}
+.ops-console-state small{font-size:9px}
+.ops-console-actions>button{font-size:10.5px;min-height:38px}
+.ops-kpis span,.ops-kpis small{font-size:10.5px;line-height:1.4}
+.ops-kpis strong{font-size:27px}
+.ops-panel-head small,.ops-panel-head>span{font-size:9.5px}
+.ops-panel-head b{font-size:14px}
+.ops-chart-item>b{font-size:8.75px}
+.ops-chart-item>span{font-size:8px}
+.ops-source-row span,.ops-source-row b{font-size:10px}
+.ops-table th{font-size:9.5px}
+.ops-table td{font-size:12px}
+.ops-table td:first-child b{font-size:12px}
+.ops-table td:first-child small{font-size:10px}
+.ops-table td strong{font-size:11px}
+.ops-status{font-size:8.5px}
+.ops-activity-row{font-size:9.5px}
+
+/* Reliability / architecture */
+.reliability-copy small,.stack-config-copy small{font-size:9.5px}
+.reliability-copy b,.stack-config-copy b{font-size:16px}
+.reliability-copy p,.stack-config-copy p{font-size:13.5px;line-height:1.65}
+.reliability-actions button{font-size:10.5px;line-height:1.35;min-height:42px}
+.reliability-log>div{font-size:10px}
+.architecture small{font-size:9.5px}
+.architecture b{font-size:15px}
+.architecture span{font-size:11.5px;line-height:1.5}
+.arch-arrow{font-size:9px}
+.stack span{font-size:9.5px}
+.stack-config-controls label{font-size:12px}
+.stack-config-controls select{font-size:13px}
+.stack-config-flow span{font-size:10px}
+.implementation-proof small{font-size:9px}
+.implementation-proof b{font-size:14px}
+.implementation-proof p{font-size:13px;line-height:1.62}
+.engineering-proof summary b{font-size:14px}
+.engineering-proof summary span{font-size:9px}
+.engineering-grid small{font-size:9px}
+.engineering-grid pre{font-size:10.5px;line-height:1.55}
+.engineering-guards span{font-size:11px}
+
+/* ROI, blueprint, contribution */
+.calc-inputs label{font-size:14px}
+.number-field input{font-size:24px}
+.number-field span{font-size:12px}
+.calc-result>small{font-size:9.5px}
+.roi-primary span{font-size:14px}
+.roi-output-grid>div{font-size:13px}
+.roi-output-grid b{font-size:14px}
+.roi-track-row>div:first-child{font-size:11px}
+.calc-result p{font-size:12.5px;line-height:1.6}
+.bp-head span{font-size:13px}
+.bp-head small{font-size:9px}
+.bp-node{font-size:11px}
+.blueprint-editor-head span{font-size:9px}
+.blueprint-editor-head small{font-size:10px}
+.blueprint-editor-controls input{font-size:12px}
+.blueprint-editor-controls button{font-size:9.5px}
+.blueprint-output>p{font-size:11.5px;line-height:1.55}
+.case-copy>p{font-size:16px;line-height:1.7}
+.case-list span{font-size:13.5px}
+.case-list b{font-size:9.5px}
+.project-meta,.project-stack{font-size:13px;line-height:1.6}
+.portfolio-next-eyebrow{font-size:9.5px}
+.portfolio-next-copy h2{font-size:38px}
+.portfolio-next-copy>p:not(.tag){font-size:15px}
+.portfolio-next-tags span{font-size:9.5px}
+.final-cta p{font-size:15px;line-height:1.65}
+.footer{font-size:11.5px}
+
+/* CRM modal readability */
+.crm-topbar small{font-size:9.5px}
+.crm-topbar h3{font-size:26px}
+.crm-top-actions{font-size:10px}
+.crm-top-actions button{font-size:11px;min-height:36px}
+.crm-metrics span,.crm-metrics small{font-size:10.5px}
+.crm-metrics b{font-size:26px}
+.crm-table th{font-size:10px}
+.crm-table td{font-size:13.5px}
+.crm-score{font-size:12px}
+.crm-status{font-size:9px}
+.analytics-summary span,.analytics-summary small{font-size:10px}
+.crm-panel-head small,.crm-panel-head>span{font-size:9.5px}
+.crm-panel-head b{font-size:14px}
+.distribution-row{font-size:10px}
+.score-band-labels{font-size:9px}
+.panel-copy{font-size:11.5px}
+.automation-header small,.automation-header>span{font-size:9px}
+.automation-header h4{font-size:22px}
+.automation-copy b{font-size:13px}
+.automation-copy p{font-size:11.5px;line-height:1.45}
+.automation-copy small{font-size:9.5px}
+.automation-toggle em{font-size:9px}
+.run-history-row b{font-size:11.5px}
+.run-history-row small{font-size:9.5px}
+.run-history-row em{font-size:9px}
+.setting-field,.setting-select{font-size:10.5px}
+.setting-switch b{font-size:11.5px}
+.setting-switch small{font-size:9.5px}
+.integration-row b{font-size:10.5px}
+.integration-row small{font-size:8.5px}
+.integration-row em{font-size:8.5px}
+.lead-drawer>small{font-size:10px}
+.lead-drawer h3{font-size:27px}
+.drawer-fields span{font-size:11px}
+.drawer-fields b{font-size:13px;line-height:1.5}
+.drawer-followup p{font-size:13px}
+.message-preview b{font-size:12px}
+.message-preview p{font-size:12.5px}
+.tour-status b{font-size:11.5px}
+
+/* Presentation motion: section reveal, not decorative noise. */
+.reveal-on-scroll{
+  opacity:0;
+  transform:translateY(22px);
+  transition:opacity .72s cubic-bezier(.2,.7,.2,1),transform .72s cubic-bezier(.2,.7,.2,1);
+}
+.reveal-on-scroll.is-visible{opacity:1;transform:none}
+.reveal-on-scroll[data-reveal-delay="1"]{transition-delay:.08s}
+.reveal-on-scroll[data-reveal-delay="2"]{transition-delay:.16s}
+.reveal-on-scroll[data-reveal-delay="3"]{transition-delay:.24s}
+.section-head::before{
+  transform-origin:left center;
+  transition:transform .8s cubic-bezier(.2,.7,.2,1);
+}
+.section:not(.is-section-visible) .section-head::before{transform:scaleX(.2)}
+.section.is-section-visible .section-head::before{transform:scaleX(1)}
+.workflow-map article:hover,.brief-grid article:hover,.implementation-proof article:hover{
+  transform:translateY(-5px);
+}
+@media(max-width:680px){
+  h1{font-size:clamp(42px,11.3vw,50px);line-height:1.01}
+  .hero-lede{font-size:17px;line-height:1.62}
+  .eyebrow,.tag{font-size:10.5px}
+  .hero-proof{font-size:10px;line-height:1.6;gap:9px}
+  h2,.section-head h2{font-size:34px;line-height:1.08}
+  .section-head>p{font-size:16px}
+  .section{padding-top:68px;padding-bottom:68px}
+  .brief-grid p,.workflow-map p{font-size:14px}
+  .ops-dashboard{grid-template-columns:1fr}
+  .portfolio-next-copy h2{font-size:31px}
+}
+@media(prefers-reduced-motion:reduce){
+  .reveal-on-scroll{opacity:1!important;transform:none!important;transition:none!important}
+  .section-head::before{transform:none!important;transition:none!important}
+}
+
+/* Audit loop 2: orientation, presentation entrance and final hierarchy polish */
+.nav{
+  position:sticky;
+  top:0;
+  z-index:40;
+  background:#08110E;
+  box-shadow:0 1px 0 rgba(255,255,255,.045);
+}
+.desktop-nav a{
+  position:relative;
+  padding:10px 0;
+  transition:color .2s ease;
+}
+.desktop-nav a::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:3px;
+  height:2px;
+  background:var(--accent);
+  transform:scaleX(0);
+  transform-origin:left center;
+  transition:transform .25s ease;
+}
+.desktop-nav a:hover::after,
+.desktop-nav a.is-active::after{transform:scaleX(1)}
+.desktop-nav a.is-active{color:var(--text)}
+html[data-theme=light] .nav{
+  background:#F4F7F5;
+  box-shadow:0 1px 0 rgba(16,32,24,.12);
+}
+
+/* Opening sequence: communicates presentation hierarchy without blocking interaction. */
+@keyframes heroEnter{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:none}
+}
+@keyframes heroPanelEnter{
+  from{opacity:0;transform:translateY(12px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+.hero-copy>.eyebrow,
+.hero-copy>h1,
+.hero-copy>.hero-lede,
+.hero-copy>.hero-actions,
+.hero-copy>.hero-proof{
+  animation:heroEnter .65s cubic-bezier(.2,.7,.2,1) both;
+}
+.hero-copy>h1{animation-delay:.06s}
+.hero-copy>.hero-lede{animation-delay:.12s}
+.hero-copy>.hero-actions{animation-delay:.18s}
+.hero-copy>.hero-proof{animation-delay:.24s}
+.hero-visual{animation:heroPanelEnter .8s .14s cubic-bezier(.2,.7,.2,1) both}
+
+/* Fewer weak labels; stronger readable grouping. */
+.hero-proof i{opacity:.55}
+.brief-grid strong{
+  display:inline-block;
+  padding-top:8px;
+  border-top:1px solid var(--line);
+}
+.case-list span{line-height:1.45}
+.final-cta h2{line-height:1.02}
+
+/* Make interactive areas read as controls under Fitts/Jakob rather than tiny text links. */
+.reliability-actions button{padding:10px 12px}
+.blueprint-editor-controls button{min-height:36px}
+.ops-console-actions>button{padding:9px 11px}
+.crm-top-actions button{padding:8px 11px}
+@media(prefers-reduced-motion:reduce){
+  .hero-copy>.eyebrow,.hero-copy>h1,.hero-copy>.hero-lede,.hero-copy>.hero-actions,.hero-copy>.hero-proof,.hero-visual{
+    animation:none!important;
+  }
+}
+
+/* Audit loop 3: final 20-rule edge cases and interaction finish */
+section[id]{scroll-margin-top:96px}
+.crm-shell{grid-template-columns:64px 1fr}
+.crm-sidebar button{
+  width:42px;
+  height:42px;
+}
+.exec-step.active b{color:#F06D65}
+html[data-theme=light] .exec-step.active b{color:#9A312D}
+@keyframes resultIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:none}
+}
+@keyframes modalIn{
+  from{opacity:0;transform:translateY(10px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+.result-content:not(.hidden){animation:resultIn .42s cubic-bezier(.2,.7,.2,1)}
+.crm-modal.open .crm-shell,
+.followup-modal.open .followup-dialog{animation:modalIn .34s cubic-bezier(.2,.7,.2,1)}
+.engineering-proof[open] .engineering-grid{animation:resultIn .34s ease both}
+@media(max-width:680px){
+  section[id]{scroll-margin-top:82px}
+  .crm-shell{grid-template-columns:52px 1fr}
+  .crm-sidebar{padding-left:5px;padding-right:5px}
+  .crm-sidebar button{width:42px;height:42px}
+  .lead-drawer{width:calc(100% - 52px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .result-content:not(.hidden),.crm-modal.open .crm-shell,.followup-modal.open .followup-dialog,.engineering-proof[open] .engineering-grid{
+    animation:none!important;
+  }
+}
