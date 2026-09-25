@@ -49,4 +49,3 @@ test("guided walkthrough has a visible progress track",()=>{
   assert.match(css,/\.tour-progress/);
   assert.match(app,/tourProgressBar/);
 });
-

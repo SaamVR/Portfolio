@@ -114,4 +114,3 @@ assert out["open"] is False and out["disabled"] is False,out
 assert not out["errors"],out
 print("TOUR",out)
 print("CRM_NAV_WALKTHROUGH_RUNTIME_AUDIT=PASS")
-
