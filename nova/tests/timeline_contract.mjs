@@ -102,7 +102,7 @@ assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
-  assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
+  assert.ok(pose >= .24 && pose <= .34,`V3 normal scroll must stay in the stable open-product lane at ${p}, got ${pose}`);
 }
 
 
@@ -185,18 +185,19 @@ assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment
   'R13 Noise-control scene should communicate change through the environment');
 
 
-// R14 / V1-motion restoration: source animation must keep breathing through the
-// commercial chapters even when screen-space yaw/position remain intentionally calm.
-for(const [label,points,minSpan] of [
-  ['Sound',[.34,.36,.40,.44],.035],
-  ['Adaptive',[.47,.49,.54,.57],.045],
-  ['Form',[.60,.64,.67,.71],.055],
-  ['Inspect',[.74,.76,.79,.84],.045],
-  ['Resolution',[.87,.90,.93,.945],.055]
+// V3: retain subtle life in the source clip, but never let normal scrolling
+// traverse a large skeletal transition. Camera and lighting carry the drama.
+for(const [label,points,minSpan,maxSpan] of [
+  ['Sound',[.34,.36,.40,.44],.006,.035],
+  ['Adaptive',[.47,.49,.54,.57],.006,.035],
+  ['Form',[.60,.64,.67,.71],.006,.045],
+  ['Inspect',[.74,.76,.79,.84],.006,.035],
+  ['Resolution',[.87,.90,.93,.945],.004,.030]
 ]){
   const poses=points.map(p=>sampleTimeline(p,'desktop').product.pose);
   const span=Math.max(...poses)-Math.min(...poses);
-  assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
+  assert.ok(span >= minSpan, `V3 ${label} should retain subtle source motion; pose span=${span}`);
+  assert.ok(span <= maxSpan, `V3 ${label} must not trigger an expand/fold-like source jump during normal scroll; pose span=${span}`);
 }
 
 
