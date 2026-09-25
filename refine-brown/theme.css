@@ -506,4 +506,8 @@ html[data-theme=light] .crm-overview-kpis article,
 html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}
 html[data-theme=light] .crm-table th{background:#F2F2F2!important}
 html[data-theme=light] .crm-table td{border-color:#D8D8D8!important}
-
+html[data-theme=light] .hero .panel-top .healthy{color:var(--accent)!important}
+html[data-theme=light] .fc-one small{color:var(--accent)!important}
+html[data-theme=light] .fc-one span{color:#666666!important}
+html[data-theme=light] .fc-two small{color:#666666!important}
+html[data-theme=light] .fc-two b{color:#242424!important}
