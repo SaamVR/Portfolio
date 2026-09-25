@@ -25,8 +25,13 @@ assert.ok(Math.abs(i.yaw) <= .52);
 assert.ok(Math.abs(i.pitch) <= .12);
 inspect.reset();
 i = inspect.getInfluence();
-assert.equal(i.yaw, 0);
-assert.equal(i.pitch, 0);
+assert.equal(i.view, 'front');
+assert.ok(Math.abs(i.yaw) > 0, 'reset should release manual yaw smoothly instead of snapping');
+assert.ok(Math.abs(i.pitch) > 0, 'reset should release manual pitch smoothly instead of snapping');
+for(let n=0;n<8;n++) inspect.update(1/60);
+const resetReleased=inspect.getInfluence();
+assert.ok(Math.abs(resetReleased.yaw) < Math.abs(i.yaw));
+assert.ok(Math.abs(resetReleased.pitch) < Math.abs(i.pitch));
 
 const modes = createModeController();
 modes.setListening('focus');
