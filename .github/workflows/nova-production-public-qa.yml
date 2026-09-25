@@ -51,11 +51,14 @@ jobs:
                 hasV1:Boolean(document.querySelector('a[href="/v1/"]')),
                 hasFacts:Boolean(document.querySelector('#productFactsTrigger')),
                 hasMobileMenu:Boolean(document.querySelector('#mobileNavToggle')),
+                hasGuided:Boolean(document.querySelector('#guidedTourStart')),
+                hasEvidence:Boolean(document.querySelector('#validation-evidence')),
+                hasCaseStudy:document.body.innerText.includes('Designed like a launch.') && document.body.innerText.includes('Built like a product.'),
                 bodySize
               };
             });
             const min=prefix==='mobile'?16:16;
-            if(state.model!=='ready'||!state.title.includes('NOVA')||!state.hasV1||!state.hasFacts||!state.hasMobileMenu||state.bodySize<min){
+            if(state.model!=='ready'||!state.title.includes('NOVA')||!state.hasV1||!state.hasFacts||!state.hasMobileMenu||!state.hasGuided||!state.hasEvidence||!state.hasCaseStudy||state.bodySize<min){
               throw new Error(prefix+' production root invalid '+JSON.stringify(state));
             }
             await page.screenshot({path:'nova-production-qa/root_'+prefix+'.png'});
