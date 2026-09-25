@@ -3,3 +3,5 @@ R11 production verification for exact deployed site source 62dc4d8aad433460a7f1b
 R11 f482 production root + /v1 verification.
 
 R12 production verification for exact site source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc.
+
+R13 production verification for exact refined site source e39dc80ea88a62eb560403ee2e84c12b31ab00a6.
