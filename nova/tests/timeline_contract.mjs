@@ -44,7 +44,14 @@ interaction.listening = { mode:'focus', weight:1 };
 
 const composed = composeVisualState(base, interaction);
 assert.equal(composed.product.pose, .40);
-assert.notEqual(composed.camera.position[0], base.camera.position[0]);
+assert.equal(composed.camera.position[0], base.camera.position[0],
+  'inspection fine-tune should keep camera framing centered');
+assert.equal(composed.camera.position[1], base.camera.position[1],
+  'inspection fine-tune should not vertically pan the camera');
+assert.ok(Math.abs(composed.product.yaw-(base.product.yaw+.2))<1e-9,
+  'inspection yaw should fine-tune product orientation');
+assert.ok(Math.abs(composed.product.pitch-(base.product.pitch+.05))<1e-9,
+  'inspection pitch should fine-tune product tilt');
 assert.notEqual(composed.environment.spatialSpread, base.environment.spatialSpread);
 assert.deepEqual(composed.product.position, base.product.position);
 
