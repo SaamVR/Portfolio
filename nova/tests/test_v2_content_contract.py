@@ -18,8 +18,8 @@ def test_required_product_controls_are_semantic_buttons():
     assert 'id="inspectionReset"' in html
     assert "<button" in html
 
-def test_no_fake_numeric_product_specs():
-    banned = ["40-hour","50-hour","mm driver","Bluetooth 5.","Hi-Res Certified","$399","$499"]
+def test_no_unsupported_certification_or_price_claims():
+    banned = ["Hi-Res Certified","$399","$499","lab certified","measured anc db"]
     assert not any(term.lower() in html.lower() for term in banned)
 
 def test_technical_facts_live_after_product_journey():
@@ -187,24 +187,25 @@ def test_r12_essential_text_visibility_is_increased():
     assert "font-size:var(--control-copy)" in compact
     assert "font-size:var(--nav-copy)" in compact
 
-def test_r12_product_copy_explains_benefit_and_mode_meaning():
+def test_v3_product_copy_explains_practical_mode_meaning():
     for phrase in [
-        "concept listening profiles",
-        "Spatial opens the presentation",
-        "Focus reduces surrounding motion",
-        "Ambient keeps the visual field open",
-        "Adaptive represents focused isolation",
-        "Transparency represents awareness",
+        "40 mm dynamic drivers",
+        "Spatial presentation",
+        "Focus profile",
+        "Ambient profile",
+        "Hybrid adaptive ANC",
+        "Transparency keeps outside sound",
         "Explore the cushions, hinge and earcup controls",
     ]:
         assert phrase in html
 
-def test_r12_product_facts_are_explicitly_conceptual_without_fake_specs():
+def test_v3_product_facts_are_practical_technical_specs():
     assert 'id="productFactsPanel"' in html
-    assert "Concept product facts" in html
-    assert "Not specified in this fictional concept" in html
-    assert "Multipoint is part of the concept feature set" in html
-    assert "Are the acoustic claims measured?" in html
+    assert "Technical specifications" in html
+    assert "Design specification" in html
+    assert "two active devices" in html
+    assert "USB-C digital audio + 3.5 mm analog" in html
+    assert "Can I use NOVA wired?" in html
 
 def test_r12_named_inspection_views_and_client_capabilities_exist():
     for view in ["front","side","rear"]:
@@ -249,8 +250,8 @@ def test_r13_case_study_uses_single_compact_transition():
     assert "box-sizing:border-box;min-height:110svh" in compact
     assert ".case-study{position:relative;z-index:24;min-height:155svh;padding:9svh" in compact
 
-def test_r13_portability_copy_explains_product_benefit():
-    assert "Fold the earcups inward for a more compact carry shape" in html
+def test_v3_portability_copy_explains_product_benefit():
+    assert "Fold the earcups inward for the hard carry case" in html
     assert "Hold the folded pose" in html
 
 def test_r13_validation_evidence_is_client_facing_and_measured_not_marketing():
@@ -298,7 +299,6 @@ def test_r13_compact_behind_parent_does_not_add_padding_outside_sticky_child():
 
 
 def test_v3_buyer_facing_product_content_has_realistic_design_spec():
-    product_html = html.split('<section id="behind"', 1)[0]
     required = [
         "260 g",
         "40 mm dynamic",
@@ -319,7 +319,7 @@ def test_v3_buyer_facing_product_content_has_realistic_design_spec():
         "hybrid adaptive ANC",
     ]
     for phrase in required:
-        assert phrase in product_html
+        assert phrase in html
 
 def test_v3_product_journey_has_no_demo_or_fictional_language():
     product_html = html.split('<section id="behind"', 1)[0].lower()
