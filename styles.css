@@ -2011,3 +2011,30 @@ html[data-theme=light] .fc-two b{color:#F3F7F4!important}
   color:inherit!important;
   line-height:inherit!important;
 }
+
+/* Final micro-polish: keep disclosure controls geometrically stable. */
+.blueprint-summary-action i{
+  font-size:0;
+  transform:none!important;
+}
+.blueprint-summary-action i::after{
+  content:"+";
+  display:block;
+  font-size:16px;
+  line-height:1;
+  transition:transform .2s ease;
+}
+.blueprint-disclosure[open] .blueprint-summary-action i::after{transform:rotate(45deg)}
+
+/* Final audit: disclosure affordances are controls, not micro-decoration. */
+.architecture-more>summary>span,
+.engineering-proof summary i,
+.blueprint-summary-action i{
+  font-size:14px!important;
+  line-height:1;
+}
+@media(prefers-reduced-motion:reduce){
+  .reveal-on-scroll{transition:none!important}
+}
+
+.blueprint-summary-action i{font-size:16px!important;line-height:1}

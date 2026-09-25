@@ -50,3 +50,7 @@ test("navigation leaves section links neutral while the hero is still above the 
   assert.match(app, /const firstTarget=/);
   assert.match(app, /firstTarget&&firstTarget\.getBoundingClientRect\(\)\.top>readingLine/);
 });
+
+test("blueprint disclosure affordance keeps a visible plus glyph", () => {
+  assert.match(css, /\.blueprint-summary-action i\s*\{[^}]*font-size:\s*16px/);
+});
