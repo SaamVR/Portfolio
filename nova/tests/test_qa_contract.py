@@ -165,3 +165,16 @@ def test_r13_visual_qa_covers_guided_tour_compact_handoff_and_evidence():
         "compact_case_study.png",
     ]:
         assert token in qa
+
+
+def test_v3_visual_qa_covers_benchmark_detail_rail_and_motion_continuity():
+    for token in [
+        "benchmarkPanelAudit",
+        "benchmark_panel.png",
+        "designDetailRailAudit",
+        "design_detail_cushion.png",
+        "design_detail_controls.png",
+        "motionContinuityAudit",
+        "motion_continuity.json",
+    ]:
+        assert token in qa
