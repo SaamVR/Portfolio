@@ -244,3 +244,39 @@ Do not report production complete until those checks pass.
   - Sarah / Acme Dental POST returns score 92;
   - `/v1/` remains the legacy LeadFlow AI build;
   - `/v1/api/qualify` remains `deterministic-qualification-v1`.
+
+
+## Full CRM operations dashboard expansion — production update
+
+- Production source commit: `c71d4c333e3d0afd797793feb682efdc11ffbfa3`.
+- Cloudflare immutable deployment: https://e83e5117.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Frozen legacy: https://leadflow-ai-bhy.pages.dev/v1/
+- Expanded the full CRM default Leads view to match the detail level of the CRM Workspace Preview using the same `LeadFlowDashboard.buildDashboardModel(leads)` model.
+- Full CRM now includes:
+  - pipeline / high-priority / average-score / immediate-follow-up KPI strip;
+  - qualification-distribution donut;
+  - recent qualification score trend;
+  - next-action attention queue;
+  - source-quality count + average-score view;
+  - urgency/timeline mix;
+  - operational lead table with source + next action;
+  - human-readable recent activity.
+- Refactored the preview infographic renderers to accept alternate CRM targets rather than creating a second analytics implementation.
+- Search, status filter, lead drawer, Analytics, Automations, and Settings tabs remain functional.
+- CRM open-state bug fixed: search receives focus with `preventScroll`, so the modal opens at the top dashboard summary instead of auto-scrolling past the KPIs.
+- Compact CRM layout uses a 2×2 KPI grid and contained horizontal table scroll.
+- Added presentation entrance choreography for CRM dashboard regions with `prefers-reduced-motion` fallback.
+- Visibility audit: zero visible CRM text nodes below 12px in both dark and light themes.
+- Test gate:
+  - Node: 10/10 tests pass;
+  - dedicated Chrome CRM runtime audit passes dark + light, search/filter, row drawer, all four CRM tabs, compact layout containment, empty state, and reduced-motion state;
+  - zero CRM browser errors in the audit;
+  - `git diff --check` passes;
+  - no changes to `v1`, `functions/v1`, or `functions/api/qualify.js`.
+- Public post-deploy verification on immutable and canonical domains:
+  - all six detailed CRM regions are present;
+  - shared CRM renderer and readability CSS are served;
+  - root API remains `deterministic-qualification-v2`;
+  - Sarah / Acme Dental POST returns score 92;
+  - `/v1/` and `/v1/api/qualify` remain unchanged on v1.
