@@ -290,13 +290,15 @@ jobs:
             const {page}=await readyPage(context,'mobile-interactions');
 
             await scrollProgress(page,.18);
+            const detailControl=page.locator('[data-detail-id="cushion"]');
             const hotspot=page.locator('[data-hotspot="cushion"]');
             await page.waitForFunction(()=>document.querySelector('[data-hotspot="cushion"]')?.dataset.visible==='true');
-            await hotspot.tap();
+            await detailControl.tap();
             await page.waitForFunction(()=>{
               const el=document.querySelector('[data-hotspot="cushion"]');
               const label=el?.querySelector('span');
-              return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
+              return document.querySelector('[data-detail-id="cushion"]')?.getAttribute('aria-pressed')==='true' &&
+                el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
             });
             const expandedLabel=await hotspot.locator('span').evaluate(el=>{
               const rect=el.getBoundingClientRect();
@@ -307,12 +309,12 @@ jobs:
                 viewport:{width:innerWidth,height:innerHeight}
               };
             });
-            if(expandedLabel.display==='none'||!expandedLabel.text) throw new Error('expanded hotspot label missing '+JSON.stringify(expandedLabel));
+            if(expandedLabel.display==='none'||!expandedLabel.text) throw new Error('mobile design detail did not expand cushion annotation '+JSON.stringify(expandedLabel));
             if(expandedLabel.labelRect.left<8||expandedLabel.labelRect.right>expandedLabel.viewport.width-8){
               throw new Error('expanded hotspot label outside viewport '+JSON.stringify(expandedLabel));
             }
             await page.screenshot({path:'nova-qa/mobile_hotspot_detail.png'});
-            await hotspot.tap();
+            await detailControl.tap();
 
             await scrollProgress(page,.36);
             await page.locator('[data-listening-mode="ambient"]').tap();
