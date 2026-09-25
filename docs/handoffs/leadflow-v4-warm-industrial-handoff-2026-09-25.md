@@ -11,6 +11,8 @@ V4 feature branch:
 Merged V4 source:
 - PR #27: https://github.com/SaamVR/Portfolio/pull/27
 - squash merge commit: `54bb13ca316d04f51a266c2e513ed66c49b01e7d`
+- preservation branch: `preserve/leadflow-v4-warm-industrial-20260925`
+- preservation branch is pinned to the reviewed V4 application source commit above
 
 Production-trigger commit on main:
 - `0aaa860dcfbafb3c0e0cf29abb0af89819515eb1`
