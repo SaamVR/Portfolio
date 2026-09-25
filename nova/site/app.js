@@ -243,6 +243,22 @@ function loadModel(){
     const cable=model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
+    // Measure/center the animated asset in a neutral local frame. Bounds from
+    // an already-oriented ancestor are world-space values and must not be
+    // written back as a local center offset; doing so makes turntable yaw orbit
+    // the whole product out of frame.
+    normalizationRoot.scale.setScalar(1);
+    presentation.position.set(0,0,0);
+    presentation.rotation.set(0,0,0);
+    presentation.scale.set(1,1,1);
+    orientationGroup.position.set(0,0,0);
+    orientationGroup.rotation.set(0,0,0);
+    orientationGroup.scale.set(1,1,1);
+    centerGroup.position.set(0,0,0);
+    centerGroup.rotation.set(0,0,0);
+    centerGroup.scale.set(1,1,1);
+    scene.updateMatrixWorld(true);
+
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
     const center=primaryProductBounds.getCenter(new THREE.Vector3());
