@@ -48,6 +48,8 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       weight=1;
     },
     reset(){
+      yaw=0;
+      pitch=0;
       yawTarget=0;
       pitchTarget=0;
       view='front';
