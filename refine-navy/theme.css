@@ -576,3 +576,390 @@ html[data-theme=light] .ops-activity-row code,
 html[data-theme=light] .ops-activity-row b{color:#666666!important}
 html[data-theme=light] .ops-story-ribbon{background:#FFFFFF!important;border-color:#D2D2D2!important}
 html[data-theme=light] .ops-story-token{background:#F3F3F3!important;border-color:#D2D2D2!important}
+
+/* LEADFLOW NAVY — GUIDELINE REFINEMENT
+   References applied:
+   - Material motion: informative, focused, hierarchical, outcome-led.
+   - WCAG 2.2.2 / 2.3.3: no persistent decorative motion; reduced-motion remains authoritative.
+   - WCAG 1.4.3: strong readable foreground/background contrast.
+   - NN/g: compact opaque sticky header; progressive disclosure for secondary detail.
+*/
+:root{
+  --navy-primary:#76A9DA;
+  --navy-primary-strong:#3E78AA;
+  --navy-focus:#8FC0EE;
+  --navy-motion-fast:160ms;
+  --navy-motion-standard:240ms;
+  --navy-motion-emphasis:320ms;
+  --navy-motion-ease:cubic-bezier(.4,0,.2,1);
+}
+html[data-theme=light]{
+  --navy-primary:#245B8F;
+  --navy-primary-strong:#174A75;
+  --navy-focus:#2B6CA3;
+  --v4-green:#245B8F;
+  --accent:#245B8F;
+  --accent-readable:#245B8F;
+  --text:#242424;
+  --text-soft:#444444;
+  --muted:#666666;
+}
+
+/* Focused motion: remove automatic decorative loops. State changes remain event-driven. */
+.signal,.connector i,.flow-node,.fc-two,#runAutomation{animation:none!important}
+.signal,.connector i{opacity:0!important}
+.presentation-progress span{transition:none!important}
+.workflow-map article:hover{transform:none!important}
+.primary-btn:hover,
+.secondary-btn:hover,
+.nav-cta:hover,
+.guided-btn:hover,
+.theme-toggle:hover{transform:none!important}
+
+.primary-btn,
+.secondary-btn,
+.nav-cta,
+.guided-btn,
+.theme-toggle,
+.desktop-nav a,
+.reliability-actions button,
+.demo-presets button,
+.blueprint-editor-controls button,
+.architecture-more>summary>span,
+.engineering-proof>summary i,
+.blueprint-disclosure>summary .blueprint-summary-action i{
+  transition:
+    color var(--navy-motion-fast) var(--navy-motion-ease),
+    background-color var(--navy-motion-fast) var(--navy-motion-ease),
+    border-color var(--navy-motion-fast) var(--navy-motion-ease),
+    box-shadow var(--navy-motion-standard) var(--navy-motion-ease),
+    opacity var(--navy-motion-fast) var(--navy-motion-ease)!important;
+}
+.story-focus,
+.workflow-stage,
+.incident-beat-button,
+.arch-source,
+.arch-core,
+.arch-column>div{
+  transition:
+    border-color var(--navy-motion-fast) var(--navy-motion-ease),
+    background-color var(--navy-motion-standard) var(--navy-motion-ease),
+    box-shadow var(--navy-motion-standard) var(--navy-motion-ease),
+    opacity var(--navy-motion-fast) var(--navy-motion-ease)!important;
+}
+
+/* Sticky navigation: compact, opaque, stable, and visually separated from content. */
+.nav{
+  height:64px!important;
+  background:#141414!important;
+  border-bottom:1px solid #303030!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.025)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.nav-inner{
+  gap:22px!important;
+  padding-inline:clamp(16px,3vw,44px)!important;
+}
+.nav .brand{font-size:16px!important}
+.nav .brand-mark{
+  width:34px!important;
+  height:34px!important;
+  border-radius:7px!important;
+  box-shadow:none!important;
+}
+.nav .desktop-nav{
+  gap:clamp(16px,1.8vw,26px)!important;
+  font-size:13.5px!important;
+}
+.desktop-nav a{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding:0!important;
+}
+.desktop-nav a::after{
+  bottom:7px!important;
+  height:2px!important;
+  background:var(--navy-primary)!important;
+  transition:transform var(--navy-motion-standard) var(--navy-motion-ease)!important;
+}
+.desktop-nav a.is-active{
+  color:var(--navy-primary-strong)!important;
+  font-weight:650!important;
+}
+html[data-theme=light] .nav{
+  background:#FAFAFA!important;
+  border-bottom-color:#D6D6D6!important;
+  box-shadow:0 1px 0 rgba(0,0,0,.025)!important;
+}
+
+/* Compact utility controls keep the persistent chrome subordinate to page content. */
+.theme-toggle{
+  min-width:92px!important;
+  min-height:42px!important;
+  padding:6px 9px 6px 7px!important;
+  border-radius:8px!important;
+  background:#1D1D1D!important;
+  border-color:#3A3A3A!important;
+  box-shadow:none!important;
+}
+.theme-toggle-track{
+  width:38px!important;
+  flex-basis:38px!important;
+  height:22px!important;
+  background:#292929!important;
+  box-shadow:inset 0 0 0 1px #454545!important;
+}
+.theme-toggle-track::after{display:none!important}
+.theme-toggle-thumb{
+  width:16px!important;
+  height:16px!important;
+  background:#E8E8E8!important;
+  color:#222!important;
+}
+html[data-theme=light] .theme-toggle{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  color:#444444!important;
+}
+html[data-theme=light] .theme-toggle-track{
+  background:#E7E7E7!important;
+  box-shadow:inset 0 0 0 1px #CCCCCC!important;
+}
+html[data-theme=light] .theme-toggle-thumb{
+  background:var(--navy-primary-strong)!important;
+  color:#FFFFFF!important;
+}
+.nav-cta{
+  min-height:42px!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+}
+
+/* Restrained navy hierarchy: color marks actions and state, not large surfaces. */
+.primary-btn{
+  background:var(--navy-primary-strong)!important;
+  color:#FFFFFF!important;
+  border:1px solid var(--navy-primary-strong)!important;
+  border-radius:8px!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.10)!important;
+}
+.primary-btn:hover{
+  background:#123D63!important;
+  border-color:#123D63!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.12)!important;
+}
+html:not([data-theme=light]) .primary-btn:hover{
+  background:#4D86B8!important;
+  border-color:#4D86B8!important;
+}
+.secondary-btn,.nav-cta{
+  background:#1B1B1B!important;
+  border-color:#3C3C3C!important;
+  color:#E5E5E5!important;
+}
+html[data-theme=light] .secondary-btn,
+html[data-theme=light] .nav-cta{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  color:#333333!important;
+}
+html[data-theme=light] .secondary-btn:hover,
+html[data-theme=light] .nav-cta:hover{
+  background:#F3F3F3!important;
+  border-color:#B8B8B8!important;
+}
+.hero-actions .guided-btn{
+  color:#AFAFAF!important;
+  padding-inline:6px!important;
+}
+html[data-theme=light] .hero-actions .guided-btn{color:#555555!important}
+.hero-actions .guided-btn:hover{color:var(--navy-primary)!important}
+
+/* Hero becomes a crisp product diagram rather than an ambient/glass effect. */
+.glass-panel{
+  border-radius:10px!important;
+  border:1px solid #3C3C3C!important;
+  border-left:3px solid var(--navy-primary)!important;
+  background:#1A1A1A!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.08)!important;
+  backdrop-filter:none!important;
+}
+html[data-theme=light] .glass-panel{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  border-left-color:var(--navy-primary)!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.08)!important;
+}
+.panel-top{
+  background:#202020!important;
+  border-bottom-color:#383838!important;
+}
+html[data-theme=light] .hero .panel-top{
+  background:#F3F3F3!important;
+  border-bottom-color:#D5D5D5!important;
+}
+.flow-orbit{background:none!important}
+.flow-line{
+  background:linear-gradient(90deg,#424242 0%,var(--navy-primary) 50%,#424242 100%)!important;
+  opacity:.72;
+}
+html[data-theme=light] .flow-line{
+  background:linear-gradient(90deg,#D8D8D8 0%,var(--navy-primary) 50%,#D8D8D8 100%)!important;
+}
+.flow-node{
+  background:#202020!important;
+  border-color:#454545!important;
+  box-shadow:none!important;
+}
+.flow-node.n3,.flow-node.n4{border-color:var(--navy-primary)!important}
+html[data-theme=light] .flow-node{
+  background:#FAFAFA!important;
+  border-color:#D2D2D2!important;
+  color:#242424!important;
+}
+html[data-theme=light] .flow-node.n3,
+html[data-theme=light] .flow-node.n4{border-color:var(--navy-primary)!important}
+.float-card{
+  background:#1D1D1D!important;
+  border-color:#414141!important;
+  border-radius:8px!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.12)!important;
+  backdrop-filter:none!important;
+}
+html[data-theme=light] .float-card{
+  background:#FFFFFF!important;
+  border-color:#D2D2D2!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.07)!important;
+}
+.guided-btn-play{
+  background:transparent!important;
+  color:var(--navy-primary)!important;
+  box-shadow:none!important;
+  border:1px solid currentColor;
+}
+
+/* Fewer competing card treatments; hierarchy comes from spacing, type, and selective borders. */
+.brief-grid article,
+.workflow-map,
+.demo-layout,
+.ops-dashboard,
+.reliability-lab,
+.architecture-more,
+.engineering-proof,
+.calculator,
+.blueprint-disclosure,
+.portfolio-next-card,
+.crm-shell{
+  border-radius:9px!important;
+  box-shadow:none!important;
+}
+.workflow-map article{border-radius:0!important}
+.trust-band{box-shadow:none!important}
+.section-head{margin-bottom:34px!important}
+.tag,.eyebrow{color:var(--navy-primary)!important}
+html[data-theme=light] .tag,
+html[data-theme=light] .eyebrow{color:var(--navy-primary-strong)!important}
+
+/* Progressive disclosure: secondary technical depth is clearly available without dominating. */
+.architecture-more>summary,
+.engineering-proof>summary,
+.blueprint-disclosure>summary{
+  min-height:56px!important;
+  cursor:pointer;
+  background:#1C1C1C!important;
+  border-radius:8px;
+}
+html[data-theme=light] .architecture-more>summary,
+html[data-theme=light] .engineering-proof>summary,
+html[data-theme=light] .blueprint-disclosure>summary{
+  background:#F7F7F7!important;
+}
+.architecture-more>summary:hover,
+.engineering-proof>summary:hover,
+.blueprint-disclosure>summary:hover{
+  background:#222222!important;
+}
+html[data-theme=light] .architecture-more>summary:hover,
+html[data-theme=light] .engineering-proof>summary:hover,
+html[data-theme=light] .blueprint-disclosure>summary:hover{
+  background:#EFEFEF!important;
+}
+.architecture-more>summary:focus-visible,
+.engineering-proof>summary:focus-visible,
+.blueprint-disclosure>summary:focus-visible{
+  outline:3px solid var(--navy-focus)!important;
+  outline-offset:3px!important;
+}
+.architecture-more[open]>summary,
+.engineering-proof[open]>summary,
+.blueprint-disclosure[open]>summary{
+  border-bottom:1px solid #3A3A3A!important;
+  border-bottom-left-radius:0;
+  border-bottom-right-radius:0;
+}
+html[data-theme=light] .architecture-more[open]>summary,
+html[data-theme=light] .engineering-proof[open]>summary,
+html[data-theme=light] .blueprint-disclosure[open]>summary{
+  border-bottom-color:#D2D2D2!important;
+}
+
+/* Final CTA reads like a confident product close rather than another large color block. */
+.final-cta{
+  background:#1A1A1A!important;
+  border:1px solid #3D3D3D!important;
+  border-left:4px solid var(--navy-primary)!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+}
+.final-cta::before{
+  width:4px!important;
+  background:var(--navy-primary)!important;
+}
+html[data-theme=light] .final-cta{
+  background:#FFFFFF!important;
+  border-color:#D2D2D2!important;
+  border-left-color:var(--navy-primary)!important;
+}
+html[data-theme=light] .final-cta::before{background:var(--navy-primary)!important}
+
+/* Strong keyboard focus and readable active navigation. */
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible,
+.nav-cta:focus-visible,
+.guided-btn:focus-visible,
+.theme-toggle:focus-visible,
+.desktop-nav a:focus-visible,
+.reliability-actions button:focus-visible,
+.demo-presets button:focus-visible{
+  outline:3px solid var(--navy-focus)!important;
+  outline-offset:3px!important;
+}
+
+/* Mobile: preserve content-to-chrome ratio and avoid sticky-header crowding. */
+@media(max-width:680px){
+  .nav{height:60px!important}
+  .nav-inner{padding-inline:12px!important;gap:8px!important}
+  .nav .brand{font-size:15px!important}
+  .nav .brand-mark{width:32px!important;height:32px!important}
+  .theme-toggle{min-width:76px!important;min-height:40px!important;padding:5px 7px 5px 6px!important}
+  .theme-toggle-track{width:34px!important;flex-basis:34px!important;height:20px!important}
+  .theme-toggle-thumb{width:14px!important;height:14px!important}
+  .nav-cta{min-height:40px!important;padding-inline:10px!important}
+  section[id]{scroll-margin-top:72px!important}
+  .hero{padding-top:54px!important}
+  .section-head{margin-bottom:28px!important}
+}
+
+/* OS-level reduced-motion preference remains authoritative. */
+@media(prefers-reduced-motion:reduce){
+  .leadflow-refine-navy *,
+  .leadflow-refine-navy *::before,
+  .leadflow-refine-navy *::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
+
