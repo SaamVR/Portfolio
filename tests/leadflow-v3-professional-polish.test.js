@@ -99,9 +99,10 @@ test("Scenario Story has a neutral visual state before a scenario is selected",(
   assert.match(css,/\.incident-scene\.neutral-scene/);
 });
 
-test("manual Workflow and Architecture replay suppress automatic observer restart",()=>{
-  assert.match(app,/workflowReplay[^\n]*workflowStoryPlayed=true/);
-  assert.match(app,/workflowStoryObserver\?\.disconnect\(\)/);
-  assert.match(app,/architectureReplay[^\n]*architectureStoryPlayed=true/);
-  assert.match(app,/architectureStoryObserver\?\.disconnect\(\)/);
+test("manual replay stays available while section observers remain armed for re-entry",()=>{
+  assert.match(app,/workflowReplay[^\n]*playWorkflowStory/);
+  assert.match(app,/architectureReplay[^\n]*playArchitectureStory/);
+  assert.doesNotMatch(app,/workflowStoryObserver\?\.disconnect\(\)/);
+  assert.doesNotMatch(app,/architectureStoryObserver\?\.disconnect\(\)/);
+  assert.match(app,/dwellMs:1000/);
 });

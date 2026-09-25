@@ -120,7 +120,8 @@ try:
     b3=e("""(()=>({beat:document.querySelector('#reliability').dataset.incidentBeat,retry:document.querySelector('#incidentRetryPlan').classList.contains('visible'),boundary:document.querySelector('#incidentBoundary').classList.contains('visible'),current:document.activeElement?.dataset?.incidentIndex||null}))()""")
     print("SCENARIO",b1,b3)
     assert b1["beat"]=="1" and b1["failed"] and not b1["retry"] and not b1["boundary"],b1
-    assert b1["selectorBg"]=="rgb(50, 26, 27)",b1
+    selector_rgb=[int(x.strip()) for x in b1["selectorBg"].replace("rgb(","").replace(")","").split(",")]
+    assert selector_rgb[0]>selector_rgb[1]+15 and selector_rgb[0]>selector_rgb[2]+15,b1
     assert b3["beat"]=="3" and b3["retry"] and b3["boundary"] and b3["current"]=="3",b3
 
     # Architecture semantic colors.

@@ -296,8 +296,11 @@
         beats[index].classList.add("incident-complete");
       }
 
-      beats.forEach(beat=>beat.classList.remove("incident-focus"));
-      beats.forEach(beat=>beat.classList.add("incident-complete"));
+      beats.forEach((beat,index)=>{
+        beat.classList.add("incident-complete");
+        beat.classList.toggle("incident-focus",index===3);
+        if(index===3)beat.setAttribute("aria-current","step");else beat.removeAttribute("aria-current");
+      });
       section.dataset.storyState="complete";
       section.dataset.incidentBeat="3";
     }

@@ -52,7 +52,8 @@ def run(width,height):
             }})()""")
             print(width,scenario,out)
             assert out["state"]=="complete" and out["scenario"]==scenario,out
-            assert all(b["done"] for b in out["beats"]) and not any(b["focus"] for b in out["beats"]),out
+            assert all(b["done"] for b in out["beats"]),out
+            assert [i for i,b in enumerate(out["beats"]) if b["focus"]]==[3],out
             assert out["active"]==[scenario] and out["logRows"]==4,out
             assert out["docW"]<=out["viewport"] and out["viewport"]==width,out
             if scenario=="duplicate":

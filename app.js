@@ -136,6 +136,7 @@ function playReliabilityStory(scenario,options={}){
   return storyDirector?.playReliabilityStory(scenario,{settings:readSettings(),recordCount:leads.length,score:67,...options})||Promise.resolve({status:"complete",story:"reliability"});
 }
 function selectIncidentBeat(index){
+  reliabilityStoryObserver?.cancelPending();
   const section=$("#reliability");
   const scenario=section?.dataset.incidentScenario&&section.dataset.incidentScenario!=="none"
     ?section.dataset.incidentScenario
@@ -167,7 +168,7 @@ function bindIncidentBeatInteractions(){
     });
   });
 }
-$$("[data-edge]").forEach(btn=>btn.addEventListener("click",()=>playReliabilityStory(btn.dataset.edge)));
+$$("[data-edge]").forEach(btn=>btn.addEventListener("click",()=>{reliabilityStoryObserver?.cancelPending();playReliabilityStory(btn.dataset.edge)}));
 bindIncidentBeatInteractions();
 let opsActivity=[];
 function nextActionLabel(lead){
@@ -379,7 +380,7 @@ function playLeadOperationsStory(options={}){
     ...options
   })||Promise.resolve({status:"complete",story:"operations"});
 }
-function createStoryArrivalObserver(target,onArrive,{dwellMs=700,rootMargin="-24% 0px -38% 0px"}={}){
+function createStoryArrivalObserver(target,onArrive,{dwellMs=1000,rootMargin="-24% 0px -38% 0px"}={}){
   if(!target||!("IntersectionObserver" in window))return null;
   let arrivalTimer=null,inBand=false;
   const clearArrival=()=>{if(arrivalTimer){clearTimeout(arrivalTimer);arrivalTimer=null}};
@@ -401,22 +402,25 @@ function createStoryArrivalObserver(target,onArrive,{dwellMs=700,rootMargin="-24
   observer.observe(target);
   return {
     disconnect(){clearArrival();observer.disconnect();inBand=false},
+    cancelPending(){clearArrival()},
     schedule,
     isArrived(){return inBand}
   };
 }
+function playWorkspaceArrivalStory(){
+  pendingOpsStory=false;
+  if(lastCrmEvent)return playLeadOperationsStory();
+  renderOps();
+  replayDashboardMotion();
+  return Promise.resolve({status:"complete",story:"operations"});
+}
 function queueLeadOperationsStory(){
-  if(!lastCrmEvent)return;
   pendingOpsStory=true;
   $("#opsStoryReplay").disabled=false;
   if(workspaceStoryObserver?.isArrived())workspaceStoryObserver.schedule();
 }
-$("#opsStoryReplay")?.addEventListener("click",()=>playLeadOperationsStory());
-let workspaceStoryObserver=createStoryArrivalObserver($("#workspace"),()=>{
-  if(!pendingOpsStory)return;
-  pendingOpsStory=false;
-  playLeadOperationsStory();
-},{dwellMs:720,rootMargin:"-20% 0px -34% 0px"});
+$("#opsStoryReplay")?.addEventListener("click",()=>{workspaceStoryObserver?.cancelPending();playWorkspaceArrivalStory()});
+let workspaceStoryObserver=createStoryArrivalObserver($("#workspace"),()=>playWorkspaceArrivalStory(),{dwellMs:1000,rootMargin:"-20% 0px -34% 0px"});
 
 function renderCrmOverviewActivity(){
   const box=$("#crmOverviewActivity");if(!box)return;
@@ -562,7 +566,6 @@ async function runGuidedWalkthrough(){
   $("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");
   const total=6;
 
-  workflowStoryPlayed=true;
   setTourChapter(1,total,...tourChapters[0]);
   scrollTourTarget("#workflow");
   let storyResult=await playWorkflowStory(tourStoryOptions(1,total));
@@ -594,7 +597,6 @@ async function runGuidedWalkthrough(){
   storyResult=await playReliabilityStory("timeout",tourStoryOptions(5,total));
   if(cancelled||storyResult.status==="cancelled")return;
 
-  architectureStoryPlayed=true;
   setTourChapter(6,total,...tourChapters[5]);
   scrollTourTarget("#architecture");
   storyResult=await playArchitectureStory(tourStoryOptions(6,total));
@@ -604,23 +606,15 @@ async function runGuidedWalkthrough(){
 }
 $("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
 $("#guidedDemo").addEventListener("click",runGuidedWalkthrough);
-$("#workflowReplay")?.addEventListener("click",()=>{workflowStoryPlayed=true;workflowStoryObserver?.disconnect();playWorkflowStory()});
-let workflowStoryPlayed=false;
-let workflowStoryObserver=createStoryArrivalObserver($("#workflow"),()=>{
-  if(workflowStoryPlayed)return;
-  workflowStoryPlayed=true;
-  workflowStoryObserver?.disconnect();
-  playWorkflowStory();
-},{dwellMs:720,rootMargin:"-22% 0px -34% 0px"});
+$("#workflowReplay")?.addEventListener("click",()=>{workflowStoryObserver?.cancelPending();playWorkflowStory()});
+let workflowStoryObserver=createStoryArrivalObserver($("#workflow"),()=>playWorkflowStory(),{dwellMs:1000,rootMargin:"-22% 0px -34% 0px"});
 function playArchitectureStory(options={}){return storyDirector?.playArchitectureStory({lead:workflowStoryLead(),...options})||Promise.resolve({status:"complete",story:"architecture"})}
-$("#architectureReplay")?.addEventListener("click",()=>{architectureStoryPlayed=true;architectureStoryObserver?.disconnect();playArchitectureStory()});
-let architectureStoryPlayed=false;
-let architectureStoryObserver=createStoryArrivalObserver($("#architecture"),()=>{
-  if(architectureStoryPlayed)return;
-  architectureStoryPlayed=true;
-  architectureStoryObserver?.disconnect();
-  playArchitectureStory();
-},{dwellMs:760,rootMargin:"-22% 0px -34% 0px"});
+$("#architectureReplay")?.addEventListener("click",()=>{architectureStoryObserver?.cancelPending();playArchitectureStory()});
+let architectureStoryObserver=createStoryArrivalObserver($("#architecture"),()=>playArchitectureStory(),{dwellMs:1000,rootMargin:"-22% 0px -34% 0px"});
+let reliabilityStoryObserver=createStoryArrivalObserver($("#reliability"),()=>{
+  const scenario=$("#reliability")?.dataset.incidentScenario;
+  playReliabilityStory(scenario&&scenario!=="none"?scenario:"duplicate");
+},{dwellMs:1000,rootMargin:"-22% 0px -34% 0px"});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();
