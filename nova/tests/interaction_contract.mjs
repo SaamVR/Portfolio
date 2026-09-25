@@ -4,6 +4,7 @@ import { createInspectionController } from '../site/interactions/inspection-cont
 import { createModeController } from '../site/interactions/mode-controller.js';
 import { createHotspotController } from '../site/interactions/hotspot-controller.js';
 import { normalizeEnvironmentState, createEnvironment } from '../site/runtime/environment.js';
+import { createRenderAdapter } from '../site/runtime/render-adapter.js';
 
 const fold = createFoldController({ openPose:.20, foldedPose:.40, duration:.7 });
 fold.begin('fold', .24);
@@ -169,3 +170,52 @@ inspect.update(.5);
 i=inspect.getInfluence();
 assert.equal(i.view,'front');
 assert.ok(Math.abs(i.modelYaw)<.2,'front inspection view must return toward the authored front');
+
+
+const fadeElement={dataset:{},style:{},setAttribute(){}};
+const smoothHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{
+    a:{point:[0,0,0],cameraOffset:[.3,0,0],targetOffset:[.2,0,0]},
+    b:{point:[0,0,0],cameraOffset:[-.3,0,0],targetOffset:[-.2,0,0]}
+  },
+  elements:{a:fadeElement,b:{dataset:{},style:{},setAttribute(){}}}
+});
+smoothHotspots.focus('a');
+for(let n=0;n<12;n++) smoothHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const focusedA=smoothHotspots.getInfluence();
+assert.ok(focusedA.cameraOffset[0]>0,'focused hotspot should ease toward its camera offset');
+smoothHotspots.focus('b');
+smoothHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const switched=smoothHotspots.getInfluence();
+assert.ok(switched.cameraOffset[0]>-.25,'switching hotspot focus must not snap directly to the opposite camera offset');
+smoothHotspots.clear();
+smoothHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1000,height:800},dt:1/60});
+const fading=smoothHotspots.getInfluence();
+assert.ok(fading.weight>0,'clearing hotspot focus should fade ownership instead of snapping to zero');
+assert.ok(Math.abs(fading.cameraOffset[0])>0,'camera offset should decay smoothly after hotspot clear');
+
+const vec=()=>({x:0,y:0,z:0});
+const fakeCamera={
+  position:vec(),fov:30,
+  updateProjectionMatrix(){},
+  lookAt(x,y,z){this.lastLook=[x,y,z];}
+};
+const fakePresentation={position:vec(),rotation:vec(),scale:{x:1,y:1,z:1}};
+const fakeMixer={lastTime:0,setTime(v){this.lastTime=v;}};
+const fakeRenderer={toneMappingExposure:1};
+const fakeThree={MathUtils:{damp:(current,target)=>current+(target-current)*.5}};
+const renderAdapter=createRenderAdapter({
+  THREE:fakeThree,camera:fakeCamera,presentation:fakePresentation,
+  mixer:fakeMixer,clipDuration:10,renderer:fakeRenderer,lights:null,environment:null,orientationX:0
+});
+const visualState={
+  camera:{position:[2,2,4],target:[1,1,0],fov:26},
+  product:{position:[1,0,0],pitch:0,yaw:1,scale:1.2,pose:.8},
+  lighting:{exposure:1,hemi:1,key:1,fill:1,rim:1,warm:1,keyColor:0,rimColor:0,keyPosition:[0,0,0]},
+  environment:{}
+};
+renderAdapter.apply(visualState,1/60);
+assert.ok(fakeCamera.lastLook[0]>0 && fakeCamera.lastLook[0]<1,'camera look target must damp instead of snapping');
+assert.ok(fakeMixer.lastTime>0 && fakeMixer.lastTime<8,'GLTF pose time must damp instead of jumping to the scroll target');
