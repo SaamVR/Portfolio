@@ -62,8 +62,7 @@ export function bindProductUI(nextActions={}){
   bound=true;
 
   document.body.dataset.mobileNav='closed';
-  document.body.dataset.notifyConcept='closed';
-  document.body.dataset.productFacts='closed';
+  document.body.dataset.benchmarkPanel='closed';
   document.body.dataset.guidedTour='closed';
 
   document.querySelectorAll('[data-listening-mode]').forEach(button => {
@@ -101,6 +100,18 @@ export function bindProductUI(nextActions={}){
       if(!INSPECTION.has(view) || button.disabled) return;
       setPressed('[data-inspection-view]',view,'inspectionView');
       actions.setInspectionView?.(view);
+    });
+  });
+
+  document.querySelectorAll('[data-design-detail]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const id=button.dataset.designDetail;
+      document.querySelectorAll('[data-design-detail]').forEach(item=>{
+        const active=item.dataset.designDetail===id;
+        item.setAttribute('aria-pressed',String(active));
+        item.classList.toggle('is-active',active);
+      });
+      actions.focusHotspot?.(id);
     });
   });
 
@@ -176,37 +187,14 @@ export function bindProductUI(nextActions={}){
   });
   document.querySelectorAll('[data-tour-close]').forEach(button=>button.addEventListener('click',()=>setTourOpen(false)));
 
-  const factsTrigger=document.querySelector('#productFactsTrigger');
-  const factsPanel=document.querySelector('#productFactsPanel');
-  const factsShell=document.querySelector('.facts-shell');
-  const setFactsOpen=open=>setDialog({
-    open,bodyKey:'productFacts',trigger:factsTrigger,panel:factsPanel,shell:factsShell,focusTarget:factsPanel
+  const benchmarkTrigger=document.querySelector('#benchmarkSpecsTrigger');
+  const benchmarkPanel=document.querySelector('#benchmarkPanel');
+  const benchmarkShell=document.querySelector('.facts-shell');
+  const setBenchmarkOpen=open=>setDialog({
+    open,bodyKey:'benchmarkPanel',trigger:benchmarkTrigger,panel:benchmarkPanel,shell:benchmarkShell,focusTarget:benchmarkPanel
   });
-  factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
-  document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
-
-  const notifyTrigger=document.querySelector('#notifyConcept');
-  const notifyPanel=document.querySelector('#notifyPanel');
-  const notifyShell=document.querySelector('.interest-shell');
-  const setNotifyOpen=open=>setDialog({
-    open,bodyKey:'notifyConcept',trigger:notifyTrigger,panel:notifyPanel,shell:notifyShell,focusTarget:notifyPanel
-  });
-  notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
-
-  const notifyForm=document.querySelector('#notifyDemoForm');
-  const notifyStatus=document.querySelector('#notifyDemoStatus');
-  notifyForm?.addEventListener('submit',event=>{
-    event.preventDefault();
-    const input=notifyForm.querySelector('input[type="email"]');
-    if(!input?.checkValidity()){
-      input?.reportValidity();
-      return;
-    }
-    notifyForm.dataset.state='confirmed';
-    if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
-    input.value='';
-  });
-  document.querySelectorAll('[data-notify-close]').forEach(button=>button.addEventListener('click',()=>setNotifyOpen(false)));
+  benchmarkTrigger?.addEventListener('click',()=>setBenchmarkOpen(true));
+  document.querySelectorAll('[data-benchmark-close]').forEach(button=>button.addEventListener('click',()=>setBenchmarkOpen(false)));
 
   const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
   const briefButton=document.querySelector('#copyProjectBrief');
@@ -222,8 +210,7 @@ export function bindProductUI(nextActions={}){
 
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape') return;
-    if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
-    if(document.body.dataset.productFacts==='open') setFactsOpen(false);
+    if(document.body.dataset.benchmarkPanel==='open') setBenchmarkOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);
     if(document.body.dataset.mobileNav==='open') setMobileNav(false);
   });
@@ -234,6 +221,17 @@ export function updateProductUI(state){
   document.body.dataset.range=ui.range || state?.range || 'hero';
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
+  if((ui.range || state?.range)==='design'){
+    const rp=Number(state?.rangeProgress||0);
+    const detail=rp<.34?'cushion':rp<.68?'headband':'controls';
+    document.querySelectorAll('[data-design-detail]').forEach(item=>{
+      const active=item.dataset.designDetail===detail;
+      if(!document.querySelector('[data-hotspot][aria-expanded="true"]')){
+        item.setAttribute('aria-pressed',String(active));
+        item.classList.toggle('is-active',active);
+      }
+    });
+  }
   const activeTarget=NAV_TARGET[ui.range || state?.range] || null;
   document.querySelectorAll('.product-nav a[href^="#"],.mobile-nav a[href^="#"]').forEach(link=>{
     const active=Boolean(activeTarget && link.getAttribute('href')===activeTarget);
