@@ -27,6 +27,7 @@ const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode 
 const poseOverrideRaw = query.get('pose');
 const poseOverride = poseOverrideRaw === null ? null : Math.max(0, Math.min(1, Number(poseOverrideRaw)));
 const forceStatic = query.get('static') === '1';
+const qaDiagnostics = query.get('qa') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
@@ -41,6 +42,8 @@ let noiseMode = 'adaptive';
 let foldState = 'open';
 let inspectionView = 'front';
 let scrollActivityUntil = 0;
+let hotspotSceneActive = false;
+let tourDetailTimer = 0;
 
 let renderer=null;
 let rendererAvailable=false;
@@ -291,6 +294,11 @@ function sampleAuthoredState(){
 
 function publishState(state){
   const caseStudyActive=Boolean(caseStudyEl && scrollY>=Math.max(0,caseStudyEl.offsetTop-innerHeight*.18));
+  const designDetail=state.range==='design'
+    ? state.rangeProgress < .34 ? 'cushion' : state.rangeProgress < .68 ? 'headband' : 'controls'
+    : 'none';
+  state.designDetail=designDetail;
+  document.body.dataset.designDetail=designDetail;
   document.body.dataset.caseStudy=String(caseStudyActive);
   document.body.dataset.range=state.range;
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
@@ -319,7 +327,7 @@ function updateInteractionInfluences(base,dt,now){
 
   const foldInfluenceBefore=foldController.getInfluence();
   foldController.update(dt,{
-    scrollActive:foldInfluenceBefore.active && now < scrollActivityUntil,
+    scrollActive:foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil,
     timelinePose:base.product.pose
   });
 
@@ -333,13 +341,17 @@ function updateInteractionInfluences(base,dt,now){
     ? modeInfluence.noise
     : {mode:noiseMode,weight:0};
 
-  if(hotspotController && (base.range==='design' || base.range==='inspect')){
+  if(hotspotController){
+    const activeHotspotScene=base.range==='design' || base.range==='inspect';
+    if(!activeHotspotScene && hotspotSceneActive) hotspotController.clear();
+    hotspotSceneActive=activeHotspotScene;
     centerGroup.updateWorldMatrix(true,false);
     hotspotController.update({
       modelRoot:centerGroup,
       viewport:{width:innerWidth,height:innerHeight},
       dt
     });
+    if(!activeHotspotScene) hideHotspots();
     interactionState.hotspot=hotspotController.getInfluence();
   }else{
     hideHotspots();
@@ -367,6 +379,17 @@ function render(now=performance.now()){
   if(rendererAvailable && adapter){
     adapter.apply(composed,dt);
     renderer.render(scene,camera);
+    if(qaDiagnostics){
+      window.__NOVA_DIAGNOSTICS__={
+        progress:base.progress,
+        range:base.range,
+        rangeProgress:base.rangeProgress,
+        designDetail:composed.designDetail,
+        composedPose:composed.product.pose,
+        targetCamera:[...composed.camera.target],
+        ...adapter.getDiagnostics()
+      };
+    }
   }
   requestAnimationFrame(render);
 }
@@ -376,9 +399,19 @@ function scrollToProgress(progress){
   scrollTo({top:max*Math.max(0,Math.min(1,progress)),behavior:reducedMotion?'auto':'smooth'});
 }
 
+function clearTourDetailTimer(){
+  if(tourDetailTimer){
+    clearTimeout(tourDetailTimer);
+    tourDetailTimer=0;
+  }
+}
 function scheduleTourDetail(callback){
+  clearTourDetailTimer();
   const delay=reducedMotion?80:620;
-  window.setTimeout(callback,delay);
+  tourDetailTimer=window.setTimeout(()=>{
+    tourDetailTimer=0;
+    callback();
+  },delay);
 }
 
 const actions={
@@ -395,10 +428,20 @@ const actions={
     foldController.begin(state,currentComposedState?.product.pose ?? .24);
   },
   focusHotspot(id){
+    clearTourDetailTimer();
     hotspotController?.focus(id);
   },
   clearHotspot(){
+    clearTourDetailTimer();
     hotspotController?.clear();
+  },
+  focusDesignDetail(id){
+    const target={cushion:.165,headband:.215,controls:.265}[id];
+    if(!Number.isFinite(target)) return;
+    clearTourDetailTimer();
+    hotspotController?.clear();
+    scrollToProgress(target);
+    if(rendererAvailable) scheduleTourDetail(()=>hotspotController?.focus(id));
   },
   setInspectionView(view){
     inspectionView=view;
@@ -411,6 +454,7 @@ const actions={
     hotspotController?.clear();
   },
   tourTo(step){
+    clearTourDetailTimer();
     hotspotController?.clear();
     if(step==='comfort'){
       foldState='open';
@@ -443,6 +487,8 @@ const actions={
     }
   },
   replay(){
+    clearTourDetailTimer();
+    hotspotController?.clear();
     scrollTo({top:0,behavior:reducedMotion?'auto':'smooth'});
   }
 };
