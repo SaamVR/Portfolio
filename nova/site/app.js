@@ -73,14 +73,14 @@ scene.add(camera);
 
 const normalizationRoot=new THREE.Group();
 const presentation=new THREE.Group();
-const visualOffsetGroup=new THREE.Group();
+const centerGroup=new THREE.Group();
 const pivotGroup=new THREE.Group();
 const inspectionGroup=new THREE.Group();
-const centerGroup=new THREE.Group();
-inspectionGroup.add(centerGroup);
+const modelOffsetGroup=new THREE.Group();
+inspectionGroup.add(modelOffsetGroup);
 pivotGroup.add(inspectionGroup);
-visualOffsetGroup.add(pivotGroup);
-presentation.add(visualOffsetGroup);
+centerGroup.add(pivotGroup);
+presentation.add(centerGroup);
 normalizationRoot.add(presentation);
 scene.add(normalizationRoot);
 
@@ -232,7 +232,7 @@ function loadModel(){
     const cableMesh=model.getObjectByName('Circle.013_0');
     if(cableMesh) cableMesh.visible=false;
     applyTextureQuality(model);
-    centerGroup.add(model);
+    modelOffsetGroup.add(model);
 
     clip=[...gltf.animations].sort((a,b)=>b.duration-a.duration)[0] || null;
     if(clip){
@@ -247,54 +247,27 @@ function loadModel(){
     const cable=model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
-    // Keep two centers separate:
-    // 1) neutralCenter is the true geometric pivot for inspection rotation.
-    // 2) legacyVisualCenter preserves the established authored screen origin.
-    // This yields T(-L) * T(C) * R * T(-C): Front is visually compatible with
-    // the existing story, while Side/Rear rotate around the real product center.
-    normalizationRoot.scale.setScalar(1);
-    presentation.position.set(0,0,0);
-    presentation.rotation.set(0,0,0);
-    presentation.scale.set(1,1,1);
-    visualOffsetGroup.position.set(0,0,0);
-    visualOffsetGroup.rotation.set(0,0,0);
-    visualOffsetGroup.scale.set(1,1,1);
-    pivotGroup.position.set(0,0,0);
-    pivotGroup.rotation.set(0,0,0);
-    pivotGroup.scale.set(1,1,1);
-    inspectionGroup.position.set(0,0,0);
-    inspectionGroup.rotation.set(0,0,0);
-    inspectionGroup.scale.set(1,1,1);
-    centerGroup.position.set(0,0,0);
-    centerGroup.rotation.set(0,0,0);
-    centerGroup.scale.set(1,1,1);
-    scene.updateMatrixWorld(true);
-
-    const neutralBounds=computePrimaryBounds(model);
-    const neutralCenter=neutralBounds.getCenter(new THREE.Vector3());
-
-    // Reproduce the visual-origin convention the V3 timeline was authored
-    // against, but make it deterministic instead of load-timing dependent.
-    const reference=sampleTimeline(0,viewportClass());
-    presentation.position.fromArray(reference.product.position);
-    presentation.rotation.set(
-      orientationX+reference.product.pitch,
-      reference.product.yaw,
-      0
-    );
-    presentation.scale.setScalar(reference.product.scale);
-    scene.updateMatrixWorld(true);
-
+    // Preserve the released V3 visual-origin/normalization path exactly,
+    // then add an identity-at-rest inspection pivot inside that existing layer.
+    // This keeps authored Hero/Design/scroll composition unchanged while
+    // Side/Rear/manual inspection rotate around the product's local center.
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
-    const legacyVisualCenter=primaryProductBounds.getCenter(new THREE.Vector3());
+    const centerWorld=primaryProductBounds.getCenter(new THREE.Vector3());
+    const pivotLocal=centerGroup.worldToLocal(centerWorld.clone());
 
-    visualOffsetGroup.position.copy(legacyVisualCenter).multiplyScalar(-1);
-    pivotGroup.position.copy(neutralCenter);
-    centerGroup.position.copy(neutralCenter).multiplyScalar(-1);
+    // Legacy visual-origin behavior: the timeline and all framing QA were
+    // authored against this centerGroup offset.
+    centerGroup.position.copy(centerWorld).multiplyScalar(-1);
+
+    // T(C) * R * T(-C) is identity when R=0, so ordinary scroll frames are
+    // untouched; inspection rotation is centered only when the user invokes it.
+    pivotGroup.position.copy(pivotLocal);
+    modelOffsetGroup.position.copy(pivotLocal).multiplyScalar(-1);
+
     const major=Math.max(size.x,size.y,size.z,1);
     normalizationRoot.scale.setScalar(3.55/major);
-    scene.updateMatrixWorld(true);
+    model.updateMatrixWorld(true);
 
     buildHotspotController(size);
     rebuildAdapter();
