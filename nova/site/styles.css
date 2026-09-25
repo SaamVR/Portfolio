@@ -1006,3 +1006,11 @@ body[data-range="design"] .hotspot[aria-expanded="true"]:before{opacity:.9}
   .project-spec-grid strong{font-size:20px}
   .project-spec-grid small{font-size:12px}
 }
+
+
+/* V3 mobile Design: stable rail owns touch; moving markers are visual feedback only. */
+@media (max-width:700px){
+  body[data-range="design"] .hotspot[data-visible="true"]{
+    pointer-events:none!important;
+  }
+}
