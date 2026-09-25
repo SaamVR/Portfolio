@@ -135,7 +135,7 @@ jobs:
                 throw new Error(prefix+' '+check.id+' hotspot motion exceeded bounded Design envelope '+JSON.stringify({movement,viewportBound,first,second}));
               }
               if(check.expectMotion && !edgeClamped && movement<2){
-                throw new Error(prefix+' '+check.id+' hotspot should track authored Design motion '+JSON.stringify({movement,first,second}));
+                throw new Error(prefix+' '+check.id+' hotspot should move with authored close pass '+JSON.stringify({movement,first,second}));
               }
               samples.push({id:check.id,movement,edgeClamped,expectMotion:check.expectMotion,viewportBound,first,second});
             }
