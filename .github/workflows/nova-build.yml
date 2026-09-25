@@ -2,7 +2,7 @@ name: NOVA Production Bundle
 
 on:
   push:
-    branches: [main, "nova/v2-integration", "nova/v3"]
+    branches: [main, "nova/v2-integration", "nova/v3", "nova/v3-*"]
     paths:
       - ".github/workflows/nova-build.yml"
       - "nova/site/**"
