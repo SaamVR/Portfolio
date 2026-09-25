@@ -167,3 +167,20 @@ Do not report production complete until those checks pass.
 - Reserved red primarily for high-priority/action/failure states (high-priority status, simulated timeout, action CTA, workflow travel markers).
 - Verified root remains qualification API v2 and `/v1` remains untouched with API v1.
 - FreeFrontend was used only as interaction inspiration (button/card hover and timeline pacing), not as copied page/template code.
+
+
+## Typography + presentation UX audit — 20-rule pass
+
+- Audited current production in a runtime browser before editing, then iterated through three render/fix passes.
+- Visual/source commit deployed: `3569475d84c3cc6b8cebceae4f554e793d650e1c`.
+- Cloudflare immutable deployment: https://24767a21.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Legacy `/v1` remains untouched and API v1 remains isolated.
+- Replaced Manrope + DM Mono with Instrument Sans + IBM Plex Mono.
+- Increased readable type sizes throughout hero, navigation, case-study cards, demo, CRM workspace, architecture, ROI, blueprint, CRM modal, and footer.
+- Added sticky navigation, active-section orientation, anchor offsets, larger CRM icon targets, and reduced duplicated portfolio copy.
+- Added staged hero entrance, scroll reveal, result/modal/details entrance motion, with reduced-motion fallbacks and IntersectionObserver progressive fallback.
+- Content refinements made defensive copy more client-facing while preserving implementation honesty.
+- Runtime responsive audit found no horizontal overflow at tested widths 390/768/1024/1440.
+- Functional runtime test: default workflow `COMPLETE`, score `92`, `16 events`, `ERR0`.
+- Production verification: Instrument Sans marker present; typography/final audit CSS present; root API remains deterministic-qualification-v2; `/v1/api/qualify` remains v1; live Sarah/Acme POST returns score 92.
