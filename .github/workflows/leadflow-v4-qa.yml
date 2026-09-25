@@ -36,6 +36,6 @@ jobs:
           cat /tmp/leadflow-v4-http.log
           exit 1
       - name: Real-browser responsive and interaction matrix
-        run: python3 tests/leadflow_v3_release_matrix.py
+        run: python3 tests/leadflow_v4_release_matrix.py
       - name: Real-browser whole-page contrast
-        run: python3 tests/leadflow_v3_whole_page_contrast_audit.py
+        run: python3 tests/leadflow_v4_whole_page_contrast_audit.py
