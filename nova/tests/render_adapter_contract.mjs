@@ -37,4 +37,4 @@ assert.ok(latestLook[0]>0 && latestLook[0]<2,'camera lookAt target must damp ins
 assert.ok(latestLook[1]>0 && latestLook[1]<1,'camera vertical target must damp instead of snapping');
 
 const poseStep=mixer.times[1]-mixer.times[0];
-assert.ok(poseStep<=.11,`source-pose velocity must be bounded per frame, got ${poseStep}`);
+assert.ok(poseStep<=.07,`source-pose velocity must stay below 70ms of source animation per frame, got ${poseStep}`);
