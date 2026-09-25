@@ -188,6 +188,17 @@ async function auditMobile(url,label){
   await setProgress(page,0,500);
   out.scrollForward=trajectoryStats(await continuous(page,{frames:150,from:0,to:1}));
   await setProgress(page,.79,450); await page.locator('[data-inspection-view="rear"]').tap(); await page.waitForTimeout(800);
+  out.rearFraming=await page.evaluate(()=>{
+    const frame=window.__NOVA_QA__?.productFrame?.()||null;
+    const stage=document.querySelector('.stage.is-active');
+    const content=stage?.querySelector('.stage-inner');
+    const rect=content?.getBoundingClientRect();
+    return {
+      frame,
+      contentTop:rect?.top??null,
+      viewport:{width:innerWidth,height:innerHeight}
+    };
+  });
   await page.screenshot({path:`nova-motion-audit/${label}_mobile_rear.png`});
   await context.close();
   return out;
@@ -218,6 +229,13 @@ if(['desktop-inspection','desktop-fold','desktop-scroll'].includes(phase)){
   const candidate=await auditDesktop(CANDIDATE,'candidate',section);
   report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
   errors=[...baseline.errors,...candidate.errors];
+  const rear=candidate.rearFraming;
+  if(!rear?.frame || rear.frame.inViewport<3 || rear.frame.earcupsInViewport<2){
+    errors.push('candidate mobile Rear must keep all product landmarks visible: '+JSON.stringify(rear));
+  }
+  if(Number.isFinite(rear?.contentTop) && rear.frame?.bottom>rear.contentTop-12){
+    errors.push('candidate mobile Rear must stay above inspection copy: '+JSON.stringify(rear));
+  }
 }else if(phase==='mobile'){
   const baseline=await auditMobile(BASELINE,'baseline');
   const candidate=await auditMobile(CANDIDATE,'candidate');
