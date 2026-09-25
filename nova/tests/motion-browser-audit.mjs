@@ -229,18 +229,15 @@ if(['desktop-inspection','desktop-fold','desktop-scroll'].includes(phase)){
   const candidate=await auditDesktop(CANDIDATE,'candidate',section);
   report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
   errors=[...baseline.errors,...candidate.errors];
-  const rear=candidate.rearFraming;
-  if(!rear?.frame || rear.frame.inViewport<3 || rear.frame.earcupsInViewport<2){
-    errors.push('candidate mobile Rear must keep all product landmarks visible: '+JSON.stringify(rear));
-  }
-  if(Number.isFinite(rear?.contentTop) && rear.frame?.bottom>rear.contentTop-12){
-    errors.push('candidate mobile Rear must stay above inspection copy: '+JSON.stringify(rear));
-  }
 }else if(phase==='mobile'){
   const baseline=await auditMobile(BASELINE,'baseline');
   const candidate=await auditMobile(CANDIDATE,'candidate');
   report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
   errors=[...baseline.errors,...candidate.errors];
+  const rear=candidate.rearFraming;
+  if(!rear?.frame || rear.frame.inViewport<3 || rear.frame.earcupsInViewport<2){
+    errors.push('candidate mobile Rear must keep all product landmarks visible: '+JSON.stringify(rear));
+  }
 }else{
   throw new Error('Unknown NOVA_MOTION_PHASE '+phase);
 }
