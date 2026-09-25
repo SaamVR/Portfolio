@@ -14,3 +14,5 @@ R11 f482 synchronized V2 public preview verification.
 R12 deployed source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc public preview verification.
 
 R12 deployed preview verification for exact site source 3dc3c9f3e4eb2c6346dfdbe4a234c2ea82804ddc.
+
+R13 public preview verification for exact refined site source e39dc80ea88a62eb560403ee2e84c12b31ab00a6.
