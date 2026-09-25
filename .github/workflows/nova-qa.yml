@@ -2,7 +2,7 @@ name: NOVA Visual QA
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: [main, "nova/v2-integration", "nova/v3-*"]
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
@@ -249,7 +249,7 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_focus.png'});
 
             await scrollProgress(page,.52);
-            await page.getByRole('button',{name:/transparency/i}).click();
+            await page.locator('[data-noise-mode="transparency"]').click();
             await page.waitForTimeout(650);
             await page.screenshot({path:'nova-qa/desktop_transparency.png'});
 
@@ -274,13 +274,6 @@ jobs:
             await page.getByRole('button',{name:/reset view/i}).click();
             await page.waitForTimeout(420);
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
-
-            await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
-            await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='true');
 
             await context.close();
           }
@@ -315,7 +308,7 @@ jobs:
             await hotspot.tap();
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/ambient/i}).tap();
+            await page.locator('[data-listening-mode="ambient"]').tap();
             await page.waitForTimeout(520);
             await page.screenshot({path:'nova-qa/mobile_ambient.png'});
 
@@ -330,13 +323,6 @@ jobs:
             },{x1:box.x+box.width*.40,y1:box.y+box.height*.52,x2:box.x+box.width*.68,y2:box.y+box.height*.52});
             await page.waitForTimeout(450);
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
-
-            await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
-            await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
 
             await context.close();
           }
@@ -569,21 +555,95 @@ jobs:
             await context.close();
           }
 
-          async function productFactsAudit(){
-            const context=await browser.newContext({viewport:{width:1440,height:1000}});
-            const {page}=await readyPage(context,'product-facts');
+          async function v3BenchmarkAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,'v3-benchmark-'+prefix);
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.getByRole('button',{name:/benchmark.*design brief/i}).click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             const state=await page.evaluate(()=>({
               open:document.body.dataset.productFacts,
               panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
-              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
-              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+              sony:document.body.innerText.includes('Sony WH-1000XM6'),
+              sennheiser:document.body.innerText.includes('Sennheiser MOMENTUM 4'),
+              bose:document.body.innerText.includes('Bose QuietComfort Ultra 2nd Gen'),
+              target:document.body.innerText.includes('Design target — not a lab measurement'),
+              sourceCount:document.querySelectorAll('.benchmark-sources a').length,
+              notify:Boolean(document.querySelector('#notifyConcept,#notifyPanel,#notifyDemoForm'))
             }));
-            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
-            await page.screenshot({path:'nova-qa/product_facts.png'});
+            if(state.open!=='open'||state.panelHidden!=='false'||!state.sony||!state.sennheiser||!state.bose||!state.target||state.sourceCount<3||state.notify){
+              throw new Error(prefix+' V3 benchmark incomplete '+JSON.stringify(state));
+            }
+            await page.screenshot({path:'nova-qa/v3_benchmark_'+prefix+'.png'});
             await page.locator('#productFactsPanel [data-facts-close]').click();
+            await context.close();
+          }
+
+          async function productFactsAudit(){
+            return v3BenchmarkAudit({width:1440,height:1000},'desktop');
+          }
+
+          async function v3DesignDetailAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'v3-design-details');
+            const steps=[
+              {p:.16,id:'cushion',file:'v3_design_cushion.png'},
+              {p:.215,id:'headband',file:'v3_design_headband.png'},
+              {p:.265,id:'controls',file:'v3_design_controls.png'}
+            ];
+            for(const step of steps){
+              await scrollProgress(page,step.p);
+              await page.waitForFunction(id=>document.body.dataset.designDetail===id,step.id);
+              const state=await page.evaluate(id=>{
+                const active=document.querySelector('[data-detail-card="'+id+'"]');
+                const hotspot=document.querySelector('[data-hotspot="'+id+'"]');
+                const others=[...document.querySelectorAll('.hotspot[data-visible="true"]')].filter(el=>el!==hotspot);
+                return {
+                  detail:document.body.dataset.designDetail,
+                  card:active?.getAttribute('aria-pressed'),
+                  opacity:Number(getComputedStyle(hotspot).opacity),
+                  otherOpacity:others.map(el=>Number(getComputedStyle(el).opacity))
+                };
+              },step.id);
+              if(state.detail!==step.id||state.card!=='true'||state.opacity<.8||state.otherOpacity.some(v=>v>.35)){
+                throw new Error('V3 Design detail presentation failed '+JSON.stringify({step,state}));
+              }
+              await page.screenshot({path:'nova-qa/'+step.file});
+            }
+            await context.close();
+          }
+
+          async function v3MotionContinuityAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await context.newPage();
+            const motionErrors=[];
+            page.on('pageerror',e=>motionErrors.push(e.message));
+            await page.goto('http://127.0.0.1:4173/?qa=1',{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready' && window.__NOVA_DIAGNOSTICS__,{timeout:20000});
+            const points=[.16,.20,.24,.28,.36,.52,.65,.79,.90];
+            const samples=[];
+            for(const p of points){
+              await page.evaluate(value=>{
+                document.documentElement.style.scrollBehavior='auto';
+                const behind=document.querySelector('#behind');
+                const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+                scrollTo(0,max*value);
+              },p);
+              await page.waitForTimeout(75);
+              samples.push(await page.evaluate(()=>structuredClone(window.__NOVA_DIAGNOSTICS__)));
+            }
+            for(let i=1;i<samples.length;i++){
+              const a=samples[i-1],b=samples[i];
+              const poseDelta=Math.abs((b.posePhase||0)-(a.posePhase||0));
+              const targetDelta=Math.hypot(
+                (b.cameraTarget?.[0]||0)-(a.cameraTarget?.[0]||0),
+                (b.cameraTarget?.[1]||0)-(a.cameraTarget?.[1]||0),
+                (b.cameraTarget?.[2]||0)-(a.cameraTarget?.[2]||0)
+              );
+              if(poseDelta>.20) throw new Error('pose discontinuity '+JSON.stringify({i,poseDelta,a,b}));
+              if(targetDelta>.48) throw new Error('camera target discontinuity '+JSON.stringify({i,targetDelta,a,b}));
+            }
+            if(motionErrors.length) throw new Error('V3 motion browser errors '+motionErrors.join(' | '));
             await context.close();
           }
 
@@ -656,7 +716,10 @@ jobs:
           await readabilityAudit({width:390,height:844},'mobile');
           await rendererFailureAudit();
           await mobileNavAudit();
-          await productFactsAudit();
+          await v3BenchmarkAudit({width:1440,height:1000},'desktop');
+          await v3BenchmarkAudit({width:390,height:844},'mobile');
+          await v3DesignDetailAudit();
+          await v3MotionContinuityAudit();
           await inspectionViewsAudit();
           await versionArchiveAudit({width:1440,height:1000},'desktop');
           await versionArchiveAudit({width:390,height:844},'mobile');
@@ -681,6 +744,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: nova-v2-visual-qa
+          name: nova-v3-visual-qa
           path: nova-qa
           retention-days: 7
