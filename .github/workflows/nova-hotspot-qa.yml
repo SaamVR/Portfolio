@@ -102,8 +102,8 @@ jobs:
               await page.waitForFunction(expected=>document.body.dataset.controlInput===expected,id);
               const state=await page.evaluate(()=>({
                 active:document.body.dataset.controlInput,
-                count:document.querySelectorAll('[data-control-input]').length,
-                current:[...new Set([...document.querySelectorAll('[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput))],
+                count:document.querySelectorAll('.control-input[data-control-input]').length,
+                current:[...new Set([...document.querySelectorAll('.control-input[data-control-input]')].filter(el=>el.getAttribute('aria-current')==='true').map(el=>el.dataset.controlInput))],
                 marker:document.querySelector('[data-hotspot="controls"]')?.dataset.visible
               }));
               if(state.active!==id||state.count!==3||state.current.length!==1||state.current[0]!==id||state.marker!=='true') throw new Error(prefix+' control input sequence failed '+JSON.stringify({id,state}));
