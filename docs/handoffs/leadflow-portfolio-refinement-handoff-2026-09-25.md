@@ -149,3 +149,21 @@ Do not report production complete until those checks pass.
 - Verified `/v1/api/qualify` reports `deterministic-qualification-v1`.
 - Verified canonical Sarah / Acme Dental live POST returns score 92 and Sales review.
 - GitHub Actions credential issue #24 remains an automation-only follow-up; it no longer blocks the live production deployment because samvr Wrangler OAuth was used.
+
+
+## Visual refinement update — editorial green/red system
+
+- GitHub main: `575cfd01e062eb7eb748f28f374dbbecae5e5c8d`
+- Cloudflare deployment: https://5300491f.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Preserved legacy: https://leadflow-ai-bhy.pages.dev/v1/
+- Added red action/urgency contrast while preserving forest/emerald system colors.
+- Removed visible sparkle / magic-style motifs from the root build.
+- Replaced glass/glow-heavy presentation with flatter editorial panels, sharper radii, ruled section markers, and restrained hover movement.
+- Made `Run automation` a high-contrast red tactile CTA with reduced-motion fallback.
+- Slowed hero flow animation to 9s and connector animation to 5.4s.
+- Slowed interactive workflow nominal sequence from ~1.3s to ~5.71s for legibility.
+- Replaced circular score-gauge presentation with an editorial score plate.
+- Reserved red primarily for high-priority/action/failure states (high-priority status, simulated timeout, action CTA, workflow travel markers).
+- Verified root remains qualification API v2 and `/v1` remains untouched with API v1.
+- FreeFrontend was used only as interaction inspiration (button/card hover and timeline pacing), not as copied page/template code.
