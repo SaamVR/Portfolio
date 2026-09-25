@@ -18,8 +18,8 @@ const LISTENING_COPY = {
   ambient:'Ambient keeps the visual field open to the world around you.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
-  transparency:'Transparency represents awareness and a more open connection to the environment.'
+  adaptive:'Adaptive prioritizes isolation as surroundings change.',
+  transparency:'Transparency keeps voices, announcements and street sound easier to hear.'
 };
 
 const actions = {};
@@ -104,6 +104,14 @@ export function bindProductUI(nextActions={}){
     });
   });
 
+  document.querySelectorAll('[data-detail-step]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      if(button.disabled) return;
+      setPressed('[data-detail-step]',button.dataset.detailStep,'detailStep');
+      actions.showDetail?.(button.dataset.detailStep);
+    });
+  });
+
   document.querySelectorAll('[data-hotspot]').forEach(button => {
     button.addEventListener('click', () => {
       if(button.disabled) return;
@@ -183,6 +191,10 @@ export function bindProductUI(nextActions={}){
     open,bodyKey:'productFacts',trigger:factsTrigger,panel:factsPanel,shell:factsShell,focusTarget:factsPanel
   });
   factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
+  document.querySelector('#includedTrigger')?.addEventListener('click',()=>{
+    setFactsOpen(true);
+    requestAnimationFrame(()=>document.querySelector('#included')?.scrollIntoView({block:'start'}));
+  });
   document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
 
   const notifyTrigger=document.querySelector('#notifyConcept');
@@ -247,5 +259,6 @@ export function updateProductUI(state){
     setPressed('[data-noise-mode]',state.interaction.noiseMode,'noiseMode');
     setPressed('[data-fold-state]',state.interaction.foldState,'foldState');
     setPressed('[data-inspection-view]',state.interaction.inspectionView || 'front','inspectionView');
+    setPressed('[data-detail-step]',state.interaction.detailStep || 'cushion','detailStep');
   }
 }
