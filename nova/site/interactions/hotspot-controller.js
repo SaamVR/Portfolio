@@ -72,6 +72,35 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
         currentTargetOffset.fill(0);
       }
     },
+    measure({modelRoot,viewport={width:1,height:1}}={}){
+      const width=Math.max(1,viewport.width||1);
+      const height=Math.max(1,viewport.height||1);
+      const result={};
+      for(const [id,anchor] of Object.entries(anchors)){
+        if(anchor.boundsObject && boundsBox){
+          boundsBox.setFromObject(anchor.boundsObject,true).getCenter(world);
+        }else if(anchor.mesh?.getVertexPosition && Number.isInteger(anchor.vertexIndex)){
+          anchor.mesh.getVertexPosition(anchor.vertexIndex,world);
+          anchor.mesh.localToWorld?.(world);
+        }else if(anchor.object?.localToWorld){
+          world.fromArray(anchor.offset||[0,0,0]);
+          anchor.object.localToWorld(world);
+        }else if(anchor.object?.getWorldPosition){
+          anchor.object.getWorldPosition(world);
+        }else{
+          world.fromArray(anchor.point||[0,0,0]);
+          modelRoot?.localToWorld?.(world);
+        }
+        world.project(camera);
+        const finite=Number.isFinite(world.x)&&Number.isFinite(world.y)&&Number.isFinite(world.z);
+        result[id]={
+          ndcX:world.x,ndcY:world.y,ndcZ:world.z,
+          x:finite?(world.x*.5+.5)*width:null,
+          y:finite?(-world.y*.5+.5)*height:null
+        };
+      }
+      return result;
+    },
     getInfluence(){
       return {
         weight:clamp01(weight),
