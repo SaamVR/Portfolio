@@ -30,7 +30,5 @@ test("reveal staggering restarts inside each card group",()=>{
   assert.doesNotMatch(app,/revealTargets\.forEach\(\(el,i\)=>[\s\S]{0,400}i%3/);
 });
 test("guided tour cancel control respects the 44px interaction floor",()=>{
-  const block=css.match(/\.tour-status button\{[\s\S]*?\}/)?.[0]||"";
-  assert.match(block,/width:44px/);
-  assert.match(block,/height:44px/);
+  assert.match(css,/\.tour-status button\{\s*width:44px;height:44px;\s*min-width:44px;min-height:44px;/);
 });
