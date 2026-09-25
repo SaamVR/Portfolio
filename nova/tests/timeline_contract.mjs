@@ -198,3 +198,16 @@ for(const [label,points,minSpan] of [
   const span=Math.max(...poses)-Math.min(...poses);
   assert.ok(span >= minSpan, `R14 ${label} should retain V1-style source-clip motion; pose span=${span}`);
 }
+
+
+// V3 motion must be smooth and product-led rather than source-clip expansion.
+const v3DesignSamples=[.16,.18,.20,.22,.24,.26,.28].map(p=>sampleTimeline(p,'desktop'));
+const v3DesignPoses=v3DesignSamples.map(s=>s.product.pose);
+assert.ok(Math.max(...v3DesignPoses)-Math.min(...v3DesignPoses) <= .08,
+  `V3 Design pose should stay controlled while detail rail teaches the product; span=${Math.max(...v3DesignPoses)-Math.min(...v3DesignPoses)}`);
+for(let p=.01;p<=.95;p+=.01){
+  const a=sampleTimeline(p-.01,'desktop');
+  const b=sampleTimeline(p,'desktop');
+  assert.ok(Math.abs(b.product.pose-a.product.pose) <= .075,
+    `V3 adjacent pose samples must avoid expansion glitches at p=${p.toFixed(2)} delta=${Math.abs(b.product.pose-a.product.pose)}`);
+}
