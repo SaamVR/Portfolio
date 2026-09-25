@@ -384,3 +384,367 @@ html[data-theme=light] .stack-config-flow span{
   border-color:#315F49;
 }
 html[data-theme=light] .case-list span{border-top-color:#AFC1B7}
+
+/* 2026-09-25 editorial visual refinement — green system with red action contrast */
+:root{
+  --action:#C43F3A;
+  --action-hover:#B53330;
+  --action-deep:#7F2926;
+  --action-soft:#2A1715;
+  --action-pale:#F1D5D2;
+}
+
+/* Remove the generic glowing / glass-dashboard language. */
+.grid,.ambient{display:none}
+.glass-panel{
+  transform:none;
+  border-radius:10px;
+  border:1px solid var(--line2);
+  border-left:4px solid var(--accent);
+  background:var(--surface-1);
+  box-shadow:0 16px 40px rgba(0,0,0,.22);
+}
+.glass-panel:hover{transform:translateY(-2px)}
+.flow-orbit{background:transparent}
+.flow-line{height:2px;background:#31594A}
+.flow-node{
+  border-radius:8px;
+  border-color:#355A49;
+  box-shadow:none;
+}
+.signal{
+  width:7px;height:7px;
+  top:calc(50% - 3px);
+  background:var(--action);
+  box-shadow:none;
+  animation-duration:9s;
+  animation-timing-function:cubic-bezier(.45,0,.55,1);
+}
+.s2{animation-delay:3s}.s3{animation-delay:6s}
+.float-card{
+  border-radius:7px;
+  backdrop-filter:none;
+  box-shadow:0 9px 20px rgba(0,0,0,.18);
+}
+.fc-one{
+  background:var(--action);
+  border-color:var(--action);
+  color:#fff;
+}
+.fc-one small,.fc-one span{color:#FCE8E6}
+.fc-two{background:#10271F;border-color:#315748}
+.fc-two .spark{
+  border-radius:5px;
+  background:var(--action);
+  color:#fff;
+}
+.mini-terminal{background:#0F1B17}
+.mini-terminal div{border-bottom:1px solid rgba(255,255,255,.045)}
+.mini-terminal div:last-child{border-bottom:0}
+
+/* Sharper editorial surfaces, small top markers, restrained hover feedback. */
+.brief-grid article,
+.workflow-map article,
+.implementation-proof article,
+.portfolio-next-card{
+  border-radius:9px;
+  box-shadow:none;
+}
+.brief-grid article,
+.workflow-map article,
+.implementation-proof article{
+  position:relative;
+  overflow:hidden;
+  transition:transform .22s ease,border-color .22s ease,background-color .22s ease;
+}
+.brief-grid article::before,
+.workflow-map article::before,
+.implementation-proof article::before{
+  content:"";
+  position:absolute;
+  left:20px;top:0;
+  width:36px;height:3px;
+  background:var(--accent);
+}
+.brief-grid article:nth-child(2)::before,
+.workflow-map article:nth-of-type(4)::before,
+.implementation-proof article:nth-child(4)::before{background:var(--action)}
+.brief-grid article:hover,
+.workflow-map article:hover,
+.implementation-proof article:hover{
+  transform:translateY(-3px);
+  border-color:#557466;
+}
+.workflow-map .icon{
+  border-radius:5px;
+  font:600 10px DM Mono;
+}
+.workflow-map article:nth-of-type(4) .icon{
+  background:var(--action-soft);
+  color:#F06D65;
+}
+.connector{height:2px;background:#315044}
+.connector i{
+  width:7px;height:7px;
+  top:-3px;
+  background:var(--action);
+  animation-duration:5.4s;
+  animation-timing-function:cubic-bezier(.45,0,.55,1);
+}
+
+/* Deliberate action color: green = system, red = act / high-priority. */
+#runAutomation{
+  position:relative;
+  isolation:isolate;
+  overflow:visible;
+  background:var(--action);
+  color:#fff;
+  border:1px solid #D85D57;
+  border-radius:7px;
+  box-shadow:0 6px 0 var(--action-deep);
+  letter-spacing:-.01em;
+  transform:translateY(-2px);
+  animation:runAttention 5.2s ease-in-out infinite;
+}
+#runAutomation span{
+  display:inline-block;
+  transition:transform .2s ease;
+}
+#runAutomation:hover{
+  background:var(--action-hover);
+  transform:translateY(-4px);
+  box-shadow:0 8px 0 var(--action-deep);
+}
+#runAutomation:hover span{transform:translateX(4px)}
+#runAutomation:active{
+  transform:translateY(1px);
+  box-shadow:0 2px 0 var(--action-deep);
+}
+#runAutomation:disabled{
+  background:#75504C;
+  border-color:#75504C;
+  color:#DCCAC8;
+  box-shadow:none;
+  transform:none;
+  animation:none;
+}
+@keyframes runAttention{
+  0%,68%,100%{transform:translateY(-2px) scale(1)}
+  74%{transform:translateY(-4px) scale(1.012)}
+  80%{transform:translateY(-2px) scale(1)}
+  86%{transform:translateY(-3px) scale(1.006)}
+}
+.demo-layout{
+  position:relative;
+  border-radius:10px;
+}
+.demo-layout::before{
+  content:"";
+  position:absolute;
+  left:-1px;top:-1px;bottom:-1px;
+  width:4px;
+  background:var(--action);
+  z-index:3;
+  pointer-events:none;
+}
+.lead-form,.execution-card,.result-card{position:relative}
+.demo-presets button{border-radius:6px}
+.demo-presets button[data-lead-preset="hot"]{
+  border-color:#82413D;
+}
+.demo-presets button[data-lead-preset="hot"].active,
+.demo-presets button[data-lead-preset="hot"]:hover{
+  background:var(--action-soft);
+  color:#F3A39E;
+  border-color:var(--action);
+}
+.execution-progress,
+.roi-track,
+.distribution-row>div{border-radius:3px}
+.execution-progress>div{
+  background:var(--accent);
+  border-radius:3px;
+}
+.execution-progress>span{
+  background:var(--action);
+  box-shadow:none;
+}
+.step-state{border-radius:5px}
+.exec-step.active .step-state{
+  border-color:var(--action);
+  color:#F06D65;
+}
+.exec-step.done .step-state{
+  background:var(--accent);
+  color:#07110e;
+}
+.temperature.hot,
+.ops-status.hot,
+.crm-status.hot{
+  color:#fff;
+  background:var(--action);
+}
+.run-dot.hot{background:var(--action)}
+.event-row.hot code{color:#F06D65}
+.score-ring{border-top-color:var(--action)}
+.drawer-score em{color:#F06D65}
+
+/* Less pill-heavy, more product/editorial. */
+.stack span,
+.portfolio-next-tags span,
+.temperature,
+.ops-status,
+.crm-status{
+  border-radius:5px;
+}
+.backend-proof,
+.reliability-lab,
+.stack-configurator,
+.engineering-proof,
+.calculator,
+.blueprint-layout,
+.ops-dashboard,
+.crm-shell,
+.followup-dialog{
+  border-radius:10px;
+}
+.ops-kpis article,.ops-panel,.crm-panel-card,.analytics-summary article,.automation-card,.run-history{
+  border-radius:7px;
+}
+
+/* Section rhythm: clean ruled transitions instead of decorative glow. */
+.section-head{position:relative}
+.section-head::before{
+  content:"";
+  position:absolute;
+  left:0;top:-16px;
+  width:28px;height:2px;
+  background:var(--accent);
+}
+#demo .section-head::before,
+#reliability .section-head::before{background:var(--action)}
+.final-cta{
+  border-radius:9px;
+  border-left:4px solid var(--action);
+}
+.portfolio-next-card{border-left:4px solid var(--accent)}
+.primary-btn,.secondary-btn,.guided-btn,.nav-cta,.theme-toggle{
+  border-radius:7px;
+}
+
+/* Light theme keeps green dominant while red provides the action contrast. */
+html[data-theme=light]{
+  --action:#C43F3A;
+  --action-hover:#A93330;
+  --action-deep:#7D2825;
+  --action-soft:#F4DEDC;
+  --action-pale:#F8ECEB;
+}
+html[data-theme=light] .glass-panel{
+  background:#FFFFFF;
+  border-color:#9FB3A7;
+  border-left-color:#0B5B39;
+  box-shadow:0 14px 34px rgba(28,56,43,.10);
+}
+html[data-theme=light] .flow-line,
+html[data-theme=light] .connector{background:#6E907F}
+html[data-theme=light] .flow-node{
+  background:#EEF4F0;
+  border-color:#94B0A0;
+}
+html[data-theme=light] .fc-one{background:var(--action);border-color:var(--action);color:#fff}
+html[data-theme=light] .fc-one small,
+html[data-theme=light] .fc-one span{color:#FBE9E7}
+html[data-theme=light] .fc-two{background:#133326;border-color:#2D5B46;color:#fff}
+html[data-theme=light] .fc-two small{color:#C5D8CD}
+html[data-theme=light] .mini-terminal{background:#17372A}
+html[data-theme=light] .workflow-map article:nth-of-type(4) .icon{
+  background:var(--action-pale);
+  color:#A93330;
+}
+html[data-theme=light] .demo-presets button[data-lead-preset="hot"]{
+  border-color:#D3A29F;
+}
+html[data-theme=light] .demo-presets button[data-lead-preset="hot"].active,
+html[data-theme=light] .demo-presets button[data-lead-preset="hot"]:hover{
+  background:var(--action-pale);
+  color:#8F2C29;
+  border-color:var(--action);
+}
+html[data-theme=light] .exec-step.active .step-state{color:#A93330}
+html[data-theme=light] .event-row.hot code{color:#A93330}
+html[data-theme=light] .drawer-score em{color:#A93330}
+html[data-theme=light] #runAutomation{
+  color:#fff;
+  border-color:#D15A55;
+}
+
+/* Accessibility: preserve clear keyboard focus and suppress nonessential attention motion. */
+#runAutomation:focus-visible{outline:3px solid #F7B3AE;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){
+  #runAutomation,.signal,.connector i{animation:none!important}
+}
+
+/* Result presentation: replace the generic circular score gauge with an editorial score plate. */
+.score-ring{
+  width:94px;
+  height:68px;
+  border:1px solid var(--line2);
+  border-left:4px solid var(--action);
+  border-radius:6px;
+  padding:0 10px;
+  background:var(--surface-2);
+  align-items:center;
+  justify-content:center;
+}
+.score-ring strong{font-size:28px;line-height:1}
+.score-ring span{margin-left:2px}
+html[data-theme=light] .score-ring{
+  background:#EEF4F0;
+  border-color:#9DB3A6;
+  border-left-color:var(--action);
+}
+/* Make the simulated failure control visually distinct instead of another green capsule. */
+.reliability-actions [data-edge="timeout"]{
+  border-color:#7E3935;
+  color:#F0A49F;
+  background:#261715;
+}
+.reliability-actions [data-edge="timeout"]:hover,
+.reliability-actions [data-edge="timeout"].active{
+  border-color:var(--action);
+  color:#fff;
+  background:var(--action);
+}
+html[data-theme=light] .reliability-actions [data-edge="timeout"]{
+  border-color:#D0A09D;
+  color:#96332F;
+  background:#F8EAE8;
+}
+html[data-theme=light] .reliability-actions [data-edge="timeout"]:hover,
+html[data-theme=light] .reliability-actions [data-edge="timeout"].active{
+  color:#fff;
+  border-color:var(--action);
+  background:var(--action);
+}
+
+/* Red is reserved for urgency/action; reinforce it consistently in metrics and status. */
+.ops-kpis article:nth-child(2),
+.crm-metrics>div:nth-child(2){
+  border-top:3px solid var(--action);
+}
+.ops-chart-item.hot i,
+#barHot{background:var(--action)}
+.score-band{
+  background:linear-gradient(90deg,#243029 0 55%,#5D4C27 55% 80%,var(--action-deep) 80%);
+}
+html[data-theme=light] .temperature.hot,
+html[data-theme=light] .ops-status.hot,
+html[data-theme=light] .crm-status.hot{
+  color:#fff;
+  background:var(--action);
+}
+html[data-theme=light] .run-dot.hot{background:var(--action)}
+html[data-theme=light] .score-band{
+  background:linear-gradient(90deg,#DDE7E1 0 55%,#EFE1BD 55% 80%,#E9B8B4 80%);
+}
