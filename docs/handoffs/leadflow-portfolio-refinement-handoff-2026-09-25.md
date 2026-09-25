@@ -225,3 +225,22 @@ Do not report production complete until those checks pass.
   - canonical Sarah / Acme Dental POST returns score 92 and `Sales review`;
   - `/v1/` remains the original LeadFlow AI build;
   - `/v1/api/qualify` remains `deterministic-qualification-v1`.
+
+
+## Final recovered deployment verification — 2026-09-25
+
+- Reviewed production source commit: `e04fa39e90c3e4e351db44353f59b096b2f7ef7b` (`refine LeadFlow dashboard readability and analytics`).
+- Exact Git blob verification matched GPT-runtime artifacts for `index.html`, `app.js`, `dashboard.js`, `styles.css`, and the two core dashboard tests.
+- GitHub guarded sync run `36095983327` completed successfully and pushed the reviewed source to `main`.
+- A later repair rerun `36096282203` reconstructed the archive successfully (SHA-256 OK) but stopped at the expected base-SHA guard because `main` had already advanced. It made no source changes.
+- Fresh release-worktree verification on `samvr`: 7/7 dashboard tests pass; `dashboard.js`, `app.js`, and `functions/api/qualify.js` syntax checks pass.
+- Latest Cloudflare immutable deployment: https://d283818a.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Frozen legacy: https://leadflow-ai-bhy.pages.dev/v1/
+- Public verification passed on both immutable and canonical domains:
+  - redesigned dashboard DOM markers present;
+  - `dashboard.js` served and contains `buildDashboardModel`;
+  - root API reports `deterministic-qualification-v2`;
+  - Sarah / Acme Dental POST returns score 92;
+  - `/v1/` remains the legacy LeadFlow AI build;
+  - `/v1/api/qualify` remains `deterministic-qualification-v1`.
