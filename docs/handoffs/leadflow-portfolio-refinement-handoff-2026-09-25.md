@@ -804,3 +804,16 @@ Verification:
 - Public immutable + canonical runtime: PASS.
 - Public 1024 workflow layout fits the 900px viewport.
 - Public canonical/immutable arrival counters verified 0→1 on first dwell and 1→2 after leave/return.
+
+
+## Recovery pointer — use this for the next chat
+
+A newer production-preservation handoff supersedes this file as the preferred recovery entry point:
+
+docs/handoffs/leadflow-v3-production-preservation-handoff-2026-09-25.md
+
+Current deployed application source: 4d2bb37cb282120b5d7791d838bd0dfbc5e05d9a
+Preservation branch: preserve/leadflow-v3-aa6c8f81-20260925
+Verified immutable deployment: https://aa6c8f81.leadflow-ai-bhy.pages.dev/
+
+Read the newer handoff in full before making any write. Do not restart the V3 audit or redo V1/V2 preservation.
