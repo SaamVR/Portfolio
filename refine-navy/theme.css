@@ -174,3 +174,135 @@ html[data-theme=light] .incident-neutral-mark{background:#E7EFF6;color:#214D76;b
 
 html[data-theme=light] .portfolio-next-eyebrow{color:#506273}
 html[data-theme=light] .footer{color:#506273}
+
+
+/* Full environmental recolor — remove inherited emerald chrome */
+:root{
+  --surface-page:#0B111A;
+  --surface-raised:#101A27;
+  --surface-focus:#17283A;
+  --border-quiet:#30445A;
+  --text-primary:#F0F5FA;
+  --text-secondary:#CAD7E3;
+  --text-muted-readable:#A8BACB;
+  --status-nurture:#7F93A5;
+  --status-other:#607487;
+}
+.theme-toggle{background:#0F1925;border-color:#36516C;color:#EFF7FE}
+.theme-toggle:hover{background:#142235;border-color:#527AA1}
+.theme-toggle-track{background:linear-gradient(135deg,#14263A,#21486C);box-shadow:inset 0 0 0 1px rgba(118,169,218,.22)}
+.theme-toggle-thumb{background:#E7F2FB;color:#214D76}
+.mini-terminal{background:#0B1520!important;border-color:#30445A}
+.mini-terminal div{border-bottom-color:rgba(143,192,238,.08)}
+.mini-terminal b{color:#D1DFEB}
+.mini-terminal em{color:#8FC0EE}
+.float-card{background:rgba(16,27,40,.97);border-color:#3F5F7D}
+.fc-two{background:#112235!important;border-color:#3E6487!important}
+.fc-two small{color:#B7C8D8}
+.trust-band{
+  background:linear-gradient(90deg,rgba(226,182,75,.03),transparent 26%,transparent 72%,rgba(198,93,73,.03)),#0D1722!important;
+  border-color:#30445A!important;
+}
+.capability{border-left-color:#354C63}
+.capability:hover{background:rgba(118,169,218,.05);border-left-color:#76A9DA}
+.capability b{color:#F0F5FA}
+.capability small{color:#A8BACB!important}
+#roi .calculator{background:#0F1824!important;border-color:#354B61!important}
+#roi .calc-inputs{background:#0C151F}
+.number-field{background:#121E2B!important;border-color:#3B526A!important}
+.calc-result{background:#12202F!important;border-color:#3B526A!important}
+.roi-track{background:#293B4D!important}
+.roi-track:not(.cost) i{background:linear-gradient(90deg,#4779A7,#76A9DA)!important}
+.blueprint-disclosure{background:#101A27!important;border-color:#30445A!important}
+.blueprint-summary-flow span{background:#122131!important;border-color:#3E5A75!important;color:#D0DFEB!important}
+.blueprint-summary-flow i{color:#76A9DA!important}
+.blueprint-disclosure>summary:hover .blueprint-summary-flow span{border-color:#567CA0!important}
+.blueprint-output{background:#0D1722!important}
+.blueprint-layout{border-color:#30445A!important}
+.bp-node{background:#17283A!important;border-color:#445E78!important;color:#CAD7E3!important}
+.bp-node.selected{background:#193551!important;border-color:#76A9DA!important;color:#F1F8FE!important}
+.blueprint-editor-controls button{background:#12202F!important;border-color:#3E5A75!important;color:#C4D3E0!important}
+.case-section{
+  background:linear-gradient(90deg,#0B141F 0 49%,#101D2A 49% 100%)!important;
+  border-color:#30445A!important;
+}
+.case-grid>div:first-child::after{border-color:#445E78!important;color:#A8BACB!important}
+.case-copy>p,.case-list span,.project-stack,.project-meta{color:#CAD7E3!important}
+.portfolio-next-card{
+  background:linear-gradient(145deg,rgba(118,169,218,.09),rgba(255,255,255,.018)),#101A27!important;
+  border-color:#344D65!important;
+  border-left-color:#76A9DA!important;
+}
+.portfolio-next-card:hover{border-color:#567CA0!important}
+.portfolio-next-tags span{color:#C3D3E1!important;border-color:#3E5A75!important}
+.final-cta .tag{color:#9CC5EC!important}
+.final-cta>div>p:not(.tag){color:#D6E3EE!important}
+.footer{background:#0A131D!important;border-top-color:#2D4054!important;color:#A8BACB!important}
+.crm-shell,.crm-main,.lead-drawer,.followup-dialog{background:#0D1722!important;border-color:#30445A!important}
+.crm-sidebar{background:#0A131D;border-right-color:#30445A}
+.crm-sidebar button.active{background:#17283A!important;color:#8FC0EE!important}
+.crm-panel-card,.automation-card,.run-history,.integration-row,.crm-overview-kpis article,.analytics-summary article{background:#101A27!important;border-color:#30445A!important}
+.crm-table th{background:#142235!important}
+.crm-table td{border-color:#30445A!important}
+
+html[data-theme=light]{
+  --surface-page:#F3F6F9;
+  --surface-raised:#FFFFFF;
+  --surface-focus:#E7EFF7;
+  --border-quiet:#C0CCD8;
+  --text-primary:#1E2934;
+  --text-secondary:#43586A;
+  --text-muted-readable:#5A6D7F;
+  --status-nurture:#71879A;
+  --status-other:#5C7184;
+}
+html[data-theme=light] .theme-toggle{background:#FFFFFF;border-color:#B6C6D5;color:#223343}
+html[data-theme=light] .theme-toggle:hover{background:#F2F6FA;border-color:#7898B6}
+html[data-theme=light] .theme-toggle-track{background:linear-gradient(135deg,#E2EDF6,#BFD4E7);box-shadow:inset 0 0 0 1px rgba(40,95,147,.18)}
+html[data-theme=light] .theme-toggle-thumb{background:#245B8F;color:#F8FCFF}
+html[data-theme=light] .glass-panel{border-color:#A9BBCB!important;border-left-color:#285F93!important}
+html[data-theme=light] .flow-node{background:#F8FBFE!important;color:#1E2934!important;border-color:#AFC2D3!important}
+html[data-theme=light] .flow-node span,html[data-theme=light] .flow-node small{color:#586D7F!important}
+html[data-theme=light] .mini-terminal{background:#17314A!important;border-color:#476D90!important}
+html[data-theme=light] .mini-terminal span{color:#BCD0E1!important}
+html[data-theme=light] .mini-terminal b{color:#F4FAFF!important}
+html[data-theme=light] .mini-terminal em{color:#A9D0F2!important}
+html[data-theme=light] .float-card{background:#18334D!important;border-color:#476D90!important;color:#F4FAFF!important}
+html[data-theme=light] .fc-two{background:#18334D!important;border-color:#476D90!important}
+html[data-theme=light] .fc-two small,html[data-theme=light] .fc-one span{color:#C2D5E5!important}
+html[data-theme=light] .trust-band{
+  background:linear-gradient(90deg,#E6EEF6,#E9F0F6 32%,#E9F0F6 70%,#EFE9E1)!important;
+  border-color:#C0CDD9!important;
+}
+html[data-theme=light] .trust-grid>div:first-child small{color:#245B8F!important}
+html[data-theme=light] .trust-grid>div:first-child strong{color:#1E2934!important}
+html[data-theme=light] .capability{border-left-color:#B4C5D4}
+html[data-theme=light] .capability:hover{background:rgba(40,95,147,.05);border-left-color:#285F93}
+html[data-theme=light] .capability b{color:#1E2934!important}
+html[data-theme=light] .capability small,html[data-theme=light] .capability span{color:#53697C!important}
+html[data-theme=light] .band{background:#E8EEF4!important}
+html[data-theme=light] #roi .calculator{background:#FFFFFF!important;border-color:#C0CCD8!important}
+html[data-theme=light] #roi .calc-inputs{background:#FFFFFF!important}
+html[data-theme=light] #roi .calc-result{background:#E7EFF7!important;border-color:#C0CCD8!important}
+html[data-theme=light] .number-field{background:#F6F9FC!important;border-color:#BBC9D5!important}
+html[data-theme=light] .roi-track{background:#CEDBE6!important}
+html[data-theme=light] .blueprint-disclosure{background:#FFFFFF!important;border-color:#C0CCD8!important}
+html[data-theme=light] .blueprint-summary-flow span{background:#EAF1F7!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .blueprint-summary-flow i{color:#285F93!important}
+html[data-theme=light] .blueprint-output{background:#EAF1F7!important}
+html[data-theme=light] .bp-node{background:#FFFFFF!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .bp-node.selected{background:#245B8F!important;border-color:#245B8F!important;color:#FFF!important}
+html[data-theme=light] .blueprint-editor-controls button{background:#EAF1F7!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .case-section{
+  background:linear-gradient(90deg,#F4F8FB 0 49%,#E8F0F7 49% 100%)!important;
+}
+@media(max-width:680px){
+  .case-section{background:linear-gradient(180deg,#0B141F 0 40%,#101D2A 40% 100%)!important}
+  html[data-theme=light] .case-section{background:linear-gradient(180deg,#F4F8FB 0 40%,#E8F0F7 40% 100%)!important}
+}
+html[data-theme=light] .portfolio-next-card{background:#E5EDF5!important;border-color:#B4C5D4!important;border-left-color:#285F93!important}
+html[data-theme=light] .portfolio-next-tags span{color:#43586A!important;border-color:#AFC2D3!important}
+html[data-theme=light] .footer{background:#F3F6F9!important;border-top-color:#C0CCD8!important;color:#506273!important}
+html[data-theme=light] .crm-shell,html[data-theme=light] .crm-main,html[data-theme=light] .lead-drawer,html[data-theme=light] .followup-dialog{background:#F3F7FA!important;border-color:#C0CCD8!important}
+html[data-theme=light] .crm-sidebar{background:#E9F0F6!important;border-right-color:#C0CCD8!important}
+html[data-theme=light] .crm-panel-card,html[data-theme=light] .automation-card,html[data-theme=light] .run-history,html[data-theme=light] .integration-row,html[data-theme=light] .crm-overview-kpis article,html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#C0CCD8!important}
