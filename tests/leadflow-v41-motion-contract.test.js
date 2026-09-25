@@ -59,3 +59,11 @@ test("external story interruption exits guided mode cleanly",()=>{
   const uses=(app.match(/guidedStoryInterrupted\(storyResult\)/g)||[]).length;
   assert.ok(uses>=4,uses);
 });
+
+test("guided qualification progress reads the real execution-stage container",()=>{
+  assert.match(app,/document\.querySelectorAll\("#steps \.exec-step\.done"\)\.length/);
+  assert.doesNotMatch(app,/#executionSteps/);
+});
+test("guided tour exit control respects the 44px control floor",()=>{
+  assert.match(css,/\.tour-status button\{\s*width:44px;height:44px;\s*min-width:44px;min-height:44px;/);
+});
