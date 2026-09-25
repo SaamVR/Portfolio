@@ -12,7 +12,8 @@ Merged V4 source:
 - PR #27: https://github.com/SaamVR/Portfolio/pull/27
 - squash merge commit: `54bb13ca316d04f51a266c2e513ed66c49b01e7d`
 - preservation branch: `preserve/leadflow-v4-warm-industrial-20260925`
-- preservation branch is pinned to the reviewed V4 application source commit above
+- preservation branch head: `54bb13ca316d04f51a266c2e513ed66c49b01e7d` (the V4 squash merge commit)
+- the preserved root V4 application blobs match reviewed feature head `21bf8fec1cc934e814afc449e54cf414f8eff6cc` for `index.html`, `styles.css`, `app.js`, `dashboard.js`, `storytelling.js`, and the hardened LeadFlow deploy workflow
 
 Production-trigger commit on main:
 - `0aaa860dcfbafb3c0e0cf29abb0af89819515eb1`
