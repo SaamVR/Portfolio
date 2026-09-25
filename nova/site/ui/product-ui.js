@@ -13,13 +13,13 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'Spatial widens the visual field and keeps the product centered.',
+  spatial:'Wide opens the presentation around the product.',
   focus:'Focus reduces visual distraction so the product reads more clearly.',
-  ambient:'Ambient keeps surrounding context visible while the product remains present.'
+  ambient:'Context keeps more surrounding information visible while the product remains present.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive tightens the scene and reduces surrounding visual activity.',
-  transparency:'Transparency opens the scene and keeps environmental context visible.'
+  adaptive:'Isolate tightens the scene and reduces surrounding visual activity.',
+  transparency:'Reveal opens the lighting and keeps environmental context visible.'
 };
 
 const actions = {};
@@ -111,6 +111,7 @@ export function bindProductUI(nextActions={}){
         item.setAttribute('aria-pressed',String(active));
         item.classList.toggle('is-active',active);
       });
+      document.body.dataset.designDetail=id;
       actions.focusHotspot?.(id);
     });
   });
@@ -222,15 +223,17 @@ export function updateProductUI(state){
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
   if((ui.range || state?.range)==='design'){
+    const expanded=document.querySelector('[data-hotspot][aria-expanded="true"]');
     const rp=Number(state?.rangeProgress||0);
-    const detail=rp<.34?'cushion':rp<.68?'headband':'controls';
+    const detail=expanded?.dataset.hotspot || (rp<.34?'cushion':rp<.68?'headband':'controls');
+    document.body.dataset.designDetail=detail;
     document.querySelectorAll('[data-design-detail]').forEach(item=>{
       const active=item.dataset.designDetail===detail;
-      if(!document.querySelector('[data-hotspot][aria-expanded="true"]')){
-        item.setAttribute('aria-pressed',String(active));
-        item.classList.toggle('is-active',active);
-      }
+      item.setAttribute('aria-pressed',String(active));
+      item.classList.toggle('is-active',active);
     });
+  }else{
+    document.body.dataset.designDetail='none';
   }
   const activeTarget=NAV_TARGET[ui.range || state?.range] || null;
   document.querySelectorAll('.product-nav a[href^="#"],.mobile-nav a[href^="#"]').forEach(link=>{
