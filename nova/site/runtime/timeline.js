@@ -70,11 +70,12 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // V3: a continuous physical pose path. Design no longer reverses or "accordion"
-  // scrubs the rig; the product opens progressively into the listening chapters.
-  [0.000,.240],[0.045,.270],[0.090,.290],[0.120,.295],
-  [0.160,.290],[0.180,.300],[0.200,.320],[0.240,.350],[0.280,.380],
-  [0.300,.460],[0.320,.560],[0.340,.660],[0.360,.720],
+  // V3 detail philosophy: hold the physical rig steady while Cushion/Hinge/Controls
+  // are being explained. The camera and lighting create the Design motion; the
+  // authored source clip opens only after the detail sequence leaves the screen.
+  [0.000,.240],[0.045,.270],[0.090,.290],[0.120,.300],
+  [0.160,.300],[0.180,.300],[0.200,.300],[0.240,.300],[0.280,.300],
+  [0.300,.400],[0.320,.520],[0.340,.640],[0.360,.720],
   [0.410,.710],[0.450,.740],
   [0.490,.700],[0.540,.760],[0.580,.720],
   [0.620,.680],[0.670,.770],[0.720,.720],
