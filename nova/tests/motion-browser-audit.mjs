@@ -117,60 +117,67 @@ async function continuous(page,{frames=150,from=0,to=1}){
   },{frames,from,to});
 }
 
-async function auditDesktop(url,label){
+async function auditDesktop(url,label,section){
   const {context,page,errors}=await ready(url,{width:1440,height:1000});
   const out={errors};
-  console.log(label+': desktop inspection views');
 
-  await setProgress(page,.79,600);
-  out.side=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
+  if(section==='inspection'){
+    console.log(label+': desktop inspection views');
+    await setProgress(page,.79,600);
+    out.side=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
 
-  await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(650);
-  out.rear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="rear"]'}]}));
+    await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(650);
+    out.rear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="rear"]'}]}));
 
-  await page.waitForTimeout(650);
-  out.frontFromRear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="front"]'}]}));
+    await page.waitForTimeout(650);
+    out.frontFromRear=trajectoryStats(await collect(page,{frames:75,actions:[{frame:4,type:'click',selector:'[data-inspection-view="front"]'}]}));
 
-  await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
-  await dragCanvas(page,280,70); await page.waitForTimeout(60);
-  out.dragToSide=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
+    await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
+    await dragCanvas(page,280,70); await page.waitForTimeout(60);
+    out.dragToSide=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'[data-inspection-view="side"]'}]}));
 
-  await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
-  await dragCanvas(page,-260,-55); await page.waitForTimeout(60);
-  out.dragReset=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'#inspectionReset'}]}));
+    await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
+    await dragCanvas(page,-260,-55); await page.waitForTimeout(60);
+    out.dragReset=trajectoryStats(await collect(page,{frames:60,actions:[{frame:4,type:'click',selector:'#inspectionReset'}]}));
 
-  await setProgress(page,.79,350); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(850);
-  out.rearExit=trajectoryStats(await collect(page,{frames:70,actions:[{frame:4,type:'scroll',progress:.87}]}));
+    await setProgress(page,.79,350); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(850);
+    out.rearExit=trajectoryStats(await collect(page,{frames:70,actions:[{frame:4,type:'scroll',progress:.87}]}));
 
-  await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
-  out.rapidViews=trajectoryStats(await collect(page,{frames:80,actions:[
-    {frame:4,type:'click',selector:'[data-inspection-view="rear"]'},
-    {frame:11,type:'click',selector:'[data-inspection-view="side"]'},
-    {frame:18,type:'click',selector:'[data-inspection-view="front"]'},
-    {frame:25,type:'click',selector:'[data-inspection-view="rear"]'}
-  ]}));
+    await setProgress(page,.79,350); await page.locator('[data-inspection-view="front"]').click(); await page.waitForTimeout(600);
+    out.rapidViews=trajectoryStats(await collect(page,{frames:80,actions:[
+      {frame:4,type:'click',selector:'[data-inspection-view="rear"]'},
+      {frame:11,type:'click',selector:'[data-inspection-view="side"]'},
+      {frame:18,type:'click',selector:'[data-inspection-view="front"]'},
+      {frame:25,type:'click',selector:'[data-inspection-view="rear"]'}
+    ]}));
 
-  console.log(label+': desktop fold controls');
-  await setProgress(page,.65,500);
-  out.foldRetarget=trajectoryStats(await collect(page,{frames:80,actions:[
-    {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
-    {frame:25,type:'click',selector:'[data-fold-state="open"]'},
-    {frame:46,type:'click',selector:'[data-fold-state="fold"]'}
-  ]}));
+    await setProgress(page,.79,500); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(800);
+    await page.screenshot({path:`nova-motion-audit/${label}_desktop_rear.png`});
+  }
 
-  await setProgress(page,.65,500);
-  out.foldExit=trajectoryStats(await collect(page,{frames:70,actions:[
-    {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
-    {frame:30,type:'scroll',progress:.74}
-  ]}));
+  if(section==='fold'){
+    console.log(label+': desktop fold controls');
+    await setProgress(page,.65,500);
+    out.foldRetarget=trajectoryStats(await collect(page,{frames:80,actions:[
+      {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
+      {frame:25,type:'click',selector:'[data-fold-state="open"]'},
+      {frame:46,type:'click',selector:'[data-fold-state="fold"]'}
+    ]}));
 
-  console.log(label+': desktop scroll trajectories');
-  await setProgress(page,0,500);
-  out.scrollForward=trajectoryStats(await continuous(page,{frames:160,from:0,to:1}));
-  out.scrollReverse=trajectoryStats(await continuous(page,{frames:140,from:1,to:0}));
+    await setProgress(page,.65,500);
+    out.foldExit=trajectoryStats(await collect(page,{frames:70,actions:[
+      {frame:4,type:'click',selector:'[data-fold-state="fold"]'},
+      {frame:30,type:'scroll',progress:.74}
+    ]}));
+  }
 
-  await setProgress(page,.79,500); await page.locator('[data-inspection-view="rear"]').click(); await page.waitForTimeout(800);
-  await page.screenshot({path:`nova-motion-audit/${label}_desktop_rear.png`});
+  if(section==='scroll'){
+    console.log(label+': desktop scroll trajectories');
+    await setProgress(page,0,500);
+    out.scrollForward=trajectoryStats(await continuous(page,{frames:160,from:0,to:1}));
+    out.scrollReverse=trajectoryStats(await continuous(page,{frames:140,from:1,to:0}));
+  }
+
   await context.close();
   return out;
 }
@@ -202,12 +209,13 @@ function compare(a,b){
   return pairs;
 }
 
-const phase=process.env.NOVA_MOTION_PHASE||'desktop';
+const phase=process.env.NOVA_MOTION_PHASE||'desktop-inspection';
 let report;
 let errors=[];
-if(phase==='desktop'){
-  const baseline=await auditDesktop(BASELINE,'baseline');
-  const candidate=await auditDesktop(CANDIDATE,'candidate');
+if(['desktop-inspection','desktop-fold','desktop-scroll'].includes(phase)){
+  const section=phase.replace('desktop-','');
+  const baseline=await auditDesktop(BASELINE,'baseline',section);
+  const candidate=await auditDesktop(CANDIDATE,'candidate',section);
   report={phase,baselineUrl:BASELINE,candidateUrl:CANDIDATE,baseline,candidate,compare:compare(baseline,candidate)};
   errors=[...baseline.errors,...candidate.errors];
 }else if(phase==='mobile'){
