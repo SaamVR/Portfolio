@@ -73,8 +73,10 @@ scene.add(camera);
 
 const normalizationRoot=new THREE.Group();
 const presentation=new THREE.Group();
+const orientationGroup=new THREE.Group();
 const centerGroup=new THREE.Group();
-presentation.add(centerGroup);
+orientationGroup.add(centerGroup);
+presentation.add(orientationGroup);
 normalizationRoot.add(presentation);
 scene.add(normalizationRoot);
 
@@ -101,7 +103,7 @@ let clip=null;
 let clipDuration=27.70833;
 let primaryProductBounds=null;
 let adapter=rendererAvailable?createRenderAdapter({
-  THREE,camera,presentation,mixer:null,clipDuration,renderer,lights,environment,orientationX
+  THREE,camera,presentation,orientation:orientationGroup,mixer:null,clipDuration,renderer,lights,environment,orientationX
 }):null;
 let lastTime=performance.now();
 
@@ -210,7 +212,7 @@ function hideHotspots(){
 function rebuildAdapter(){
   if(!rendererAvailable) return;
   adapter=createRenderAdapter({
-    THREE,camera,presentation,mixer,clipDuration,renderer,lights,environment,orientationX
+    THREE,camera,presentation,orientation:orientationGroup,mixer,clipDuration,renderer,lights,environment,orientationX
   });
 }
 
