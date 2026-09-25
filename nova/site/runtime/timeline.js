@@ -137,7 +137,7 @@ function viewportAdjusted(state, viewportClass){
     state.product.position[0] *= .12;
     state.product.position[1] += .30;
     if(state.range === 'hero'){
-      state.product.position[1] -= .96;
+      state.product.position[1] -= 1.16;
       state.camera.target[1] += .045;
     }
     state.product.yaw *= .62;
