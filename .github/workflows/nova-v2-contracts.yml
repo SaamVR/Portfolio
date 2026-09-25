@@ -36,6 +36,9 @@ jobs:
           if [ -f nova/tests/motion_control_contract.mjs ]; then
             node nova/tests/motion_control_contract.mjs
           fi
+          if [ -f nova/tests/motion_pose_contract.mjs ]; then
+            node nova/tests/motion_pose_contract.mjs
+          fi
       - name: Python contracts
         run: |
           python3 -m pip install -q pytest
