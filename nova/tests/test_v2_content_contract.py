@@ -327,3 +327,11 @@ def test_v3_design_detail_sequence_replaces_three_simultaneous_labels():
     assert 'body[data-range="design"][data-design-detail="cushion"]' in compact
     assert 'body[data-range="design"][data-design-detail="hinge"]' in compact
     assert 'body[data-range="design"][data-design-detail="controls"]' in compact
+
+
+def test_v3_mobile_design_detail_sequence_is_a_single_swipeable_rail():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert ".stage--design.stage-inner{padding-bottom:4svh}" in compact
+    assert ".design-detail-sequence{display:flex;width:calc(100vw-22px)" in compact
+    assert "overflow-x:auto" in compact
+    assert ".design-detail-sequencebutton{flex:00min(250px,74vw)" in compact
