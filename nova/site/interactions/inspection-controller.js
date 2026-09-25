@@ -3,7 +3,7 @@ const VIEW_YAW={front:0,side:Math.PI*.48,rear:Math.PI};
 
 export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
   let active=false, dragging=false, pointerId=null, lastX=0,lastY=0,yaw=0,pitch=0,weight=0;
-  let view='front',modelYaw=0,targetModelYaw=0;
+  let view='front',modelYaw=0,targetModelYaw=0,modelYawVelocity=0;
   return {
     setActive(value){
       active=!!value;
@@ -18,7 +18,6 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       if(!(next in VIEW_YAW)) return;
       view=next;
       targetModelYaw=VIEW_YAW[next];
-      weight=active?1:weight;
       yaw=0;
       pitch=0;
     },
@@ -41,18 +40,23 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       pitch=0;
       view='front';
       targetModelYaw=0;
-      modelYaw=0;
-      weight=active?1:0;
     },
     update(dt){
       const step=Math.max(0,Number(dt)||0);
       const target=active?1:0;
       weight += (target-weight)*Math.min(1,step*7);
-      modelYaw += (targetModelYaw-modelYaw)*Math.min(1,step*8);
+      const stiffness=60;
+      const damping=15.5;
+      const angularAcceleration=(targetModelYaw-modelYaw)*stiffness-modelYawVelocity*damping;
+      modelYawVelocity += angularAcceleration*step;
+      modelYaw += modelYawVelocity*step;
+      if(Math.abs(targetModelYaw-modelYaw)<.0002 && Math.abs(modelYawVelocity)<.0005){
+        modelYaw=targetModelYaw;
+        modelYawVelocity=0;
+      }
       if(!active){
         yaw*=Math.max(0,1-step*5);
         pitch*=Math.max(0,1-step*5);
-        modelYaw*=Math.max(0,1-step*5);
       }
     },
     getInfluence(){ return {weight,yaw,pitch,modelYaw,view,active,dragging}; }
