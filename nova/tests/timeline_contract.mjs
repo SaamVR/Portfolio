@@ -170,8 +170,8 @@ assert.ok(behindMobileR10.product.scale < .56, `Behind handoff should make the p
 
 
 const r12MobileResolution=sampleTimeline(.92,'mobile');
-assert.ok(r12MobileResolution.product.position[1]>.25 && r12MobileResolution.product.position[1]<.38,
-  `R12 mobile Resolution should retain the proven baseline framing after compacting actions, got y=${r12MobileResolution.product.position[1]}`);
+assert.ok(r12MobileResolution.product.position[1]>.02 && r12MobileResolution.product.position[1]<.16,
+  `Mobile Resolution should keep the product near the visual center instead of parking it above the viewport, got y=${r12MobileResolution.product.position[1]}`);
 
 
 const r13SpatialStart=sampleTimeline(.32,'desktop');
