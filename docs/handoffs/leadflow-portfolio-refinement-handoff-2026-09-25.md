@@ -284,10 +284,10 @@ Do not report production complete until those checks pass.
 
 ## FINAL VISUAL FREEZE — LeadFlow showcase
 
-- Frozen production source commit: `f37e1027cf95067089c3c1087acddbaf2d040a68`.
+- Frozen production source commit: `bcc98f7b85273f8304166a0b116b75962b484f1e`.
 - Primary visual-freeze commit: `fef48dc052404272778f2a04470f28daa3ba4290`.
-- Final production-only disclosure-glyph fix: `f37e1027cf95067089c3c1087acddbaf2d040a68`.
-- Latest immutable Cloudflare deployment: https://4c4b676c.leadflow-ai-bhy.pages.dev
+- Final interaction/disclosure polish commit: `bcc98f7b85273f8304166a0b116b75962b484f1e`.
+- Latest immutable Cloudflare deployment: https://797dc1f0.leadflow-ai-bhy.pages.dev
 - Canonical production: https://leadflow-ai-bhy.pages.dev/
 - Frozen legacy: https://leadflow-ai-bhy.pages.dev/v1/
 
@@ -299,6 +299,7 @@ Do not report production complete until those checks pass.
 - Desktop workflow presentation is one connected editorial rail instead of four independently floating cards.
 - Reliability and Architecture visually read as one engineering chapter.
 - Secondary integration/configuration + implementation proof is collapsed under "Explore integration and implementation details"; core architecture remains visible.
+- Deferred reveal targets inside `<details>` are promoted when visitors expand them, preventing hidden-at-init content from remaining transparent.
 - Workflow Blueprint is demoted to an optional collapsed planning tool.
 - Mobile Workspace pipeline is rendered as readable lead cards rather than requiring horizontal table reading.
 - Mobile secondary analytics use an edge-peeking horizontal snap rail.
@@ -308,7 +309,7 @@ Do not report production complete until those checks pass.
 - Instrument Sans + IBM Plex Mono retained.
 
 ### Final measurements and verification
-- Full Node suite: 19/19 PASS.
+- Full Node suite: 20/20 PASS.
 - Dedicated CRM runtime audit: PASS.
 - End-to-end workflow audit under reduced motion: 92 / 64 / 33, 16 events each, CRM grows 1 → 2 → 3 records, zero runtime errors.
 - Default presentation visibility: PASS at dark/light 1440 and 390.
@@ -319,8 +320,9 @@ Do not report production complete until those checks pass.
   - zero undersized audited controls;
   - zero page-level horizontal overflow.
 - Canonical page height after compaction: approximately 9,138px desktop and 15,786px mobile with optional detail collapsed.
-- Sticky nav verified on Workflow / Demo / Workspace / Reliability / Architecture / ROI.
+- Sticky nav verified on Workflow / Demo / Workspace / Reliability / Architecture / ROI; the hero leaves section links neutral until the first section crosses the reading line.
 - Reading progress verified at ~50% when page is half-scrolled.
+- Public browser verification on both immutable and canonical domains reports zero runtime exceptions; Workspace activates correctly with ~18px sticky-nav clearance, mobile pipeline rows render as cards, and light-mode Blueprint/final-CTA colors match the frozen contrast system.
 - Root API remains `deterministic-qualification-v2`; canonical Sarah / Acme Dental POST still returns score 92.
 - `/v1/` remains legacy and `/v1/api/qualify` remains `deterministic-qualification-v1`.
 - No changes were made to `v1`, `functions/v1`, or `functions/api/qualify.js`.
