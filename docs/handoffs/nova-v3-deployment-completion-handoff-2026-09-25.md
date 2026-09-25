@@ -349,10 +349,12 @@ Do not restart the V3 audit.
 Treat the corrected V3 release as live at:
 https://v3.nova-interactive-portfolio.pages.dev/
 
-Start any future V3 site change from exact site source:
-`a85882be393660d6984322dbfd21e781a170f1e6`
+Start any future V3 site change from exact currently deployed site source:
+`2283e56ef6dbadeec458e33a6d9e3249433c7859`
 
-while preserving the newer QA workflow/trigger state on the branch.
+while preserving the newer QA workflow/trigger and documentation state on the canonical `nova/v3-motion-polish` branch.
+
+The earlier `a85882be...` corrected-framing source is historical and has been superseded by the motion-fluidity release.
 
 Any new `nova/site/**` change creates a new site-source revision and must pass:
 1. Contracts
