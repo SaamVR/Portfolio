@@ -562,17 +562,21 @@ jobs:
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'benchmark-panel');
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/benchmark specs/i}).click();
+            await page.getByRole('button',{name:/project specs/i}).click();
             await page.waitForFunction(()=>document.body.dataset.benchmarkPanel==='open');
             const state=await page.evaluate(()=>({
               open:document.body.dataset.benchmarkPanel,
               hidden:document.querySelector('#benchmarkPanel')?.getAttribute('aria-hidden'),
+              projectSpecs:[
+                '31,306 triangles','36 joints','12 × 1024² WebP textures','27.708 s','2.45 MiB 3D asset payload'
+              ].every(text=>document.body.innerText.includes(text)),
+              marketReference:document.body.innerText.includes('Market reference'),
               sony:document.body.innerText.includes('Sony WH-1000XM6'),
               bose:document.body.innerText.includes('Bose QuietComfort Ultra Headphones (2nd Gen)'),
               sennheiser:document.body.innerText.includes('Sennheiser MOMENTUM 4 Wireless'),
               sourceLinks:document.querySelectorAll('#benchmarkPanel a[href^="https://"]').length
             }));
-            if(state.open!=='open'||state.hidden!=='false'||!state.sony||!state.bose||!state.sennheiser||state.sourceLinks<5){
+            if(state.open!=='open'||state.hidden!=='false'||!state.projectSpecs||!state.marketReference||!state.sony||!state.bose||!state.sennheiser||state.sourceLinks<3){
               throw new Error('benchmark panel incomplete '+JSON.stringify(state));
             }
             await page.screenshot({path:'nova-qa/benchmark_panel.png'});
@@ -583,22 +587,27 @@ jobs:
           async function designDetailRailAudit(){
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'design-detail-rail');
-            const active=()=>page.evaluate(()=>[...document.querySelectorAll('[data-design-detail]')]
-              .filter(el=>el.getAttribute('aria-pressed')==='true')
-              .map(el=>el.dataset.designDetail));
+            const active=()=>page.evaluate(()=>({
+              rail:[...document.querySelectorAll('[data-design-detail]')]
+                .filter(el=>el.getAttribute('aria-pressed')==='true')
+                .map(el=>el.dataset.designDetail),
+              markers:[...document.querySelectorAll('[data-hotspot]')]
+                .filter(el=>el.dataset.visible==='true' && Number(getComputedStyle(el).opacity)>.5)
+                .map(el=>el.dataset.hotspot)
+            }));
 
             await scrollProgress(page,.16);
             let selected=await active();
-            if(selected.length!==1||selected[0]!=='cushion') throw new Error('design cushion detail not singular '+JSON.stringify(selected));
+            if(selected.rail.length!==1||selected.rail[0]!=='cushion'||selected.markers.length!==1||selected.markers[0]!=='cushion') throw new Error('design cushion detail not singular '+JSON.stringify(selected));
             await page.screenshot({path:'nova-qa/design_detail_cushion.png'});
 
             await scrollProgress(page,.20);
             selected=await active();
-            if(selected.length!==1||selected[0]!=='headband') throw new Error('design headband detail not singular '+JSON.stringify(selected));
+            if(selected.rail.length!==1||selected.rail[0]!=='headband'||selected.markers.length!==1||selected.markers[0]!=='headband') throw new Error('design headband detail not singular '+JSON.stringify(selected));
 
             await scrollProgress(page,.25);
             selected=await active();
-            if(selected.length!==1||selected[0]!=='controls') throw new Error('design controls detail not singular '+JSON.stringify(selected));
+            if(selected.rail.length!==1||selected.rail[0]!=='controls'||selected.markers.length!==1||selected.markers[0]!=='controls') throw new Error('design controls detail not singular '+JSON.stringify(selected));
             await page.locator('[data-design-detail="controls"]').click();
             await page.waitForFunction(()=>document.querySelector('[data-hotspot="controls"]')?.getAttribute('aria-expanded')==='true');
             await page.screenshot({path:'nova-qa/design_detail_controls.png'});
@@ -614,11 +623,12 @@ jobs:
               const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
               scrollTo(0,max*.28);
               const out=[];
-              for(let i=0;i<16;i++){
-                await new Promise(resolve=>setTimeout(resolve,35));
+              for(let i=0;i<36;i++){
+                await new Promise(resolve=>requestAnimationFrame(resolve));
                 out.push({
                   progress:Number(document.body.dataset.visualProgress||0),
-                  pose:Number(document.body.dataset.productPose||0)
+                  targetPose:Number(document.body.dataset.productPose||0),
+                  renderedPose:Number(document.body.dataset.renderedPose||0)
                 });
               }
               return out;
@@ -627,12 +637,15 @@ jobs:
               if(samples[i].progress+0.0005<samples[i-1].progress){
                 throw new Error('V3 visual progress reversed '+JSON.stringify(samples));
               }
-              if(Math.abs(samples[i].pose-samples[i-1].pose)>.055){
-                throw new Error('V3 product pose jumped '+JSON.stringify({i,previous:samples[i-1],current:samples[i]}));
+              if(Math.abs(samples[i].renderedPose-samples[i-1].renderedPose)>.041){
+                throw new Error('V3 rendered pose jumped '+JSON.stringify({i,previous:samples[i-1],current:samples[i]}));
               }
             }
             if(samples.at(-1).progress-samples[0].progress<.06){
               throw new Error('V3 scroll damping did not visibly advance '+JSON.stringify(samples));
+            }
+            if(Math.abs(samples.at(-1).renderedPose-samples.at(-1).targetPose)>.12){
+              throw new Error('V3 rendered pose failed to converge toward target '+JSON.stringify(samples.at(-1)));
             }
             fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify(samples,null,2));
             await context.close();
