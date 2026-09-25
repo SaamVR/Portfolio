@@ -2,7 +2,7 @@ name: NOVA Visual QA
 
 on:
   push:
-    branches: [main, "nova/v2-integration", "nova/v3"]
+    branches: [main, "nova/v2-integration", "nova/v3", "nova/v3-*"]
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
@@ -505,7 +505,7 @@ jobs:
                 jumps.push({from:samples[i-1].progress,to:samples[i].progress,id,jump});
               }
             }
-            if(maxJump>145) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
+            if(maxJump>80) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
             fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify({maxJump,samples,jumps},null,2));
             await context.close();
           }
