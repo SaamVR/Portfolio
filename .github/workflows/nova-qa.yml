@@ -136,6 +136,60 @@ jobs:
             return captures;
           }
 
+          async function productPresenceAudit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const {page}=await readyPage(context,prefix+'-product-presence');
+            const checks=[.02,.16,.36,.54,.65,.79,.92];
+            const results=[];
+            for(const progress of checks){
+              await scrollProgress(page,progress);
+              await page.waitForTimeout(750);
+              const state=await page.evaluate(async p=>{
+                await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+                const canvas=document.querySelector('#webgl');
+                if(!canvas) return {progress:p,missing:true};
+                const probe=document.createElement('canvas');
+                probe.width=innerWidth;
+                probe.height=innerHeight;
+                const ctx=probe.getContext('2d',{willReadFrequently:true});
+                ctx.drawImage(canvas,0,0,innerWidth,innerHeight);
+                const image=ctx.getImageData(0,0,innerWidth,innerHeight);
+                const stride=4;
+                let count=0,minX=innerWidth,minY=innerHeight,maxX=-1,maxY=-1;
+                for(let y=0;y<innerHeight;y+=stride){
+                  for(let x=0;x<innerWidth;x+=stride){
+                    const alpha=image.data[(y*innerWidth+x)*4+3];
+                    if(alpha>160){
+                      count++;
+                      minX=Math.min(minX,x); minY=Math.min(minY,y);
+                      maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
+                    }
+                  }
+                }
+                const bbox=count?{left:minX,top:minY,right:maxX,bottom:maxY,width:maxX-minX,height:maxY-minY}:null;
+                return {
+                  progress:p,
+                  range:document.body.dataset.range,
+                  model:document.body.dataset.modelState,
+                  count,
+                  bbox,
+                  viewport:{width:innerWidth,height:innerHeight}
+                };
+              },progress);
+              results.push(state);
+              if(state.missing||state.model!=='ready'||!state.bbox||state.count<(prefix==='mobile'?120:300)){
+                throw new Error(prefix+' product missing/too faint '+JSON.stringify(state));
+              }
+              const margin=prefix==='mobile'?6:10;
+              if(state.bbox.top<=margin||state.bbox.bottom>=state.viewport.height-margin){
+                throw new Error(prefix+' product vertically clipped '+JSON.stringify(state));
+              }
+              await page.screenshot({path:'nova-qa/'+prefix+'_product_presence_'+String(progress).replace('.','')+'.png'});
+            }
+            fs.writeFileSync('nova-qa/'+prefix+'_product_presence.json',JSON.stringify(results,null,2));
+            await context.close();
+          }
+
           async function productCopyCollisionAudit(viewport,prefix){
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
             const {page}=await readyPage(context,prefix+'-collision');
@@ -839,6 +893,8 @@ jobs:
             await hotspotMotionAudit({width:390,height:844},'mobile');
             await motionContinuityAudit();
             await designDetailSequenceAudit();
+            await productPresenceAudit({width:1440,height:1000},'desktop');
+            await productPresenceAudit({width:390,height:844},'mobile');
             await productCopyCollisionAudit({width:1440,height:1000},'desktop');
             await productCopyCollisionAudit({width:390,height:844},'mobile');
 
