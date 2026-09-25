@@ -143,16 +143,40 @@ jobs:
             const results=[];
             for(const progress of checks){
               await scrollProgress(page,progress);
-              await page.waitForTimeout(750);
-              const state=await page.evaluate(p=>({
-                progress:p,
-                range:document.body.dataset.range,
-                model:document.body.dataset.modelState,
-                frame:window.__NOVA_QA__?.productFrame?.()||null
-              }),progress);
+              const state=await page.evaluate(async p=>{
+                const read=()=>window.__NOVA_QA__?.productFrame?.()||null;
+                let previous=read();
+                let stableFrames=0;
+                let frames=0;
+                while(frames<240 && stableFrames<8){
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  const next=read();
+                  if(previous&&next){
+                    const ids=['cushion','headband','controls'];
+                    const maxDelta=Math.max(...ids.map(id=>{
+                      const a=previous.points?.[id], b=next.points?.[id];
+                      if(!a||!b||!Number.isFinite(a.x)||!Number.isFinite(a.y)||!Number.isFinite(b.x)||!Number.isFinite(b.y)) return Infinity;
+                      return Math.hypot(b.x-a.x,b.y-a.y);
+                    }));
+                    stableFrames=maxDelta<=.45 ? stableFrames+1 : 0;
+                  }else{
+                    stableFrames=0;
+                  }
+                  previous=next;
+                  frames++;
+                }
+                return {
+                  progress:p,
+                  range:document.body.dataset.range,
+                  model:document.body.dataset.modelState,
+                  frame:previous,
+                  settled:stableFrames>=8,
+                  settleFrames:frames
+                };
+              },progress);
               results.push(state);
-              if(state.model!=='ready'||!state.frame){
-                throw new Error(prefix+' product frame unavailable '+JSON.stringify(state));
+              if(state.model!=='ready'||!state.frame||!state.settled){
+                throw new Error(prefix+' product frame unavailable/unsettled '+JSON.stringify(state));
               }
               const minSpanX=prefix==='mobile'?50:100;
               const minSpanY=prefix==='mobile'?35:60;
