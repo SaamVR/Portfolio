@@ -13,13 +13,13 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'Spatial opens the presentation for a wider, more immersive listening feel.',
-  focus:'Focus reduces surrounding motion so attention stays tightly centered.',
-  ambient:'Ambient keeps the visual field open to the world around you.'
+  spatial:'Immersive prioritizes a wider, more cinematic presentation for music, film and long-form listening.',
+  focus:'Focus settles the visual field for concentrated Office work and long listening sessions.',
+  ambient:'Aware keeps more environmental openness for stations, gates, street movement and conversation.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
-  transparency:'Transparency represents awareness and a more open connection to the environment.'
+  adaptive:'ANC prioritizes isolation for Commute, Travel and focused work.',
+  transparency:'Aware prioritizes announcements, conversation and environmental context.'
 };
 
 const actions = {};
@@ -62,8 +62,8 @@ export function bindProductUI(nextActions={}){
   bound=true;
 
   document.body.dataset.mobileNav='closed';
-  document.body.dataset.notifyConcept='closed';
   document.body.dataset.productFacts='closed';
+  document.body.dataset.designDetail='cushion';
   document.body.dataset.guidedTour='closed';
 
   document.querySelectorAll('[data-listening-mode]').forEach(button => {
@@ -110,6 +110,13 @@ export function bindProductUI(nextActions={}){
       const expanded=button.getAttribute('aria-expanded')==='true';
       if(expanded) actions.clearHotspot?.();
       else actions.focusHotspot?.(button.dataset.hotspot);
+    });
+  });
+
+  document.querySelectorAll('[data-detail-card]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const id=button.dataset.detailCard;
+      actions.focusDesignDetail?.(id);
     });
   });
 
@@ -185,29 +192,6 @@ export function bindProductUI(nextActions={}){
   factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
   document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
 
-  const notifyTrigger=document.querySelector('#notifyConcept');
-  const notifyPanel=document.querySelector('#notifyPanel');
-  const notifyShell=document.querySelector('.interest-shell');
-  const setNotifyOpen=open=>setDialog({
-    open,bodyKey:'notifyConcept',trigger:notifyTrigger,panel:notifyPanel,shell:notifyShell,focusTarget:notifyPanel
-  });
-  notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
-
-  const notifyForm=document.querySelector('#notifyDemoForm');
-  const notifyStatus=document.querySelector('#notifyDemoStatus');
-  notifyForm?.addEventListener('submit',event=>{
-    event.preventDefault();
-    const input=notifyForm.querySelector('input[type="email"]');
-    if(!input?.checkValidity()){
-      input?.reportValidity();
-      return;
-    }
-    notifyForm.dataset.state='confirmed';
-    if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
-    input.value='';
-  });
-  document.querySelectorAll('[data-notify-close]').forEach(button=>button.addEventListener('click',()=>setNotifyOpen(false)));
-
   const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
   const briefButton=document.querySelector('#copyProjectBrief');
   const briefStatus=document.querySelector('#projectBriefStatus');
@@ -222,7 +206,6 @@ export function bindProductUI(nextActions={}){
 
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape') return;
-    if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);
     if(document.body.dataset.mobileNav==='open') setMobileNav(false);
@@ -242,6 +225,14 @@ export function updateProductUI(state){
     else link.removeAttribute('aria-current');
   });
   document.querySelector('#experienceProgress')?.style.setProperty('width', `${Math.round((state?.progress||0)*100)}%`);
+  if(state?.designDetail){
+    document.body.dataset.designDetail=state.designDetail;
+    document.querySelectorAll('[data-detail-card]').forEach(button=>{
+      const active=button.dataset.detailCard===state.designDetail;
+      button.setAttribute('aria-pressed',String(active));
+      button.classList.toggle('is-active',active);
+    });
+  }
   if(state?.interaction){
     setPressed('[data-listening-mode]',state.interaction.listeningMode,'listeningMode');
     setPressed('[data-noise-mode]',state.interaction.noiseMode,'noiseMode');
