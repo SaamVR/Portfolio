@@ -6,6 +6,7 @@ on:
       - leadflow/refine-brown-navy
       - leadflow/refine-neutral-canvas
       - leadflow/refine-achromatic-canvas
+      - leadflow/refine-navy-guideline-audit
   workflow_dispatch:
 
 permissions:
