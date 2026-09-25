@@ -19,6 +19,8 @@ jobs:
         run: node --test tests/leadflow-v4-palette.test.js
       - name: Deployment preservation contract
         run: node --test tests/leadflow-v4-deploy-contract.test.js
+      - name: Full Node regression suite
+        run: node --test tests/*.test.js
       - name: Syntax
         run: |
           node --check app.js
@@ -41,3 +43,11 @@ jobs:
         run: python3 tests/leadflow_v4_release_matrix.py
       - name: Real-browser whole-page contrast
         run: python3 tests/leadflow_v4_whole_page_contrast_audit.py
+      - name: Capture V4 visual review renders
+        run: python3 tests/leadflow_v4_visual_capture.py
+      - name: Upload V4 visual review renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-v4-visual-review
+          path: /tmp/leadflow-v4-visual
+          if-no-files-found: error
