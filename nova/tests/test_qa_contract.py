@@ -165,3 +165,33 @@ def test_r13_visual_qa_covers_guided_tour_compact_handoff_and_evidence():
         "compact_case_study.png",
     ]:
         assert token in qa
+
+
+def test_v3_release_workflows_run_on_v3_branch():
+    for workflow in [qa, build, hotspot_qa]:
+        assert "nova/v3-real-product-motion" in workflow or "nova/v3-*" in workflow
+
+def test_v3_visual_qa_covers_specs_details_and_motion_bridge():
+    for token in [
+        "v3ProductSpecsAudit",
+        "v3DesignDetailAudit",
+        "v3MotionContinuityAudit",
+        "v3_specs_desktop.png",
+        "v3_specs_mobile.png",
+        "v3_detail_cushion.png",
+        "v3_detail_headband.png",
+        "v3_detail_controls.png",
+        "V3 Design detail rail out of sync",
+        "V3 Design motion discontinuity",
+    ]:
+        assert token in qa
+
+def test_v3_visual_qa_does_not_require_removed_notify_demo():
+    assert "preview notify flow" not in qa.lower()
+    assert "notifyConcept" not in qa
+    assert "Not specified in this fictional concept" not in qa
+    assert "Are the acoustic claims measured?" not in qa
+
+def test_v3_build_validates_new_detail_controller():
+    assert "interactions/detail-controller.js" in build
+    assert "render_adapter_contract.mjs" in (ROOT / ".github/workflows/nova-v2-contracts.yml").read_text()
