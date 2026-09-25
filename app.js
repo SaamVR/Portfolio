@@ -2,7 +2,7 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const STORAGE_KEY="leadflow-demo-leads-v3",THEME_KEY="leadflow-theme",CRM_SETTINGS_KEY="leadflow-crm-settings-v2",AUTOMATION_KEY="leadflow-automation-state-v2";
 const DEFAULT_SETTINGS={hot:80,review:55,owner:"Growth Team",priority:true,followup:true,queue:true},DEFAULT_AUTOMATION={qualification:true,followup:true,"sales-alert":true};
-let currentLead=null,running=false,workflowStartedAt=0,eventEntries=[],lastCrmEvent=null,crmReturnFocus=null,drawerReturnFocus=null,followupReturnFocus=null;
+let currentLead=null,running=false,workflowStartedAt=0,eventEntries=[],lastCrmEvent=null,pendingOpsStory=false,crmReturnFocus=null,drawerReturnFocus=null,followupReturnFocus=null;
 let blueprintSteps=["Facebook Lead","Validate","Qualification Rules","CRM","Follow-up Draft","Next Action"],selectedBpIndex=0;
 const safeJSON=(key,fallback)=>{try{return {...fallback,...(JSON.parse(localStorage.getItem(key)||"null")||{})}}catch{return {...fallback}}};
 const readSettings=()=>{const s=safeJSON(CRM_SETTINGS_KEY,DEFAULT_SETTINGS);return {...s,hot:Number(s.hot||80),review:Number(s.review||55)}};
@@ -53,7 +53,7 @@ const stages=[
 {duration:780,end:100,active:"Routing",done:"Prepared",doneMessage:"Next action prepared in the demo",start:"routing.evaluate",finish:"routing.prepared",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing sales-review path…":qual.status==="review"?"Preparing human-review path…":"Preparing nurture path…","Saving next-action state…"]}
 ];
 try{for(let i=0;i<stages.length;i++){if(i===2){const server=await serverPromise;if(server){qual=server;stages[2].doneMessage="Live API · rules-based score "+qual.score+"/100 · "+qual.serverMs+"ms";logEvent("api.qualify","Deterministic qualification returned from /api/qualify in "+qual.serverMs+"ms","ok")}else logEvent("api.fallback","Server path unavailable · deterministic browser fallback used","info")}await runStage(stages[i],i,reduced)}}finally{clearInterval(timer)}
-const followupEnabled=automation.followup&&settings.followup,lead={id:duplicate?.id||"lead-"+Date.now(),runId,...data,source:data.source||"Website Form",budgetLabel:budgetLabel(data.budget),timelineLabel:timelineLabel(data.timeline),...qual,summary:makeSummary(data,qual),followupGenerated:followupEnabled,followup:followupEnabled?makeFollowup(data,qual):"Follow-up drafting is disabled in CRM controls for this workflow.",subject:followupEnabled?subjectFor(data):"Follow-up drafting disabled",created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})};if(duplicate)leads=leads.map(l=>l.id===duplicate.id?lead:l);else leads.unshift(lead);saveLeads();currentLead=lead;lastCrmEvent={id:lead.id,at:Date.now()};showResult(lead);renderAll();pushOpsActivity("workflow.complete",(lead.action||"Next action")+" prepared · "+lead.name,lead.status);logEvent("workflow.complete",(lead.action||"Next action")+" prepared in the demo",lead.status==="hot"?"hot":"ok");$("#execMessage").textContent="Workflow complete · "+(lead.action||"Next action")+" prepared";$("#execTimer").textContent="demo "+((performance.now()-started)/1000).toFixed(1)+"s";$("#execStatus").textContent="COMPLETE";$(".execution-card").classList.remove("running");$("#runAutomation").disabled=false;$("#runAutomation").innerHTML='Run another example <span>→</span>';running=false}
+const followupEnabled=automation.followup&&settings.followup,lead={id:duplicate?.id||"lead-"+Date.now(),runId,...data,source:data.source||"Website Form",budgetLabel:budgetLabel(data.budget),timelineLabel:timelineLabel(data.timeline),...qual,summary:makeSummary(data,qual),followupGenerated:followupEnabled,followup:followupEnabled?makeFollowup(data,qual):"Follow-up drafting is disabled in CRM controls for this workflow.",subject:followupEnabled?subjectFor(data):"Follow-up drafting disabled",created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})};if(duplicate)leads=leads.map(l=>l.id===duplicate.id?lead:l);else leads.unshift(lead);saveLeads();currentLead=lead;lastCrmEvent={id:lead.id,at:Date.now(),mode:duplicate?"update":"insert",previousLead:duplicate?{...duplicate}:null};showResult(lead);renderAll();pushOpsActivity("workflow.complete",(lead.action||"Next action")+" prepared · "+lead.name,lead.status);logEvent("workflow.complete",(lead.action||"Next action")+" prepared in the demo",lead.status==="hot"?"hot":"ok");$("#execMessage").textContent="Workflow complete · "+(lead.action||"Next action")+" prepared";$("#execTimer").textContent="demo "+((performance.now()-started)/1000).toFixed(1)+"s";$("#execStatus").textContent="COMPLETE";$(".execution-card").classList.remove("running");$("#runAutomation").disabled=false;$("#runAutomation").innerHTML='Run another example <span>→</span>';running=false;queueLeadOperationsStory()}
 function showResult(lead){const derived=lead.factors?.length?lead:{...lead,...scoreLead(lead)};$("#scoreValue").textContent=lead.score;$("#temperature").textContent=lead.status==="hot"?"HIGH PRIORITY":lead.status==="review"?"NEEDS REVIEW":"NURTURE";$("#temperature").className="temperature "+lead.status;$("#resultLead").textContent=lead.name+" · "+lead.company;$("#intent").textContent=lead.intent;$("#budgetFit").textContent=lead.budgetFit;$("#urgency").textContent=lead.urgency;$("#aiSummary").textContent=lead.summary;$("#scoreFactors").innerHTML=(derived.factors||[]).map(f=>`<span><b>${escapeHtml(f.label)}</b><em class="${f.points<0?"negative":""}">${f.points>0?"+":""}${f.points}</em></span>`).join("");$("#routingReason").textContent=derived.routingReason||"Routing follows the configured score thresholds.";$("#resultAction").textContent="Next action: "+(derived.action||"Review");$("#resultEmpty").classList.add("hidden");$("#resultContent").classList.remove("hidden");$("#showFollowup").disabled=lead.followupGenerated===false;$("#showFollowup").textContent=lead.followupGenerated===false?"Follow-up disabled":"View follow-up draft"}
 $("#leadForm").addEventListener("submit",e=>{e.preventDefault();const data={name:$("#leadName").value.trim(),company:$("#leadCompany").value.trim(),budget:Number($("#leadBudget").value),timeline:$("#leadTimeline").value,need:$("#leadNeed").value.trim()},errors=[];if(data.name.length<2)errors.push("Enter a name.");if(data.company.length<2)errors.push("Enter a company.");if(data.need.length<8)errors.push("Describe the automation need in a little more detail.");$("#formError").textContent=errors.join(" ");if(!errors.length)runWorkflow(data)});
 const presets={hot:{name:"Sarah",company:"Acme Dental",budget:"5000",timeline:"asap",need:"We need automated appointment lead follow-up"},review:{name:"Maya",company:"Northstar Studio",budget:"2000",timeline:"month",need:"Need a CRM workflow for client inquiries"},nurture:{name:"Jordan",company:"Field Notes Co.",budget:"500",timeline:"exploring",need:"Just exploring options for a future process"}};
@@ -88,10 +88,10 @@ function pushOpsActivity(code,message,state="ok"){
   opsActivity=opsActivity.slice(0,6);
   renderOpsActivity();
 }
-function renderOpsActivity(){
+function renderOpsActivity(activityLeads=leads){
   const human=$("#opsActivityFeed"),technical=$("#opsTechnicalActivity");
   if(!human||!technical)return;
-  const recent=leads.slice(0,4);
+  const recent=activityLeads.slice(0,4);
   if(!recent.length){
     human.innerHTML='<div class="ops-empty-state">Run the interactive demo to create the first local record.</div>';
     technical.innerHTML='<div class="ops-empty-state">No technical events yet.</div>';
@@ -177,21 +177,79 @@ function replayDashboardMotion(){
   const dashboard=$(".ops-dashboard");if(!dashboard)return;
   dashboard.classList.remove("ops-animate");void dashboard.offsetWidth;dashboard.classList.add("ops-animate");
 }
+function renderOpsRows(rowLeads,model){
+  $("#opsPipelineCount").textContent=Math.min(5,model.total)+" records";
+  $("#opsPipelineRows").innerHTML=rowLeads.length?rowLeads.slice(0,5).map(l=>'<tr data-story-lead-id="'+escapeHtml(l.id)+'"><td data-label="Lead"><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td data-label="Source">'+escapeHtml(sourceForLead(l))+'</td><td data-label="Score"><strong class="ops-score-cell">'+l.score+'</strong></td><td data-label="Status"><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td data-label="Timeline">'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td data-label="Next action"><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
+}
+function setOpsNumber(el,value,motion=true){if(!el)return;if(motion)animateDashboardNumber(el,value);else{el.textContent=String(Math.round(Number(value)||0));el.dataset.value=String(Number(value)||0)}}
+function renderOpsModel(model,rowLeads=leads,{motion=true,activity=true}={}){
+  setOpsNumber($("#opsTotal"),model.total,motion);
+  setOpsNumber($("#opsHot"),model.status.hot,motion);
+  $("#opsHotRate").textContent=model.statusPct.hot+"% of pipeline";
+  setOpsNumber($("#opsAverage"),model.averageScore,motion);
+  setOpsNumber($("#opsImmediate"),model.immediate.count,motion);
+  $("#opsImmediateRate").textContent=model.immediate.pct+"% ASAP";
+  renderDistribution(model);renderScoreTrend(model);renderActionQueue(model);renderSourceQuality(model);renderUrgency(model);
+  renderOpsRows(rowLeads,model);
+  $("#opsLastSync").textContent="Synced now";
+  if(activity)renderOpsActivity(rowLeads);
+  if(motion)replayDashboardMotion();
+}
 function renderOps(){
   const enriched=leads.map(l=>({...l,source:sourceForLead(l),action:l.action||nextActionLabel(l)}));
   const model=window.LeadFlowDashboard.buildDashboardModel(enriched);
-  animateDashboardNumber($("#opsTotal"),model.total);
-  animateDashboardNumber($("#opsHot"),model.status.hot);
-  $("#opsHotRate").textContent=model.statusPct.hot+"% of pipeline";
-  animateDashboardNumber($("#opsAverage"),model.averageScore);
-  animateDashboardNumber($("#opsImmediate"),model.immediate.count);
-  $("#opsImmediateRate").textContent=model.immediate.pct+"% ASAP";
-  renderDistribution(model);renderScoreTrend(model);renderActionQueue(model);renderSourceQuality(model);renderUrgency(model);
-  $("#opsPipelineCount").textContent=Math.min(5,model.total)+" records";
-  $("#opsPipelineRows").innerHTML=leads.length?leads.slice(0,5).map(l=>'<tr><td data-label="Lead"><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td data-label="Source">'+escapeHtml(sourceForLead(l))+'</td><td data-label="Score"><strong class="ops-score-cell">'+l.score+'</strong></td><td data-label="Status"><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td data-label="Timeline">'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td data-label="Next action"><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
-  $("#opsLastSync").textContent="Synced now";
-  renderOpsActivity();
-  replayDashboardMotion();
+  renderOpsModel(model,leads);
+}
+function getOperationsStoryContext(){
+  if(!lastCrmEvent)return null;
+  const enrich=l=>({...l,source:sourceForLead(l),action:l.action||nextActionLabel(l)});
+  const enriched=leads.map(enrich);
+  const event={...lastCrmEvent,previousLead:lastCrmEvent.previousLead?enrich(lastCrmEvent.previousLead):null};
+  return window.LeadFlowStorytelling.buildOperationsStoryContext(enriched,event,window.LeadFlowDashboard.buildDashboardModel);
+}
+function renderOperationsStoryRegion(region,story){
+  const model=story.afterModel,rowLeads=story.afterLeads;
+  if(region==="total")setOpsNumber($("#opsTotal"),model.total);
+  if(region==="status"){setOpsNumber($("#opsHot"),model.status.hot);$("#opsHotRate").textContent=model.statusPct.hot+"% of pipeline"}
+  if(region==="average")setOpsNumber($("#opsAverage"),model.averageScore);
+  if(region==="distribution")renderDistribution(model);
+  if(region==="trend")renderScoreTrend(model);
+  if(region==="queue")renderActionQueue(model);
+  if(region==="rows")renderOpsRows(rowLeads,model);
+  if(region==="activity")renderOpsActivity(rowLeads);
+}
+function playLeadOperationsStory(){
+  const story=getOperationsStoryContext();
+  if(!story)return Promise.resolve({status:"complete",story:"operations"});
+  $("#opsStoryReplay").disabled=false;
+  return storyDirector?.playLeadOperationsStory({
+    storyContext:story,
+    renderBefore:state=>renderOpsModel(state.beforeModel,state.beforeLeads,{motion:false,activity:true}),
+    renderRegion:renderOperationsStoryRegion,
+    renderFinal:()=>renderOps()
+  })||Promise.resolve({status:"complete",story:"operations"});
+}
+function workspaceStoryVisible(){
+  const el=$("#workspace");if(!el)return false;
+  const r=el.getBoundingClientRect();return r.top<innerHeight*.82&&r.bottom>innerHeight*.18;
+}
+function queueLeadOperationsStory(){
+  if(!lastCrmEvent)return;
+  pendingOpsStory=true;
+  $("#opsStoryReplay").disabled=false;
+  if(workspaceStoryVisible()){pendingOpsStory=false;playLeadOperationsStory()}
+}
+$("#opsStoryReplay")?.addEventListener("click",()=>playLeadOperationsStory());
+let workspaceStoryObserver=null;
+if("IntersectionObserver" in window){
+  workspaceStoryObserver=new IntersectionObserver(entries=>{
+    if(!pendingOpsStory)return;
+    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.22);
+    if(!hit)return;
+    pendingOpsStory=false;
+    playLeadOperationsStory();
+  },{threshold:[.22]});
+  workspaceStoryObserver.observe($("#workspace"));
 }
 
 function renderCrmOverviewActivity(){

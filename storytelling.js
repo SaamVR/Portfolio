@@ -5,6 +5,38 @@
     try{return !!matchMedia("(prefers-reduced-motion: reduce)").matches}catch{return false}
   }
 
+  function buildOperationsStoryContext(leads,event,buildModel){
+    const afterLeads=Array.isArray(leads)?leads.map(lead=>({...lead})):[];
+    const latestLead=(event?.id&&afterLeads.find(lead=>lead.id===event.id))||afterLeads[0]||null;
+    const mode=event?.mode||"snapshot";
+    let beforeLeads=afterLeads.map(lead=>({...lead}));
+    if(latestLead&&mode==="insert"){
+      beforeLeads=beforeLeads.filter(lead=>lead.id!==latestLead.id);
+    }else if(latestLead&&mode==="update"&&event?.previousLead){
+      beforeLeads=beforeLeads.map(lead=>lead.id===latestLead.id?{...event.previousLead}:lead);
+    }
+    const beforeModel=buildModel(beforeLeads),afterModel=buildModel(afterLeads);
+    return {
+      mode,
+      latestLead,
+      beforeLeads,
+      afterLeads,
+      beforeModel,
+      afterModel,
+      delta:{
+        total:afterModel.total-beforeModel.total,
+        hot:afterModel.status.hot-beforeModel.status.hot,
+        review:afterModel.status.review-beforeModel.status.review,
+        nurture:afterModel.status.nurture-beforeModel.status.nurture,
+        averageScore:afterModel.averageScore-beforeModel.averageScore,
+        immediate:afterModel.immediate.count-beforeModel.immediate.count,
+        salesReview:afterModel.actions.salesReview-beforeModel.actions.salesReview,
+        humanReview:afterModel.actions.humanReview-beforeModel.actions.humanReview,
+        actionNurture:afterModel.actions.nurture-beforeModel.actions.nurture
+      }
+    };
+  }
+
   function createController(options={}){
     let globalEpoch=0;
     const storyEpoch=new Map();
@@ -133,9 +165,61 @@
       if(detail)detail.textContent=(lead.name||"Lead")+" completes the workflow with a visible, inspectable next action.";
     }
 
+    async function operationsDirector(context,storyOptions){
+      const story=storyOptions.storyContext,section=q("#workspace"),dashboard=q("#workspace .ops-dashboard");
+      const headline=q("#opsStoryHeadline"),detail=q("#opsStoryDetail"),token=q("#opsStoryToken");
+      if(!story?.latestLead||!section||!dashboard)return;
+      const lead=story.latestLead;
+      section.dataset.storyState="playing";
+      dashboard.classList.add("ops-story-playing");
+      qa("#workspace .ops-story-focus").forEach(el=>el.classList.remove("ops-story-focus"));
+      if(token){
+        token.textContent=(lead.name||"Lead").split(/\s+/)[0]+" · "+(lead.score??0);
+        token.className="ops-story-token "+(lead.status||"other")+" visible";
+      }
+      storyOptions.renderBefore?.(story);
+
+      const focus=async(selector,title,copy,region,hold=520)=>{
+        if(context.cancelled())return false;
+        qa("#workspace .ops-story-focus").forEach(el=>el.classList.remove("ops-story-focus"));
+        const target=q(selector);
+        target?.classList.add("ops-story-focus");
+        if(headline)headline.textContent=title;
+        if(detail)detail.textContent=copy;
+        if(region)storyOptions.renderRegion?.(region,story);
+        await context.wait(hold);
+        return !context.cancelled();
+      };
+
+      if(story.mode==="insert"){
+        if(!await focus("#workspace .ops-kpis article:nth-child(1)","New lead enters operations",(lead.name||"Lead")+" adds one browser-local CRM record.","total",560))return;
+      }else{
+        if(!await focus("#workspace .ops-kpis article:nth-child(1)","Existing record updated","Duplicate identity matched · pipeline remains "+story.afterModel.total+" records.","total",560))return;
+      }
+
+      const statusTitle=lead.status==="hot"?"High-priority workload changes":lead.status==="review"?"Review workload changes":"Nurture workload changes";
+      if(!await focus("#workspace .ops-kpis article:nth-child(2)",statusTitle,(lead.score??0)+"/100 resolves to "+routeLabel(lead)+".","status",520))return;
+      if(!await focus("#workspace .ops-kpis article:nth-child(3)","Average qualification score updates",story.beforeModel.averageScore+" → "+story.afterModel.averageScore+" across the current pipeline.","average",520))return;
+      if(!await focus("#workspace .ops-distribution-panel","Pipeline mix responds","Qualification distribution now includes the latest "+priorityLabel(lead).toLowerCase()+" state.","distribution",560))return;
+      if(!await focus("#workspace .ops-trend-panel","The newest score becomes visible",(lead.name||"Lead")+" appears at "+(lead.score??0)+"/100 in the recent score view.","trend",560))return;
+      if(!await focus("#workspace .ops-analytics-secondary .ops-panel:first-child","Next action workload updates",routeLabel(lead)+" is now represented in the attention queue.","queue",520))return;
+      storyOptions.renderRegion?.("rows",story);
+      const rowSelector='#opsPipelineRows tr[data-story-lead-id="'+String(lead.id||"").replace(/"/g,"")+'"]';
+      if(!await focus(rowSelector,"The operational record is ready",(lead.name||"Lead")+" is visible with score, status, urgency and next action.",null,560))return;
+      if(!await focus("#workspace .ops-activity-panel","The change is auditable","Recent Activity records what changed without hiding the technical state.","activity",520))return;
+
+      storyOptions.renderFinal?.(story);
+      qa("#workspace .ops-story-focus").forEach(el=>el.classList.remove("ops-story-focus"));
+      dashboard.classList.remove("ops-story-playing");
+      section.dataset.storyState="complete";
+      if(headline)headline.textContent="LATEST IMPACT · "+(lead.name||"Lead")+" → "+(lead.score??0)+"/100 → "+routeLabel(lead);
+      if(detail)detail.textContent=story.mode==="update"?"Existing record updated · pipeline count stayed truthful.":"One lead changed the visible operational state.";
+      if(token)token.classList.add("settled");
+    }
+
     const directors={
       workflow:workflowDirector,
-      operations:genericDirector,
+      operations:operationsDirector,
       reliability:genericDirector,
       architecture:genericDirector
     };
@@ -172,5 +256,5 @@
     };
   }
 
-  window.LeadFlowStorytelling={createController};
+  window.LeadFlowStorytelling={createController,buildOperationsStoryContext};
 })();
