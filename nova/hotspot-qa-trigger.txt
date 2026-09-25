@@ -1,3 +1,4 @@
 NOVA V3 focused hotspot QA trigger — 2026-09-25 product-framing correction.
 Final framing release validation: site source 7177604cc03cb2b209c797a6b96b5ac2a7f8b6b1.
 NOVA V3 control framing hotspot rerun — c8b7aac — 2026-09-25.
+NOVA V3 deterministic-ready hotspot rerun — a85882be — 2026-09-25.
