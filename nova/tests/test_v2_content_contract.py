@@ -4,9 +4,9 @@ html = (ROOT/"index.html").read_text()
 css = (ROOT/"styles.css").read_text()
 
 def test_product_story_precedes_technical_story():
-    assert "Hear beyond" in html
+    assert "Ultra. 2nd Gen." in html
     assert "Designed like a launch." in html
-    assert html.index("Hear beyond") < html.index("Designed like a launch.")
+    assert html.index("Ultra. 2nd Gen.") < html.index("Designed like a launch.")
 
 def test_required_product_controls_are_semantic_buttons():
     for value in ["spatial","focus","ambient"]:
@@ -25,7 +25,7 @@ def test_v3_uses_real_bose_qc_ultra_2nd_gen_specs():
         "23 hours with Immersive Audio",
         "45 hours with noise cancellation off",
         "Bluetooth 5.4",
-        "Multipoint / two active devices",
+        "two devices at once",
         "16-bit / 44.1 or 48 kHz USB-C audio",
         "0.583 lb / approx. 264 g",
         "Protein leather",
@@ -264,8 +264,9 @@ def test_r13_case_study_uses_single_compact_transition():
     assert "box-sizing:border-box;min-height:110svh" in compact
     assert ".case-study{position:relative;z-index:24;min-height:155svh;padding:9svh" in compact
 
-def test_r13_portability_copy_explains_product_benefit():
-    assert "Fold the earcups inward for a more compact carry shape" in html
+def test_v3_portability_copy_explains_real_product_use():
+    assert "Fold the earcups inward for the included carry case" in html
+    assert "on-head detection can pause playback" in html
     assert "Hold the folded pose" in html
 
 def test_r13_validation_evidence_is_client_facing_and_measured_not_marketing():
