@@ -2,7 +2,7 @@ name: NOVA Visual QA
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: [main, "nova/v2-integration", "nova/v3-real-product-motion"]
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
@@ -276,11 +276,11 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
-            await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='true');
+            await page.getByRole('button',{name:/view full specs/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open' && document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden')==='false');
+            await page.screenshot({path:'nova-qa/v3_specs_desktop.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='closed');
 
             await context.close();
           }
@@ -332,11 +332,11 @@ jobs:
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
 
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
-            await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
+            await page.getByRole('button',{name:/view full specs/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-qa/v3_specs_mobile.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='closed',{timeout:5000});
 
             await context.close();
           }
@@ -532,7 +532,7 @@ jobs:
             await page.waitForFunction(()=>document.body.dataset.modelState==='fallback' && document.body.dataset.uiReady==='true');
             const focus=page.getByRole('button',{name:/focus/i});
             await focus.click();
-            const facts=page.getByRole('button',{name:/product facts/i});
+            const facts=page.getByRole('button',{name:/view full specs/i});
             await facts.click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             const result=await page.evaluate(()=>({
@@ -569,21 +569,78 @@ jobs:
             await context.close();
           }
 
-          async function productFactsAudit(){
+          async function v3ProductSpecsAudit(){
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
             const {page}=await readyPage(context,'product-facts');
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/product facts/i}).click();
+            await page.getByRole('button',{name:/view full specs/i}).click();
             await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
             const state=await page.evaluate(()=>({
               open:document.body.dataset.productFacts,
               panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
-              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
-              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+              hasBluetooth:document.body.innerText.includes('Bluetooth 5.4'),
+              hasBattery:document.body.innerText.includes('30 h with ANC'),
+              hasDriver:document.body.innerText.includes('40 mm dynamic'),
+              hasIncluded:document.body.innerText.includes('Hard carry case')
             }));
-            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
-            await page.screenshot({path:'nova-qa/product_facts.png'});
+            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasBluetooth||!state.hasBattery||!state.hasDriver||!state.hasIncluded) throw new Error('V3 technical specs incomplete '+JSON.stringify(state));
+            await page.screenshot({path:'nova-qa/v3_specs_desktop.png'});
             await page.locator('#productFactsPanel [data-facts-close]').click();
+            await context.close();
+          }
+
+          async function v3DesignDetailAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'v3-design-details');
+            await scrollProgress(page,.16);
+            for(const step of ['cushion','headband','controls']){
+              const button=page.locator('[data-detail-step="'+step+'"]');
+              await button.click();
+              await page.waitForFunction(id=>{
+                const rail=document.querySelector('[data-detail-step="'+id+'"]');
+                const spot=document.querySelector('[data-hotspot="'+id+'"]');
+                return document.body.dataset.range==='design' &&
+                  rail?.getAttribute('aria-pressed')==='true' &&
+                  spot?.getAttribute('aria-expanded')==='true';
+              },step,{timeout:5000});
+              const state=await page.evaluate(id=>({
+                step:id,
+                rail:document.querySelector('[data-detail-step="'+id+'"]')?.getAttribute('aria-pressed'),
+                hotspot:document.querySelector('[data-hotspot="'+id+'"]')?.getAttribute('aria-expanded'),
+                range:document.body.dataset.range
+              }),step);
+              if(state.rail!=='true'||state.hotspot!=='true'||state.range!=='design'){
+                throw new Error('V3 Design detail rail out of sync '+JSON.stringify(state));
+              }
+              await page.screenshot({path:'nova-qa/v3_detail_'+step+'.png'});
+            }
+            await context.close();
+          }
+
+          async function v3MotionContinuityAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'v3-motion-continuity');
+            const points=[.16,.18,.20,.22,.24,.26];
+            const samples=[];
+            for(const p of points){
+              await scrollProgress(page,p);
+              const sample=await page.evaluate(()=>{
+                const el=document.querySelector('[data-hotspot="cushion"]');
+                const r=el.getBoundingClientRect();
+                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
+              });
+              if(sample.visible!=='true'||!Number.isFinite(sample.x)||!Number.isFinite(sample.y)){
+                throw new Error('V3 Design motion discontinuity: cushion anchor unavailable '+JSON.stringify({p,sample}));
+              }
+              samples.push({p,...sample});
+            }
+            for(let i=1;i<samples.length;i++){
+              const movement=Math.hypot(samples[i].x-samples[i-1].x,samples[i].y-samples[i-1].y);
+              if(movement>160){
+                throw new Error('V3 Design motion discontinuity '+JSON.stringify({from:samples[i-1],to:samples[i],movement}));
+              }
+            }
+            await page.screenshot({path:'nova-qa/v3_design_motion_continuity.png'});
             await context.close();
           }
 
@@ -656,7 +713,9 @@ jobs:
           await readabilityAudit({width:390,height:844},'mobile');
           await rendererFailureAudit();
           await mobileNavAudit();
-          await productFactsAudit();
+          await v3ProductSpecsAudit();
+          await v3DesignDetailAudit();
+          await v3MotionContinuityAudit();
           await inspectionViewsAudit();
           await versionArchiveAudit({width:1440,height:1000},'desktop');
           await versionArchiveAudit({width:390,height:844},'mobile');
