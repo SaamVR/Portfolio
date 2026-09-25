@@ -2340,7 +2340,8 @@ html[data-theme=light] .crm-analytics-v2 .panel-copy{color:#415C4E}
 .tour-status-copy{display:grid;gap:8px;min-width:0}
 .tour-status b{font-size:13px;line-height:1.35}
 .tour-status button{
-  width:38px;height:38px;
+  width:44px;height:44px;
+  min-width:44px;min-height:44px;
   display:grid;place-items:center;
   border:1px solid var(--line)!important;
   border-radius:9px!important;
