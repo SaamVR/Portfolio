@@ -94,15 +94,12 @@ def test_post_deploy_and_focused_hotspot_qa_use_cinematic_progress():
         assert "behind.offsetTop+behind.offsetHeight-innerHeight" in workflow
         assert "document.documentElement.scrollHeight-innerHeight" not in workflow
 
-def test_mobile_hotspot_expansion_is_visually_verified():
-    assert "mobile_hotspot_detail.png" in qa
-    assert "aria-expanded" in qa
-    assert "expanded hotspot label" in qa
-
-def test_mobile_hotspot_expanded_label_is_viewport_bounded():
-    assert "expanded hotspot label outside viewport" in qa
-    assert "labelRect.left" in qa
-    assert "labelRect.right" in qa
+def test_v3_mobile_design_detail_is_driven_by_stable_selector_rail():
+    assert "mobile_design_detail_cushion.png" in qa
+    assert "mobile_design_detail_controls.png" in qa
+    assert 'page.locator(\'[data-design-detail="cushion"]\')' in qa
+    assert 'page.locator(\'[data-design-detail="controls"]\')' in qa
+    assert "mobile moving marker should not own touch" in qa
 
 def test_public_preview_verifies_mobile_hotspot_label_bounds():
     assert "deployed expanded hotspot label outside viewport" in public_qa
