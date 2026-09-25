@@ -52,6 +52,8 @@ jobs:
           cp -R v1 /tmp/leadflow-deploy/v1
           cp -R v2 /tmp/leadflow-deploy/v2
           cp -R v3 /tmp/leadflow-deploy/v3
+          cp -R refine-brown /tmp/leadflow-deploy/refine-brown
+          cp -R refine-navy /tmp/leadflow-deploy/refine-navy
           cp -R functions /tmp/leadflow-deploy/functions
 
       - name: Deploy Cloudflare Pages
@@ -74,6 +76,10 @@ jobs:
           v3=$(curl -fsSL "$url/v3/")
           v2=$(curl -fsSL "$url/v2/")
           v1=$(curl -fsSL "$url/v1/")
+          brown=$(curl -fsSL "$url/refine-brown/")
+          navy=$(curl -fsSL "$url/refine-navy/")
+          brown_css=$(curl -fsSL "$url/refine-brown/theme.css")
+          navy_css=$(curl -fsSL "$url/refine-navy/theme.css")
           api=$(curl -fsSL "$url/api/qualify")
           v3api=$(curl -fsSL "$url/v3/api/qualify")
           v2api=$(curl -fsSL "$url/v2/api/qualify")
@@ -84,6 +90,10 @@ jobs:
           echo "$v3" | grep -q "LeadFlow — Lead Qualification"
           echo "$v2" | grep -q "LeadFlow — Lead Qualification"
           echo "$v1" | grep -q "LeadFlow AI"
+          echo "$brown" | grep -q "leadflow-refine-brown"
+          echo "$navy" | grep -q "leadflow-refine-navy"
+          echo "$brown_css" | grep -q "LEADFLOW REFINE — BROWN"
+          echo "$navy_css" | grep -q "LEADFLOW REFINE — NAVY"
           echo "$api" | grep -q "deterministic-qualification-v2"
           echo "$v3api" | grep -q "deterministic-qualification-v2"
           echo "$v2api" | grep -q "deterministic-qualification-v2"
@@ -97,6 +107,8 @@ jobs:
           google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v4-root-desktop.png "$url/"
           google-chrome --headless --no-sandbox --hide-scrollbars --window-size=390,844 --screenshot=/tmp/leadflow-qa/v4-root-mobile-390.png "$url/"
           google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/v3-desktop.png "$url/v3/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/refine-brown-desktop.png "$url/refine-brown/"
+          google-chrome --headless --no-sandbox --hide-scrollbars --window-size=1440,1000 --screenshot=/tmp/leadflow-qa/refine-navy-desktop.png "$url/refine-navy/"
 
       - name: Upload QA screenshots
         uses: actions/upload-artifact@v4
