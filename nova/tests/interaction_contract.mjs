@@ -228,3 +228,15 @@ assert.equal(nearEdgeElement.dataset.visible,'true',
   'near-edge engineering annotations should remain visible when safe-edge clamping can present them');
 assert.ok(String(nearEdgeElement.style.transform).includes('16px'),
   'near-edge engineering annotations should clamp to the viewport safe inset');
+
+
+const farEdgeElement={dataset:{},style:{},setAttribute(){}};
+const farEdgeHotspots=createHotspotController({
+  THREE:{Vector3:FakeVector3},
+  camera:{},
+  anchors:{far:{point:[0,1.55,0],cameraOffset:[0,0,0],targetOffset:[0,0,0]}},
+  elements:{far:farEdgeElement}
+});
+farEdgeHotspots.update({modelRoot:{localToWorld:v=>v},viewport:{width:1440,height:1000}});
+assert.equal(farEdgeElement.dataset.visible,'false',
+  'genuinely off-screen annotations should remain hidden');
