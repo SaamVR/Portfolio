@@ -24,26 +24,26 @@ export function createRenderAdapter({
     apply(state,dt=DEFAULT_DT){
       if(!state) return;
       const step=Math.max(.001,Math.min(.05,dt||DEFAULT_DT));
-      applyVec(camera,'position',state.camera.position,4.2,step);
-      camera.fov=damp(camera.fov,state.camera.fov,4.2,step);
+      applyVec(camera,'position',state.camera.position,3.15,step);
+      camera.fov=damp(camera.fov,state.camera.fov,3.15,step);
       camera.updateProjectionMatrix();
       if(renderedTarget===null) renderedTarget=[...state.camera.target];
       else{
-        renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],4.8,step);
-        renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],4.8,step);
-        renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],4.8,step);
+        renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],3.55,step);
+        renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],3.55,step);
+        renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],3.55,step);
       }
       camera.lookAt(...renderedTarget);
 
-      presentation.position.x=damp(presentation.position.x,state.product.position[0],4.5,step);
-      presentation.position.y=damp(presentation.position.y,state.product.position[1],4.5,step);
-      presentation.position.z=damp(presentation.position.z,state.product.position[2],4.5,step);
-      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,5.2,step);
-      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,4.6,step);
+      presentation.position.x=damp(presentation.position.x,state.product.position[0],3.35,step);
+      presentation.position.y=damp(presentation.position.y,state.product.position[1],3.35,step);
+      presentation.position.z=damp(presentation.position.z,state.product.position[2],3.35,step);
+      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,4.0,step);
+      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.55,step);
       const s=state.product.scale;
-      presentation.scale.x=damp(presentation.scale.x,s,4.5,step);
-      presentation.scale.y=damp(presentation.scale.y,s,4.5,step);
-      presentation.scale.z=damp(presentation.scale.z,s,4.5,step);
+      presentation.scale.x=damp(presentation.scale.x,s,3.35,step);
+      presentation.scale.y=damp(presentation.scale.y,s,3.35,step);
+      presentation.scale.z=damp(presentation.scale.z,s,3.35,step);
 
       if(mixer && Number.isFinite(clipDuration)){
         const targetPose=Math.max(0,Math.min(1,state.product.pose));
