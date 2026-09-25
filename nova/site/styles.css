@@ -776,3 +776,131 @@ body[data-guided-tour="open"] .guided-tour{transform:none}
   .stage--hero .hero-actions .gesture-hint{display:none}
   .stage--hero .hero-actions .button{padding-left:14px;padding-right:14px}
 }
+
+
+/* V3 — sourced benchmark content + sequential product-detail presentation */
+.design-detail-rail{
+  display:grid;
+  gap:7px;
+  width:min(560px,100%);
+  margin-top:26px;
+}
+.design-detail-rail button{
+  display:grid;
+  grid-template-columns:32px 84px 1fr;
+  gap:10px;
+  align-items:center;
+  min-height:54px;
+  padding:10px 12px;
+  border:1px solid rgba(15,14,12,.12);
+  background:rgba(255,255,255,.18);
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .22s ease,background .22s ease,transform .22s ease;
+}
+.design-detail-rail button span{font:700 10px/1 var(--mono);letter-spacing:.1em;color:#81786e}
+.design-detail-rail button strong{font:700 12px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.design-detail-rail button small{font-size:13px;line-height:1.42;color:#615b53}
+.design-detail-rail button[aria-pressed="true"]{
+  border-color:rgba(166,108,69,.72);
+  background:rgba(166,108,69,.075);
+  transform:translateX(4px);
+}
+.design-detail-rail button[aria-pressed="true"] span{color:var(--copper)}
+
+body[data-range="design"] .hotspot span{
+  opacity:0;
+  transform:translate(-50%,-4px);
+  pointer-events:none;
+}
+body[data-range="design"] .hotspot[aria-expanded="true"] span,
+body[data-range="design"] .hotspot:focus-visible span{
+  opacity:1;
+  transform:translate(-50%,0);
+}
+body[data-range="design"] .hotspot:before{opacity:.34}
+body[data-range="design"] .hotspot[aria-expanded="true"]:before{opacity:.9}
+
+.benchmark-panel{width:min(920px,calc(100vw - 36px))}
+.benchmark-note{
+  max-width:760px;
+  margin:24px 0 0;
+  font-size:15px;
+  line-height:1.68;
+  color:#565149;
+}
+.benchmark-table-wrap{
+  margin-top:30px;
+  overflow-x:auto;
+  border:1px solid rgba(15,14,12,.14);
+}
+.benchmark-table{
+  width:100%;
+  min-width:820px;
+  border-collapse:collapse;
+  background:rgba(255,255,255,.16);
+}
+.benchmark-table th,.benchmark-table td{
+  padding:15px 14px;
+  border-bottom:1px solid rgba(15,14,12,.12);
+  border-right:1px solid rgba(15,14,12,.08);
+  vertical-align:top;
+  text-align:left;
+  font-size:13px;
+  line-height:1.45;
+}
+.benchmark-table thead th{
+  font:700 10px/1.25 var(--mono);
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:#675f56;
+}
+.benchmark-table tbody th{width:220px}
+.benchmark-table tbody th a{
+  color:var(--ink);
+  text-decoration:none;
+  border-bottom:1px solid rgba(15,14,12,.25);
+}
+.benchmark-table tr:last-child th,.benchmark-table tr:last-child td{border-bottom:0}
+.practical-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  margin-top:34px;
+  background:rgba(15,14,12,.14);
+  border:1px solid rgba(15,14,12,.14);
+}
+.practical-grid article{padding:22px;background:#f0e9de}
+.practical-grid article>span{font:700 10px/1 var(--mono);letter-spacing:.1em;color:#867d72}
+.practical-grid h3{margin:24px 0 0;font:700 24px/.98 var(--sans);letter-spacing:-.035em}
+.practical-grid p{margin:12px 0 0;font-size:14px;line-height:1.62;color:#5a544c}
+.benchmark-sources{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 16px;
+  align-items:center;
+  margin-top:28px;
+  padding-top:18px;
+  border-top:1px solid rgba(15,14,12,.14);
+  font:700 10px/1.4 var(--mono);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.benchmark-sources p{margin:0;color:#766e64}
+.benchmark-sources a{color:var(--ink);border-bottom:1px solid rgba(15,14,12,.25)}
+
+body[data-benchmark-panel="open"]{overflow:hidden}
+body[data-benchmark-panel="open"] .facts-shell{pointer-events:auto;visibility:visible}
+body[data-benchmark-panel="open"] .facts-backdrop{opacity:1}
+body[data-benchmark-panel="open"] .facts-panel{transform:none}
+
+@media (max-width:700px){
+  .design-detail-rail{margin-top:18px;gap:6px}
+  .design-detail-rail button{grid-template-columns:26px 70px 1fr;padding:9px 10px;min-height:50px}
+  .design-detail-rail button small{font-size:12px}
+  .benchmark-panel{width:calc(100vw - 16px)}
+  .benchmark-table-wrap{margin-top:24px}
+  .practical-grid{grid-template-columns:1fr}
+  .benchmark-note{font-size:14px}
+}
