@@ -212,3 +212,25 @@ for(let p=.01;p<=.95;p+=.01){
   assert.ok(Math.abs(b.product.pose-a.product.pose) <= .075,
     `V3 adjacent pose samples must avoid expansion glitches at p=${p.toFixed(2)} delta=${Math.abs(b.product.pose-a.product.pose)}`);
 }
+
+
+const easingThree={MathUtils:{damp:(current,target,lambda,dt)=>current+(target-current)*Math.min(1,lambda*dt)}};
+const easingMixerTimes=[];
+const easingMixer={setTime(v){easingMixerTimes.push(v);}};
+const easingCamera={position:vec(),fov:30,updateProjectionMatrix(){},lookAt(){}};
+const easingPresentation={position:vec(),rotation:vec(),scale:{x:1,y:1,z:1}};
+const easingRenderer={toneMappingExposure:1};
+const easingLights={hemi:light(),key:light(),fill:light(),rim:light(),warm:light()};
+const easingAdapter=createRenderAdapter({
+  THREE:easingThree,camera:easingCamera,presentation:easingPresentation,mixer:easingMixer,
+  clipDuration:10,renderer:easingRenderer,lights:easingLights,environment:{apply(){}},orientationX:-Math.PI/2
+});
+const poseA=sampleTimeline(.16,'desktop');
+const poseB=sampleTimeline(.28,'desktop');
+easingAdapter.apply(poseA,.016);
+const firstDisplayed=easingAdapter.getAnimationPose();
+easingAdapter.apply(poseB,.016);
+const secondDisplayed=easingAdapter.getAnimationPose();
+assert.ok(secondDisplayed>firstDisplayed,'displayed source animation should advance toward the new scroll pose');
+assert.ok(secondDisplayed<poseB.product.pose,'displayed source animation should ease toward the target instead of snapping');
+assert.ok(Math.abs(secondDisplayed-firstDisplayed)<=.04,'one rendered frame must bound skeletal animation pose movement');
