@@ -45,4 +45,19 @@ const DT=1/60;
     'fold retarget should preserve meaningful velocity instead of pausing at a restarted smoothstep');
 }
 
+
+{
+  const fold=createFoldController({openPose:.20,foldedPose:.40,duration:.92});
+  fold.begin('fold',.72);
+  for(let n=0;n<24;n++) fold.update(DT,{scrollActive:false,timelinePose:.72});
+  const beforeRelease=fold.getInfluence();
+  fold.update(DT,{scrollActive:true,timelinePose:.30});
+  const firstReleaseFrame=fold.getInfluence();
+
+  assert.ok(firstReleaseFrame.weight<beforeRelease.weight,
+    'scrolling away from Form should begin fading fold ownership');
+  assert.ok(Math.abs(firstReleaseFrame.targetPose-beforeRelease.targetPose)<.004,
+    'fold scroll release should not move the controlled pose aggressively while ownership is already fading');
+}
+
 console.log('motion_control_contract: PASS');
