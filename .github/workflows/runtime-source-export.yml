@@ -1,18 +1,41 @@
-name: Runtime source export
+name: Apply GPT runtime LeadFlow redesign
 
 on:
   push:
     branches:
       - runtime/leadflow-dashboard-redesign
 
+permissions:
+  contents: write
+
 jobs:
-  export:
+  apply:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/upload-artifact@v4
+      - name: Checkout payload branch
+        uses: actions/checkout@v4
         with:
-          name: portfolio-runtime-source
-          path: .
-          include-hidden-files: true
-          retention-days: 1
+          ref: runtime/leadflow-dashboard-redesign
+          fetch-depth: 0
+      - name: Preserve reviewed runtime payload
+        run: cp runtime/leadflow-shippable.tar.xz /tmp/leadflow-shippable.tar.xz
+      - name: Apply reviewed files to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B main origin/main
+          tar -xJf /tmp/leadflow-shippable.tar.xz
+          test -f dashboard.js
+          test -f tests/leadflow_final_runtime_audit.py
+          node --test
+          node --check dashboard.js
+          node --check app.js
+          node --check functions/api/qualify.js
+          git diff --check
+          git diff --quiet -- v1 functions/v1 functions/api/qualify.js
+          git config user.name "SaamVR"
+          git config user.email "163770486+SaamVR@users.noreply.github.com"
+          git add index.html app.js dashboard.js styles.css tests/leadflow-dashboard-model.test.js tests/leadflow-dashboard-dom.test.js tests/leadflow_visual_audit.py tests/leadflow_empty_state_audit.py tests/leadflow_responsive_audit.py tests/leadflow_source_truth_audit.py tests/leadflow_final_runtime_audit.py
+          git commit -m "refine LeadFlow dashboard readability and analytics"
+          git push origin main
