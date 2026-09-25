@@ -65,8 +65,76 @@
       }
     }
 
+    const q=(selector,root=options.root||document)=>root.querySelector(selector);
+    const qa=(selector,root=options.root||document)=>[...root.querySelectorAll(selector)];
+
+    function routeLabel(lead){
+      if(lead?.action)return lead.action;
+      if(lead?.status==="hot")return "Sales review";
+      if(lead?.status==="review")return "Human review";
+      return "Nurture";
+    }
+
+    function priorityLabel(lead){
+      if(lead?.status==="hot")return "High priority";
+      if(lead?.status==="review")return "Needs review";
+      return "Nurture";
+    }
+
+    async function workflowDirector(context,storyOptions){
+      const section=q("#workflow"),packet=q("#workflowStoryPacket"),caption=q("#workflowStoryCaption"),detail=q("#workflowStoryDetail");
+      const stages=qa("#workflow .workflow-stage"),connectors=qa("#workflow .workflow-story-connector");
+      if(!section||!packet||stages.length!==4)return;
+      const lead=storyOptions.lead||{name:"Sarah",company:"Acme Dental",score:92,status:"hot",action:"Sales review"};
+      section.dataset.storyState="playing";
+      stages.forEach(stage=>stage.classList.remove("story-focus","story-stage-complete"));
+      connectors.forEach(connector=>connector.classList.remove("story-connector-complete"));
+      packet.style.opacity="1";
+
+      const track=q("#workflow .workflow-story-track");
+      const positionFor=stage=>{
+        const tr=track.getBoundingClientRect(),sr=stage.getBoundingClientRect(),pr=packet.getBoundingClientRect();
+        return Math.max(0,sr.left-tr.left+sr.width/2-pr.width/2);
+      };
+      let x=positionFor(stages[0]);
+      packet.style.transform="translate3d("+x+"px,0,0)";
+
+      async function setBeat(index,title,copy,hold=620){
+        if(context.cancelled())return false;
+        stages.forEach((stage,i)=>stage.classList.toggle("story-focus",i===index));
+        if(caption)caption.textContent=title;
+        if(detail)detail.textContent=copy;
+        await context.wait(hold);
+        if(context.cancelled())return false;
+        stages[index].classList.add("story-stage-complete");
+        return true;
+      }
+
+      async function travel(toIndex){
+        const next=positionFor(stages[toIndex]);
+        connectors[toIndex-1]?.classList.add("story-connector-complete");
+        await context.animate(packet,[{transform:"translate3d("+x+"px,0,0)"},{transform:"translate3d("+next+"px,0,0)"}],{duration:context.reducedMotion?1:560,easing:"cubic-bezier(.22,.75,.2,1)",fill:"forwards"});
+        x=next;
+        packet.style.transform="translate3d("+x+"px,0,0)";
+      }
+
+      if(!await setBeat(0,"Lead received",(lead.name||"Lead")+" · "+(lead.company||"Incoming inquiry"),650))return;
+      await travel(1);
+      if(!await setBeat(1,"Required fields valid","Name, company, budget, timeline and need are ready for scoring.",650))return;
+      await travel(2);
+      if(!await setBeat(2,(lead.score??92)+" / 100 · "+priorityLabel(lead),"Budget, urgency and intent resolve to a transparent qualification state.",760))return;
+      await travel(3);
+      if(!await setBeat(3,routeLabel(lead)+" prepared","The CRM state and next-action path are ready for review.",760))return;
+
+      stages.forEach(stage=>stage.classList.remove("story-focus"));
+      stages[3].classList.add("story-focus");
+      section.dataset.storyState="complete";
+      if(caption)caption.textContent=routeLabel(lead)+" prepared";
+      if(detail)detail.textContent=(lead.name||"Lead")+" completes the workflow with a visible, inspectable next action.";
+    }
+
     const directors={
-      workflow:genericDirector,
+      workflow:workflowDirector,
       operations:genericDirector,
       reliability:genericDirector,
       architecture:genericDirector

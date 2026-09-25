@@ -20,9 +20,19 @@ const starter=[
 ];
 function loadLeads(){try{const x=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");if(Array.isArray(x))return x}catch{}saveJSON(STORAGE_KEY,starter);return [...starter]}
 let leads=loadLeads();const saveLeads=()=>saveJSON(STORAGE_KEY,leads);
+const storyDirector=window.LeadFlowStorytelling?.createController({root:document});
 const budgetLabel=v=>({500:"Under $1,000",2000:"$1,000–$3,000",5000:"$3,000–$7,500",12000:"$7,500–$15,000",25000:"$15,000+"})[String(v)]||"$"+Number(v).toLocaleString();
 const timelineLabel=v=>({exploring:"Just exploring",month:"Within a month",weeks:"1–2 weeks",asap:"ASAP"})[v]||v;
 function scoreLead(data,settingsOverride=null){const text=(data.need||"").toLowerCase(),budget=Number(data.budget)||0,basePoints=29,budgetPoints=budget>=15000?30:budget>=7500?27:budget>=3000?24:budget>=1000?14:5,timelinePoints={asap:24,weeks:19,month:12,exploring:3}[data.timeline]||5,highIntent=["need","automate","automation","appointment","follow-up","follow up","crm","hubspot","sales","integrat","lead","workflow","booking"],exploratory=["curious","exploring","maybe","someday","learn"],intentPoints=Math.min(16,highIntent.filter(k=>text.includes(k)).length*3),exploratoryPenalty=Math.min(12,exploratory.filter(k=>text.includes(k)).length*4),score=Math.max(18,Math.min(98,basePoints+budgetPoints+timelinePoints+intentPoints-exploratoryPenalty)),settings=settingsOverride||readSettings(),status=score>=settings.hot?"hot":score>=settings.review?"review":"nurture",factors=[{label:"Baseline",points:basePoints},{label:"Budget fit",points:budgetPoints},{label:"Timeline urgency",points:timelinePoints},{label:"Intent terms",points:intentPoints}];if(exploratoryPenalty)factors.push({label:"Exploratory terms",points:-exploratoryPenalty});return{score,intent:score>=settings.hot?"High":score>=settings.review?"Medium":"Low",budgetFit:budget>=3000?"Strong":budget>=1000?"Good":"Limited",urgency:data.timeline==="asap"?"Immediate":data.timeline==="weeks"?"High":data.timeline==="month"?"Medium":"Low",status,factors,routingReason:status==="hot"?"Score "+score+" meets the "+settings.hot+"+ sales-review threshold.":status==="review"?"Score "+score+" falls in the "+settings.review+"–"+(settings.hot-1)+" human-review range.":"Score "+score+" is below the "+settings.review+" review threshold.",action:status==="hot"?"Sales review":status==="review"?"Human review":"Nurture"}}
+
+function workflowStoryLead(){
+  if(currentLead)return currentLead;
+  const data={name:$("#leadName")?.value?.trim()||"Sarah",company:$("#leadCompany")?.value?.trim()||"Acme Dental",budget:Number($("#leadBudget")?.value||5000),timeline:$("#leadTimeline")?.value||"asap",need:$("#leadNeed")?.value?.trim()||"We need automated appointment lead follow-up"};
+  const qual=scoreLead(data);
+  return {...data,...qual,action:qual.action};
+}
+function playWorkflowStory(){return storyDirector?.playWorkflowStory({lead:workflowStoryLead()})||Promise.resolve({status:"complete",story:"workflow"})}
+
 async function qualifyOnServer(data,settings){const proof=$("#backendProof"),status=$("#backendStatus"),trace=$("#backendTrace"),started=performance.now();try{proof.className="backend-proof checking";status.textContent="CONTACTING SERVER";trace.textContent="POST /api/qualify";const r=await fetch("/api/qualify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...data,thresholds:{hot:settings.hot,review:settings.review}})}),p=await r.json();if(!r.ok||!p.ok||!p.qualification)throw new Error();const ms=Math.max(1,Math.round(performance.now()-started));proof.className="backend-proof live";status.textContent="LIVE API RESPONSE";trace.textContent="trace "+String(p.traceId||"").slice(0,8)+" · "+ms+"ms";return{...p.qualification,serverMs:ms,traceId:p.traceId}}catch{proof.className="backend-proof fallback";status.textContent="BROWSER FALLBACK ACTIVE";trace.textContent="server unavailable";return null}}
 function makeSummary(data,qual){const clean=data.need.trim().replace(/[.!]+$/,"").replace(/^(we|i)\s+(need|want)\s+/i,"").replace(/^need\s+/i,""),need=clean?clean.charAt(0).toLowerCase()+clean.slice(1):"workflow support";if(qual.status==="hot")return data.company+" needs "+need+". The selected budget and timeline support a sales review.";if(qual.status==="review")return data.company+" needs "+need+". The current score supports human review before a sales handoff.";return data.company+" is exploring "+need+". Current budget, urgency, or intent signals support nurture rather than immediate sales review."}
 function makeFollowup(data,qual){const first=data.name.trim().split(/\s+/)[0]||"there";if(qual.status==="hot")return `Hi ${first},\n\nThanks for sharing ${data.company}’s workflow needs. Based on your timeline, the next step would be to review how inquiries arrive and where follow-up is currently handled.\n\nWould you be available for a short workflow review this week?`;if(qual.status==="review")return `Hi ${first},\n\nThanks for the context. There’s a clear automation opportunity here. I’d start by mapping the existing process and identifying which steps should be automated versus kept for human review.\n\nIf useful, I can outline a practical first version for ${data.company}.`;return `Hi ${first},\n\nThanks for reaching out. A useful first step is to list the repetitive lead tasks your team handles manually each week. From there, we can identify the highest-value automation opportunity without overbuilding.\n\nHappy to share a few examples if that helps.`}
@@ -323,6 +333,19 @@ async function runGuidedWalkthrough(){
 }
 $("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
 $("#guidedDemo").addEventListener("click",runGuidedWalkthrough);
+$("#workflowReplay")?.addEventListener("click",()=>playWorkflowStory());
+let workflowStoryPlayed=false;
+let workflowStoryObserver=null;
+if("IntersectionObserver" in window){
+  workflowStoryObserver=new IntersectionObserver(entries=>{
+    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.42);
+    if(!hit||workflowStoryPlayed)return;
+    workflowStoryPlayed=true;
+    playWorkflowStory();
+    workflowStoryObserver.disconnect();
+  },{threshold:[.42]});
+  workflowStoryObserver.observe($("#workflow"));
+}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();

@@ -64,7 +64,25 @@
 
     <section class="section shell client-brief"><div class="section-head"><div><p class="tag">THE BUSINESS PROBLEM</p><h2>Less manual handling. A clearer next step for every lead.</h2></div><p>Inquiries often arrive across forms and campaigns, leaving teams to review details, copy records, and decide who to contact first. LeadFlow demonstrates how those steps can work together.</p></div><div class="brief-grid"><article><small>BEFORE</small><b>Manual review and copying</b><p>Review each inquiry, copy details into a CRM, and prepare the next response manually.</p><strong>Illustrative workflow scenario</strong></article><article><small>WITH LEADFLOW</small><b>One observable workflow</b><p>Validate the submission, calculate priority, update the demo lead record, and prepare the appropriate handoff.</p><strong>Each decision remains inspectable</strong></article><article><small>HUMAN OVERSIGHT</small><b>Keep exceptions visible</b><p>Review-path leads and demonstrated failures remain visible so a person can decide what happens next.</p><strong>Review paths stay explicit</strong></article></div></section>
 
-    <section id="workflow" class="section shell"><div class="section-head"><div><p class="tag">WORKFLOW</p><h2>From inquiry to next action.</h2></div><p>Each stage stays visible, so a viewer can follow the workflow instead of watching an unexplained loading state.</p></div><div class="workflow-map"><article><span class="step-num">01</span><div class="icon">↳</div><h3>Capture</h3><p>Collect a lead from a form or adapted inbound source.</p></article><div class="connector"><i></i></div><article><span class="step-num">02</span><div class="icon">✓</div><h3>Validate</h3><p>Normalize required fields and reject incomplete submissions.</p></article><div class="connector"><i></i></div><article><span class="step-num">03</span><div class="icon">03</div><h3>Qualify</h3><p>Apply transparent rules across budget, urgency, and intent terms.</p></article><div class="connector"><i></i></div><article><span class="step-num">04</span><div class="icon">⌘</div><h3>Prepare</h3><p>Update the demo CRM and prepare the review, nurture, or sales path.</p></article></div></section>
+    <section id="workflow" class="section shell" data-story-state="idle">
+      <div class="section-head"><div><p class="tag">WORKFLOW</p><h2>From inquiry to next action.</h2></div><p>Follow one lead through each responsibility—from capture to the next action prepared by the workflow.</p></div>
+      <div class="workflow-story-head" aria-live="polite">
+        <div class="workflow-story-caption"><small>FOLLOW ONE LEAD</small><strong id="workflowStoryCaption">Ready to trace a lead</strong><span id="workflowStoryDetail">The story will settle after one complete pass.</span></div>
+        <button id="workflowReplay" class="secondary-btn story-replay" type="button">Replay flow <span aria-hidden="true">↻</span></button>
+      </div>
+      <div class="workflow-story-track">
+        <span id="workflowStoryPacket" class="story-packet workflow-story-packet" aria-hidden="true"><i></i><b>LEAD</b></span>
+        <div class="workflow-map">
+          <article class="workflow-stage" data-story-stage="capture"><span class="step-num">01</span><div class="icon">↳</div><h3>Capture</h3><p>Collect a lead from a form or adapted inbound source.</p></article>
+          <div class="connector workflow-story-connector"><i></i></div>
+          <article class="workflow-stage" data-story-stage="validate"><span class="step-num">02</span><div class="icon">✓</div><h3>Validate</h3><p>Normalize required fields and reject incomplete submissions.</p></article>
+          <div class="connector workflow-story-connector"><i></i></div>
+          <article class="workflow-stage" data-story-stage="qualify"><span class="step-num">03</span><div class="icon">03</div><h3>Qualify</h3><p>Apply transparent rules across budget, urgency, and intent terms.</p></article>
+          <div class="connector workflow-story-connector"><i></i></div>
+          <article class="workflow-stage" data-story-stage="prepare"><span class="step-num">04</span><div class="icon">⌘</div><h3>Prepare</h3><p>Update the demo CRM and prepare the review, nurture, or sales path.</p></article>
+        </div>
+      </div>
+    </section>
 
     <section id="demo" class="section band"><div class="shell"><div class="section-head"><div><p class="tag">TRY THE WORKFLOW</p><h2>Submit a lead. Follow every decision.</h2></div><p>Start with an example or change the details. The workflow uses a live qualification endpoint when available and a deterministic browser fallback when it is not.</p></div>
       <div class="backend-proof" id="backendProof"><span class="backend-dot"></span><div><b id="backendStatus">SERVER-BACKED QUALIFICATION</b><small>POST /api/qualify · deterministic scoring · browser fallback available</small></div><em id="backendTrace">ready</em></div>
