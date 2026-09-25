@@ -364,3 +364,18 @@ def test_v3_case_study_contains_single_honest_concept_disclosure():
     assert disclosure in case_html
     assert "project-defined engineering target" in case_html
     assert "not a manufactured-product certification" in case_html
+
+
+def test_v3_design_detail_rail_presents_one_product_detail_at_a_time():
+    assert 'class="detail-rail"' in html
+    for step, label in [("cushion","Cushion"),("headband","Hinge"),("controls","Controls")]:
+        assert f'data-detail-step="{step}"' in html
+        assert label in html
+    assert "Memory foam" in html
+    assert "Aluminum hinge" in html
+    assert "Right-ear controls" in html
+
+def test_v3_detail_rail_has_active_and_inactive_visual_states():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert '.detail-railbutton[aria-pressed="true"]' in compact
+    assert '.hotspot[aria-expanded="false"]' in compact
