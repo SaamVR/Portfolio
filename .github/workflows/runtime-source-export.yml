@@ -1,9 +1,7 @@
 name: Apply GPT runtime LeadFlow redesign
 
 on:
-  push:
-    branches:
-      - runtime/leadflow-dashboard-redesign
+  workflow_dispatch:
 
 permissions:
   contents: write
