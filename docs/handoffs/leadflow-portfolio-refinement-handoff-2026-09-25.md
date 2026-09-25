@@ -617,3 +617,35 @@ Treat `87a785c2...` / `226a19db...` as the current LeadFlow V3 professional-prod
 - `/v1/`, `/v2/`, `functions/v1/`, `functions/v2/`, and root qualification API code remain unchanged.
 
 Treat `8efe9aaf...` / `237287ed...` as the current LeadFlow V3 professional-motion production freeze.
+
+## LeadFlow V3 professional-motion replay hardening — 2026-09-25
+
+Final production application source:
+- `8efe9aaf10cf8509453e82b72d5b1289c10cb20a` — `prevent LeadFlow story replay observer restarts`
+- This is a two-line runtime hardening on top of the fully audited professional product-motion release.
+- Workflow Replay now marks the story as manually played and disconnects its one-shot IntersectionObserver before starting.
+- Architecture Replay does the same.
+- This prevents a manual replay from being followed by an unintended automatic observer-triggered restart when the section enters the viewport.
+
+Production:
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Final immutable deployment: https://237287ed.leadflow-ai-bhy.pages.dev/
+- Previous fully audited immutable deployment: https://226a19db.leadflow-ai-bhy.pages.dev/
+
+Final verification after replay hardening:
+- Fresh post-commit Node suite: **66/66 PASS**.
+- `app.js`, `storytelling.js`, `dashboard.js` syntax checks: PASS.
+- `git diff --check`: PASS.
+- Protected `v1/`, `v2/`, `functions/v1/`, `functions/v2/`, and root qualification API unchanged.
+- Full professional-motion runtime audit on final immutable deployment: PASS.
+- Workflow semantic token: `NEW INQUIRY → VERIFIED → 92 / 100 → SALES REVIEW`.
+- Lead Operations motion/interaction: donut, score bars, source quality, urgency, pointer emphasis, and keyboard emphasis PASS.
+- Scenario Story: neutral state, timeout story, direct beat scrubbing, and keyboard navigation PASS.
+- Architecture: `REQUEST → VALID → SCORE + CRM STATE → READY`; branch tokens merge away; READY settles above Next Action copy.
+- Rendered-copy scan: no user-visible demo / demonstration / showcase / simulated / illustrative language.
+- Fresh post-deployment Workflow visual inspection confirms all four workflow cards render visibly in the final settled state.
+- Canonical + immutable asset hashes match the verified local source byte-for-byte for `index.html`, `app.js`, `storytelling.js`, `dashboard.js`, `styles.css`, and `favicon.svg`.
+- Canonical + immutable manual Replay race verification: exactly one `playing → complete` transition for Workflow and Architecture; entering the viewport afterward does not restart the story.
+- Public replay verification: zero browser exceptions.
+
+Treat `8efe9aaf... / 237287ed...` as the final LeadFlow V3 professional-product-motion application freeze. The later documentation-only handoff commit does not change deployed application bytes. Keep `/v2/` and `/v1/` preserved unless explicitly requested.
