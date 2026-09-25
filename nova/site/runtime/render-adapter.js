@@ -20,7 +20,51 @@ export function createRenderAdapter({
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
     obj[key].z=damp(obj[key].z,values[2],lambda,dt);
   };
+  const setVec=(obj,key,values)=>{
+    obj[key].x=values[0];
+    obj[key].y=values[1];
+    obj[key].z=values[2];
+  };
+  const snap=state=>{
+    if(!state) return;
+    setVec(camera,'position',state.camera.position);
+    camera.fov=state.camera.fov;
+    camera.updateProjectionMatrix();
+    renderedTarget=[...state.camera.target];
+    camera.lookAt(...renderedTarget);
+
+    setVec(presentation,'position',state.product.position);
+    presentation.rotation.x=orientationX+state.product.pitch;
+    presentation.rotation.y=state.product.yaw;
+    const s=state.product.scale;
+    presentation.scale.x=s;
+    presentation.scale.y=s;
+    presentation.scale.z=s;
+
+    if(mixer && Number.isFinite(clipDuration)){
+      renderedPose=Math.max(0,Math.min(1,state.product.pose));
+      mixer.setTime(renderedPose*clipDuration);
+    }
+
+    renderer.toneMappingExposure=state.lighting.exposure;
+    if(lights){
+      if(lights.hemi) lights.hemi.intensity=state.lighting.hemi;
+      if(lights.key){
+        lights.key.intensity=state.lighting.key;
+        lights.key.color.setHex(state.lighting.keyColor);
+        setVec(lights.key,'position',state.lighting.keyPosition);
+      }
+      if(lights.fill) lights.fill.intensity=state.lighting.fill;
+      if(lights.rim){
+        lights.rim.intensity=state.lighting.rim;
+        lights.rim.color.setHex(state.lighting.rimColor);
+      }
+      if(lights.warm) lights.warm.intensity=state.lighting.warm;
+    }
+    environment?.apply?.(state.environment,0);
+  };
   return {
+    snap,
     apply(state,dt=DEFAULT_DT){
       if(!state) return;
       const step=Math.max(.001,Math.min(.05,dt||DEFAULT_DT));
