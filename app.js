@@ -525,20 +525,62 @@ function focusTourTarget(selector){
   if(target)target.classList.add("tour-focus");
   return target;
 }
-function scrollTourTarget(selector){
+function waitForTourScrollSettle({timeout=1800,quietFrames=5}={}){
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(reduced)return new Promise(resolve=>requestAnimationFrame(()=>resolve("reduced")));
+  return new Promise(resolve=>{
+    const started=performance.now(),initialY=scrollY,supportsScrollEnd="onscrollend" in window;
+    let lastY=scrollY,stableFrames=0,moved=false,raf=0,done=false;
+    const finish=reason=>{
+      if(done)return;
+      done=true;
+      if(raf)cancelAnimationFrame(raf);
+      if(supportsScrollEnd)removeEventListener("scrollend",onScrollEnd);
+      resolve(reason);
+    };
+    const onScrollEnd=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>finish("scrollend")));
+    if(supportsScrollEnd)addEventListener("scrollend",onScrollEnd,{once:true});
+    const sample=()=>{
+      if(cancelled)return finish("cancelled");
+      const y=scrollY,delta=Math.abs(y-lastY),elapsed=performance.now()-started;
+      if(Math.abs(y-initialY)>.5)moved=true;
+      stableFrames=delta<.5?stableFrames+1:0;
+      lastY=y;
+      if(stableFrames>=quietFrames&&(moved||elapsed>160))return finish(moved?"stable":"no-move");
+      if(elapsed>=timeout)return finish("timeout");
+      raf=requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{raf=requestAnimationFrame(sample)}));
+  });
+}
+async function scrollTourTargetSettled(selector){
   const target=focusTourTarget(selector);
-  target?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  if(!target)return null;
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({behavior:reduced?"auto":"smooth",block:"center"});
+  await waitForTourScrollSettle();
+  if(!reduced&&!cancelled)await tourHoldMs(110);
   return target;
 }
+function stopTourScroll(){
+  const halt=()=>scrollTo({top:scrollY,left:scrollX,behavior:"auto"});
+  halt();
+  requestAnimationFrame(()=>{halt();requestAnimationFrame(halt)});
+}
 function endTour(){
+  cancelled=true;guided=false;
+  document.documentElement.classList.remove("guided-tour-active");
+  stopTourScroll();
   storyDirector?.cancelAll();
-  guided=false;cancelled=true;resetTourFocus();
+  resetTourFocus();
   $("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");
   $("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span class="guided-btn-play" aria-hidden="true">▶</span><span class="guided-btn-label">Watch LeadFlow in action</span>';
   $("#tourProgressBar").style.width="0%";
 }
 function finishTour(){
-  guided=false;cancelled=false;resetTourFocus();
+  guided=false;cancelled=false;
+  document.documentElement.classList.remove("guided-tour-active");
+  resetTourFocus();
   $("#tourProgressBar").style.width="100%";
   $("#tourChapter").textContent="COMPLETE";
   $("#tourLabel").textContent="Product tour complete";
@@ -558,29 +600,38 @@ async function waitForWorkflowCompletion(timeout=12000){
   }
   return false;
 }
+function guidedStoryInterrupted(storyResult){
+  if(cancelled)return true;
+  if(storyResult?.status==="cancelled"){endTour();return true}
+  return false;
+}
 async function runGuidedWalkthrough(){
   if(guided||running)return;
   guided=true;cancelled=false;
+  document.documentElement.classList.add("guided-tour-active");
   storyDirector?.cancelAll();
   $("#guidedDemo").disabled=true;$("#guidedDemo").innerHTML='<span class="guided-btn-play guided-btn-live" aria-hidden="true">●</span><span class="guided-btn-label">Product tour in progress</span>';
   $("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");
   const total=6;
 
   setTourChapter(1,total,...tourChapters[0]);
-  scrollTourTarget("#workflow");
+  await scrollTourTargetSettled("#workflow");
+  if(cancelled)return;
   let storyResult=await playWorkflowStory(tourStoryOptions(1,total));
-  if(cancelled||storyResult.status==="cancelled")return;
+  if(guidedStoryInterrupted(storyResult))return;
 
   setTourChapter(2,total,...tourChapters[1]);
-  scrollTourTarget("#demo");
-  await tourHoldMs(420);
+  await scrollTourTargetSettled("#demo");
+  if(cancelled)return;
+  await tourHoldMs(120);
   $('[data-lead-preset="hot"]')?.click();
   $("#leadForm").requestSubmit();
   const completed=await waitForWorkflowCompletion();
   if(!completed||cancelled){if(!cancelled)endTour();return}
 
   setTourChapter(3,total,...tourChapters[2]);
-  scrollTourTarget("#resultCard");
+  await scrollTourTargetSettled("#resultCard");
+  if(cancelled)return;
   updateTourProgress(3,total,{fraction:.35,beat:"92 / 100 · high priority"});
   await tourHoldMs(1100);
   updateTourProgress(3,total,{fraction:1,beat:"Sales review is prepared, not sent"});
@@ -588,19 +639,22 @@ async function runGuidedWalkthrough(){
 
   pendingOpsStory=false;
   setTourChapter(4,total,...tourChapters[3]);
-  scrollTourTarget("#workspace");
+  await scrollTourTargetSettled("#workspace");
+  if(cancelled)return;
   storyResult=await playLeadOperationsStory(tourStoryOptions(4,total));
-  if(cancelled||storyResult.status==="cancelled")return;
+  if(guidedStoryInterrupted(storyResult))return;
 
   setTourChapter(5,total,...tourChapters[4]);
-  scrollTourTarget("#reliability");
+  await scrollTourTargetSettled("#reliability");
+  if(cancelled)return;
   storyResult=await playReliabilityStory("timeout",tourStoryOptions(5,total));
-  if(cancelled||storyResult.status==="cancelled")return;
+  if(guidedStoryInterrupted(storyResult))return;
 
   setTourChapter(6,total,...tourChapters[5]);
-  scrollTourTarget("#architecture");
+  await scrollTourTargetSettled("#architecture");
+  if(cancelled)return;
   storyResult=await playArchitectureStory(tourStoryOptions(6,total));
-  if(cancelled||storyResult.status==="cancelled")return;
+  if(guidedStoryInterrupted(storyResult))return;
 
   if(!cancelled)finishTour();
 }
@@ -636,17 +690,22 @@ const revealTargets=[
   ...document.querySelectorAll(".portfolio-next-card"),
   ...document.querySelectorAll(".final-cta")
 ];
-revealTargets.forEach((el,i)=>{
-  el.classList.add("reveal-on-scroll");
-  const parent=el.parentElement;
-  if(parent?.classList.contains("brief-grid")||parent?.classList.contains("workflow-map")||parent?.classList.contains("implementation-proof")){
-    el.dataset.revealDelay=String((i%3)+1);
-  }
+revealTargets.forEach(el=>el.classList.add("reveal-on-scroll"));
+const revealGroups=[
+  document.querySelector(".brief-grid"),
+  document.querySelector(".workflow-map"),
+  document.querySelector(".implementation-proof")
+].filter(Boolean);
+revealGroups.forEach(group=>{
+  [...group.querySelectorAll(":scope > article")].forEach((el,index)=>{
+    el.dataset.revealDelay=String(Math.min(index+1,4));
+  });
 });
 if("IntersectionObserver" in window){
   const revealObserver=new IntersectionObserver(entries=>{
     for(const entry of entries){
       if(entry.isIntersecting){
+        entry.target.addEventListener("transitionend",()=>{delete entry.target.dataset.revealDelay},{once:true});
         entry.target.classList.add("is-visible");
         revealObserver.unobserve(entry.target);
       }
@@ -666,7 +725,7 @@ if("IntersectionObserver" in window){
 
 function revealOpenedDetails(details){
   if(!details?.open)return;
-  details.querySelectorAll(".reveal-on-scroll").forEach(el=>el.classList.add("is-visible"));
+  details.querySelectorAll(".reveal-on-scroll").forEach(el=>{delete el.dataset.revealDelay;el.classList.add("is-visible")});
   details.closest(".section")?.classList.add("is-section-visible");
   requestReadingState();
 }
