@@ -335,7 +335,10 @@ jobs:
               scrollTo(0,section.offsetTop+24);
             });
             await page.waitForFunction(()=>document.body.dataset.caseStudy==='true');
-            await page.waitForTimeout(700);
+            await page.waitForFunction(()=>{
+              const canvas=document.querySelector('#webgl');
+              return Number(getComputedStyle(canvas).opacity)<=.08;
+            },{timeout:1800});
             const result=await page.evaluate(()=>{
               const section=document.querySelector('#case-study');
               const canvas=document.querySelector('#webgl');
