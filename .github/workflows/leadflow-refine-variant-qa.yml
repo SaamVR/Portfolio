@@ -1,0 +1,26 @@
+name: LeadFlow Refine Variant QA
+
+on:
+  push:
+    branches:
+      - leadflow/refine-brown-navy
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Variant contract
+        run: node --test tests/leadflow-refine-variants.test.js
+      - name: Full Node regression
+        run: node --test tests/*.test.js
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check dashboard.js
+          node --check storytelling.js
