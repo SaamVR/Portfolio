@@ -24,3 +24,56 @@ jobs:
           node --check app.js
           node --check dashboard.js
           node --check storytelling.js
+      - name: Browser audit dependencies
+        run: |
+          python3 -m pip install --quiet websocket-client
+          command -v google-chrome
+      - name: Start local product server
+        run: |
+          python3 -m http.server 8805 >/tmp/leadflow-refine-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8805/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/leadflow-refine-http.log
+          exit 1
+      - name: Brown responsive interaction matrix
+        run: |
+          sed 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-brown/"#' tests/leadflow_v4_release_matrix.py > /tmp/brown-release.py
+          python3 /tmp/brown-release.py
+      - name: Navy responsive interaction matrix
+        run: |
+          sed 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-navy/"#' tests/leadflow_v4_release_matrix.py > /tmp/navy-release.py
+          python3 /tmp/navy-release.py
+      - name: Brown whole-page contrast
+        run: |
+          sed 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-brown/"#' tests/leadflow_v4_whole_page_contrast_audit.py > /tmp/brown-contrast.py
+          python3 /tmp/brown-contrast.py
+      - name: Navy whole-page contrast
+        run: |
+          sed 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-navy/"#' tests/leadflow_v4_whole_page_contrast_audit.py > /tmp/navy-contrast.py
+          python3 /tmp/navy-contrast.py
+      - name: Brown guided motion
+        env:
+          LEADFLOW_URL: http://127.0.0.1:8805/refine-brown/
+          LEADFLOW_MOTION_OUT: /tmp/leadflow-refine-motion/brown
+        run: python3 tests/leadflow_refine_guided_motion_audit.py
+      - name: Navy guided motion
+        env:
+          LEADFLOW_URL: http://127.0.0.1:8805/refine-navy/
+          LEADFLOW_MOTION_OUT: /tmp/leadflow-refine-motion/navy
+        run: python3 tests/leadflow_refine_guided_motion_audit.py
+      - name: Capture brown visual review
+        run: |
+          sed -e 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-brown/"#' -e 's#OUT="/tmp/leadflow-v4-visual"#OUT="/tmp/leadflow-refine-visual/brown"#' tests/leadflow_v4_visual_capture.py > /tmp/brown-capture.py
+          python3 /tmp/brown-capture.py
+      - name: Capture navy visual review
+        run: |
+          sed -e 's#URL="http://127.0.0.1:8805/"#URL="http://127.0.0.1:8805/refine-navy/"#' -e 's#OUT="/tmp/leadflow-v4-visual"#OUT="/tmp/leadflow-refine-visual/navy"#' tests/leadflow_v4_visual_capture.py > /tmp/navy-capture.py
+          python3 /tmp/navy-capture.py
+      - name: Upload refine review artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-refine-brown-navy-review
+          path: |
+            /tmp/leadflow-refine-motion
+            /tmp/leadflow-refine-visual
+          if-no-files-found: error
+          retention-days: 7
