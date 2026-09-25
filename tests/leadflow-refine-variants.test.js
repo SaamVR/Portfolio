@@ -165,3 +165,21 @@ test("achromatic refinement keeps brown and navy identity in accents, not neutra
     assert.match(block,/html\[data-theme=light\] \.crm-shell[\s\S]*background:#F7F7F7!important/);
   }
 });
+
+test("achromatic variants neutralize inherited CRM analytics and tour chrome",()=>{
+  for(const slug of ["refine-brown","refine-navy"]){
+    const css=read(slug+"/theme.css");
+    const block=css.slice(css.lastIndexOf("/* LEADFLOW REFINE — ACHROMATIC CANVAS"));
+    const required=[
+      "html[data-theme=light] .crm-table th{background:#EFEFEF!important;color:#444444!important}",
+      "html[data-theme=light] .crm-table tbody tr:hover,",
+      "background:#F3F3F3!important",
+      "html[data-theme=light] .crm-overview-kpis>div,",
+      "html[data-theme=light] .crm-analytics-v2 .analytics-panel{background:#FFFFFF!important;border-color:#D2D2D2!important}",
+      "html[data-theme=light] .crm-analytics-v2 .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}",
+      "html[data-theme=light] .tour-progress{background:#DEDEDE!important}",
+      "html[data-theme=light] .tour-status{background:rgba(255,255,255,.97)!important"
+    ];
+    for(const rule of required)assert.ok(block.includes(rule),slug+" missing strict neutral override: "+rule);
+  }
+});
