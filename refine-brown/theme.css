@@ -171,3 +171,5 @@ html[data-theme=light] .capability:hover{background:rgba(122,79,54,.05);border-l
 html[data-theme=light] .capability span{color:#66554A}
 html[data-theme=light] #roi .roi-primary strong{color:#70462F}
 html[data-theme=light] .incident-neutral-mark{background:#F2E9E3;color:#603B28;border-color:#B99B87}
+
+.incident-rail article small{color:#D0C1B7!important}
