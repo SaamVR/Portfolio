@@ -14,8 +14,14 @@ permissions:
 
 jobs:
   audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [core, extended]
     runs-on: ubuntu-latest
     timeout-minutes: 18
+    env:
+      NOVA_QA_PHASE: ${{ matrix.phase }}
     steps:
       - uses: actions/checkout@v4
 
@@ -818,35 +824,43 @@ jobs:
             await context.close();
           }
 
-          await hotspotMotionAudit({width:1440,height:1000},'desktop');
-          await hotspotMotionAudit({width:390,height:844},'mobile');
-          await motionContinuityAudit();
-          await designDetailSequenceAudit();
-          await productCopyCollisionAudit({width:1440,height:1000},'desktop');
-          await productCopyCollisionAudit({width:390,height:844},'mobile');
+          const phase=process.env.NOVA_QA_PHASE||'core';
 
-          const desktop=await captureJourney({width:1440,height:1000},'desktop');
-          const tablet=await captureJourney({width:1024,height:768},'tablet');
-          const mobile=await captureJourney({width:390,height:844},'mobile');
-          await desktopInteractions();
-          await mobileInteractions();
-          await caseStudyAudit({width:1440,height:1000},'desktop');
-          await caseStudyAudit({width:390,height:844},'mobile');
-          await guidedTourAudit();
-          await compactCaseStudyAudit();
-          await validationEvidenceAudit();
-          await readabilityAudit({width:1440,height:1000},'desktop');
-          await readabilityAudit({width:390,height:844},'mobile');
-          await rendererFailureAudit();
-          await mobileNavAudit();
-          await productFactsAudit();
-          await inspectionViewsAudit();
-          await versionArchiveAudit({width:1440,height:1000},'desktop');
-          await versionArchiveAudit({width:390,height:844},'mobile');
-          await reducedMotionAudit();
-          await fallbackAudit();
+          if(phase==='core'){
+            await hotspotMotionAudit({width:1440,height:1000},'desktop');
+            await hotspotMotionAudit({width:390,height:844},'mobile');
+            await motionContinuityAudit();
+            await designDetailSequenceAudit();
+            await productCopyCollisionAudit({width:1440,height:1000},'desktop');
+            await productCopyCollisionAudit({width:390,height:844},'mobile');
 
-          fs.writeFileSync('nova-qa/audit.json',JSON.stringify({desktop,tablet,mobile,errors},null,2));
+            const desktop=await captureJourney({width:1440,height:1000},'desktop');
+            const tablet=await captureJourney({width:1024,height:768},'tablet');
+            const mobile=await captureJourney({width:390,height:844},'mobile');
+            fs.writeFileSync('nova-qa/core.json',JSON.stringify({phase,desktop,tablet,mobile,errors},null,2));
+          }else if(phase==='extended'){
+            await desktopInteractions();
+            await mobileInteractions();
+            await caseStudyAudit({width:1440,height:1000},'desktop');
+            await caseStudyAudit({width:390,height:844},'mobile');
+            await guidedTourAudit();
+            await compactCaseStudyAudit();
+            await validationEvidenceAudit();
+            await readabilityAudit({width:1440,height:1000},'desktop');
+            await readabilityAudit({width:390,height:844},'mobile');
+            await rendererFailureAudit();
+            await mobileNavAudit();
+            await productFactsAudit();
+            await inspectionViewsAudit();
+            await versionArchiveAudit({width:1440,height:1000},'desktop');
+            await versionArchiveAudit({width:390,height:844},'mobile');
+            await reducedMotionAudit();
+            await fallbackAudit();
+            fs.writeFileSync('nova-qa/extended.json',JSON.stringify({phase,errors},null,2));
+          }else{
+            throw new Error('Unknown NOVA_QA_PHASE '+phase);
+          }
+
           if(errors.length) throw new Error('Browser errors:\n'+errors.join('\n'));
           await browser.close();
           JS
@@ -859,11 +873,11 @@ jobs:
           trap 'kill $SERVER || true' EXIT
           sleep 2
           node nova/qa-v2.mjs
-          cat nova-qa/audit.json
+          cat "nova-qa/${NOVA_QA_PHASE}.json"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: nova-v2-visual-qa
+          name: nova-v2-visual-qa-${{ matrix.phase }}
           path: nova-qa
           retention-days: 7
