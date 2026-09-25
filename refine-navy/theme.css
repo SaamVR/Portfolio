@@ -314,3 +314,5 @@ html[data-theme=light] .project-meta{color:#43586A!important}
 html[data-theme=light] .case-grid>div:first-child::after{color:#506273!important;border-color:#AFC2D3!important}
 
 .number-field span{color:#B3C4D3!important}
+
+html[data-theme=light] .number-field span{color:#506273!important}
