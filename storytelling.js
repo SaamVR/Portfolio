@@ -229,6 +229,7 @@
       const safeIndex=Math.max(0,Math.min(3,Number(index)||0));
       section.dataset.incidentScenario=incidentScenario;
       section.dataset.incidentBeat=String(safeIndex);
+      section.style?.setProperty?.("--incident-progress",safeIndex===0?"0%":Math.round(safeIndex/3*100)+"%");
       scenes.forEach(scene=>scene.classList.toggle("active",scene.dataset.incidentScene===incidentScenario));
       beats.forEach((beat,i)=>{
         const title=q("#incidentBeatTitle"+i),copy=q("#incidentBeatCopy"+i);
@@ -393,6 +394,21 @@
         const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
         return {x:nr.left-sr.left+nr.width/2,y:nr.top-sr.top-20};
       }
+      function badgeOnNodeEdge(node){
+        const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
+        const compact=innerWidth<=680;
+        return {
+          x:nr.right-sr.left-(compact?52:58),
+          y:nr.top-sr.top+(compact?18:16)
+        };
+      }
+      function branchDock(node,side="above"){
+        const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
+        return {
+          x:nr.left-sr.left+nr.width/2,
+          y:side==="below"?nr.bottom-sr.top+18:nr.top-sr.top-18
+        };
+      }
       const move=async(el,from,to,duration=540)=>{
         if(!el)return;
         el.classList.add("visible");el.style.opacity="1";
@@ -416,7 +432,7 @@
         return !context.cancelled();
       };
 
-      const input=center(nodes.input),api=center(nodes.api),rules=center(nodes.rules),crm=center(nodes.crm),next=center(nodes.next),nextBadge=badgeAbove(nodes.next);
+      const input=center(nodes.input),api=center(nodes.api),rules=center(nodes.rules),crm=center(nodes.crm),rulesDock=branchDock(nodes.rules,"above"),crmDock=branchDock(nodes.crm,"below"),next=center(nodes.next),nextBadge=badgeAbove(nodes.next);
       if(main){main.style.opacity="1";main.style.transform="translate3d("+(input.x-28)+"px,"+(input.y-14)+"px,0)"}
       if(!await focus(nodes.input,"Lead enters the system","Structured browser input becomes the payload for the qualification request.",520))return;
       if(caption)caption.textContent="Validate request";
@@ -435,14 +451,14 @@
       if(main)main.style.opacity="0";
       if(caption)caption.textContent="Branch the payload";
       if(detail)detail.textContent="The same validated lead feeds deterministic rules and browser-local CRM state.";
-      await Promise.all([move(rulesToken,api,rules,520),move(crmToken,api,crm,520)]);
+      await Promise.all([move(rulesToken,api,rulesDock,520),move(crmToken,api,crmDock,520)]);
       if(!await focus(nodes.rules,"Score intent + budget + urgency","Qualification Rules resolve score, status, and routing category.",560))return;
       if(!await focus(nodes.crm,"Persist browser-local state","Browser-local CRM stores or updates the record; external CRM delivery is not connected.",560))return;
 
       layout.classList.add("arch-reconverged");
       if(caption)caption.textContent="Reconverge score + CRM state";
       if(detail)detail.textContent="Qualification result and CRM state meet before the next action is prepared.";
-      await Promise.all([move(rulesToken,rules,next,520),move(crmToken,crm,next,520)]);
+      await Promise.all([move(rulesToken,rulesDock,next,520),move(crmToken,crmDock,next,520)]);
       if(rulesToken){rulesToken.classList.add("merged");rulesToken.style.opacity="0"}
       if(crmToken){crmToken.classList.add("merged");crmToken.style.opacity="0"}
       setArchitectureTone(main,"READY","ready");

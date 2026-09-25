@@ -58,7 +58,68 @@ function showResult(lead){const derived=lead.factors?.length?lead:{...lead,...sc
 $("#leadForm").addEventListener("submit",e=>{e.preventDefault();const data={name:$("#leadName").value.trim(),company:$("#leadCompany").value.trim(),budget:Number($("#leadBudget").value),timeline:$("#leadTimeline").value,need:$("#leadNeed").value.trim()},errors=[];if(data.name.length<2)errors.push("Enter a name.");if(data.company.length<2)errors.push("Enter a company.");if(data.need.length<8)errors.push("Describe the automation need in a little more detail.");$("#formError").textContent=errors.join(" ");if(!errors.length)runWorkflow(data)});
 const presets={hot:{name:"Sarah",company:"Acme Dental",budget:"5000",timeline:"asap",need:"We need automated appointment lead follow-up"},review:{name:"Maya",company:"Northstar Studio",budget:"2000",timeline:"month",need:"Need a CRM workflow for client inquiries"},nurture:{name:"Jordan",company:"Field Notes Co.",budget:"500",timeline:"exploring",need:"Just exploring options for a future process"}};
 $$('[data-lead-preset]').forEach(btn=>btn.addEventListener("click",()=>{const p=presets[btn.dataset.leadPreset];Object.entries({leadName:p.name,leadCompany:p.company,leadBudget:p.budget,leadTimeline:p.timeline,leadNeed:p.need}).forEach(([id,v])=>$("#"+id).value=v);$$('[data-lead-preset]').forEach(b=>b.classList.toggle("active",b===btn));$("#formError").textContent=""}));
-function calc(){const leadCount=Math.max(0,Math.min(100000,Number($("#calcLeads").value)||0)),mins=Math.max(0,Math.min(240,Number($("#calcMinutes").value)||0)),automation=Math.max(0,Math.min(100,Number($("#calcAutomation").value)||0))/100,reviewMins=Math.max(0,Math.min(240,Number($("#calcReview").value)||0)),cost=Math.max(0,Math.min(1000,Number($("#calcCost").value)||0)),operating=Math.max(0,Math.min(100000,Number($("#calcOperating").value)||0)),baseline=leadCount*mins/60,post=leadCount*(mins*(1-automation)+reviewMins)/60,net=baseline-post,value=net*cost-operating,fh=v=>(Math.round(v*10)/10).toLocaleString(undefined,{maximumFractionDigits:1})+"h",fm=v=>(v<0?"-$":"$")+Math.abs(Math.round(v)).toLocaleString();$("#hoursSaved").textContent=(Math.round(net*10)/10).toLocaleString(undefined,{maximumFractionDigits:1});$("#netMonthlyValue").textContent=fm(value);$("#netMonthlyValue").classList.toggle("negative",value<0);$("#baselineHours").textContent=fh(baseline);$("#postHours").textContent=fh(post);$("#hoursBarValue").textContent=fh(baseline);$("#postBarValue").textContent=fh(post);$("#hoursBar").style.width=baseline>0?"100%":"0%";$("#costBar").style.width=baseline>0?Math.min(100,post/baseline*100)+"%":"0%"}
+const roiAnimationState=new WeakMap();
+function animateRoiNumber(el,next,formatter){
+  if(!el)return;
+  const format=formatter||((value)=>String(Math.round(value*10)/10));
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const prior=roiAnimationState.get(el);
+  if(prior?.frame)cancelAnimationFrame(prior.frame);
+  if(prior?.timer)clearTimeout(prior.timer);
+  const previous=Number.isFinite(prior?.current)?prior.current:Number(el.dataset.roiValue ?? next);
+  if(reduced||!Number.isFinite(previous)||Math.abs(next-previous)<.01){
+    el.textContent=format(next);el.dataset.roiValue=String(next);roiAnimationState.delete(el);return;
+  }
+  const started=performance.now(),duration=420;
+  const state={frame:0,timer:0,current:previous,target:next};
+  const finish=()=>{
+    if(roiAnimationState.get(el)!==state)return;
+    if(state.frame)cancelAnimationFrame(state.frame);
+    if(state.timer)clearTimeout(state.timer);
+    state.current=next;
+    el.textContent=format(next);
+    el.dataset.roiValue=String(next);
+    roiAnimationState.delete(el);
+  };
+  const tick=now=>{
+    if(roiAnimationState.get(el)!==state)return;
+    const t=Math.min(1,(now-started)/duration),eased=1-Math.pow(1-t,3);
+    state.current=previous+(next-previous)*eased;
+    el.textContent=format(state.current);
+    if(t<1)state.frame=requestAnimationFrame(tick);else finish();
+  };
+  roiAnimationState.set(el,state);
+  state.frame=requestAnimationFrame(tick);
+  state.timer=setTimeout(finish,duration+120);
+}
+function animateRoiUpdate({net,value,baseline,post,formatHours,formatMoney}){
+  const panel=$(".calc-result");
+  if(panel){panel.classList.remove("roi-updated");void panel.offsetWidth;panel.classList.add("roi-updated")}
+  animateRoiNumber($("#hoursSaved"),net,v=>(Math.round(v*10)/10).toLocaleString(undefined,{maximumFractionDigits:1}));
+  animateRoiNumber($("#netMonthlyValue"),value,formatMoney);
+  animateRoiNumber($("#baselineHours"),baseline,formatHours);
+  animateRoiNumber($("#postHours"),post,formatHours);
+  animateRoiNumber($("#hoursBarValue"),baseline,formatHours);
+  animateRoiNumber($("#postBarValue"),post,formatHours);
+}
+function calc(){
+  const leadCount=Math.max(0,Math.min(100000,Number($("#calcLeads").value)||0)),
+    mins=Math.max(0,Math.min(240,Number($("#calcMinutes").value)||0)),
+    automation=Math.max(0,Math.min(100,Number($("#calcAutomation").value)||0))/100,
+    reviewMins=Math.max(0,Math.min(240,Number($("#calcReview").value)||0)),
+    cost=Math.max(0,Math.min(1000,Number($("#calcCost").value)||0)),
+    operating=Math.max(0,Math.min(100000,Number($("#calcOperating").value)||0)),
+    baseline=leadCount*mins/60,
+    post=leadCount*(mins*(1-automation)+reviewMins)/60,
+    net=baseline-post,
+    value=net*cost-operating,
+    fh=v=>(Math.round(v*10)/10).toLocaleString(undefined,{maximumFractionDigits:1})+"h",
+    fm=v=>(v<0?"-$":"$")+Math.abs(Math.round(v)).toLocaleString();
+  $("#netMonthlyValue").classList.toggle("negative",value<0);
+  $("#hoursBar").style.width=baseline>0?"100%":"0%";
+  $("#costBar").style.width=baseline>0?Math.min(100,post/baseline*100)+"%":"0%";
+  animateRoiUpdate({net,value,baseline,post,formatHours:fh,formatMoney:fm});
+}
 ["#calcLeads","#calcMinutes","#calcAutomation","#calcReview","#calcCost","#calcOperating"].forEach(id=>$(id).addEventListener("input",calc));calc();
 function generateBlueprint(text){const t=text.toLowerCase(),steps=[];if(t.includes("facebook")||t.includes("meta"))steps.push("Facebook Lead");else if(t.includes("form")||t.includes("website"))steps.push("Web Form");else if(t.includes("email"))steps.push("Email Inquiry");else steps.push("Lead Source");steps.push("Validate");if(t.includes("duplicate")||t.includes("crm")||t.includes("hubspot")||t.includes("pipedrive"))steps.push("Duplicate Check");steps.push("Qualification Rules");if(t.includes("hubspot"))steps.push("HubSpot");else if(t.includes("pipedrive"))steps.push("Pipedrive");else steps.push("CRM");steps.push("Follow-up Draft","Next Action");return [...new Set(steps)].slice(0,7)}
 function renderBlueprint(){const flow=$("#blueprintFlow");flow.innerHTML=blueprintSteps.map((s,i)=>`<button type="button" class="bp-node${i===selectedBpIndex?" selected":""}" data-bp-index="${i}">${escapeHtml(s)}</button>${i<blueprintSteps.length-1?"<i>→</i>":""}`).join("");$$('[data-bp-index]').forEach(btn=>btn.addEventListener("click",()=>{selectedBpIndex=Number(btn.dataset.bpIndex);renderBlueprint()}));$("#bpNodeLabel").value=blueprintSteps[selectedBpIndex]||"";$("#bpEditorHint").textContent="Step "+(selectedBpIndex+1)+" of "+blueprintSteps.length;$("#bpMoveLeft").disabled=selectedBpIndex===0;$("#bpMoveRight").disabled=selectedBpIndex===blueprintSteps.length-1;$("#bpRemove").disabled=blueprintSteps.length<=2}

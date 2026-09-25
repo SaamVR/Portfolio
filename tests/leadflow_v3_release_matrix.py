@@ -28,7 +28,16 @@ def audit(width,height,theme,port,run_presets=False):
         c("Runtime.enable");c("Page.enable")
         c("Emulation.setDeviceMetricsOverride",{"width":width,"height":height,"deviceScaleFactor":1,"mobile":width<600})
         c("Emulation.setEmulatedMedia",{"features":[{"name":"prefers-reduced-motion","value":"reduce"}]})
-        c("Page.navigate",{"url":URL});time.sleep(.9)
+        c("Page.navigate",{"url":URL})
+        ready=False
+        for _ in range(50):
+            time.sleep(.05)
+            try:
+                ready=bool(e("document.readyState==='complete' && !!window.LeadFlowStorytelling"))
+            except Exception:
+                ready=False
+            if ready:break
+        assert ready,(theme,width,"V3 runtime did not become ready")
         e(f"document.documentElement.dataset.theme='{theme}';document.documentElement.style.scrollBehavior='auto'")
         time.sleep(.12)
         out=e(r"""(()=> {
