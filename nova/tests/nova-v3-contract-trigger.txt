@@ -1,0 +1,3 @@
+NOVA V3 contract verification trigger
+Site source: 834854f2c8b9e0d3e1a865a16a080ec6392a6492
+Purpose: rerun contracts after aligning focused Hotspot QA with the sequential Design contract.
