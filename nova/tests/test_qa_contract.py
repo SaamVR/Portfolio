@@ -181,3 +181,5 @@ def test_v3_visual_qa_covers_benchmark_detail_sequence_and_motion_continuity():
         "camera target discontinuity",
     ]:
         assert token in qa
+
+# V3 complete-head GREEN verification trigger.
