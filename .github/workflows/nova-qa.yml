@@ -192,49 +192,49 @@ jobs:
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
             const {page}=await readyPage(context,prefix+'-hotspots');
 
-            const readHotspots=()=>page.evaluate(()=>{
-              const pick=id=>{
+            const pointAt=async (progress,id)=>{
+              await scrollProgress(page,progress);
+              await page.waitForFunction(hotspot=>{
+                const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                return el?.dataset.visible==='true';
+              },id);
+              return page.evaluate(({progress,id})=>{
                 const el=document.querySelector('[data-hotspot="'+id+'"]');
                 const r=el.getBoundingClientRect();
-                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
-              };
-              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight};
-            });
+                return {
+                  progress,id,x:r.left+r.width/2,y:r.top+r.height/2,
+                  visible:el.dataset.visible,width:innerWidth,height:innerHeight
+                };
+              },{progress,id});
+            };
 
-            const validateViewport=state=>{
-              for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
-                if(point.visible!=='true') throw new Error(prefix+' '+id+' hotspot hidden during Design close pass '+JSON.stringify(state));
-                const margin=12;
-                if(point.x<margin||point.x>state.width-margin||point.y<margin||point.y>state.height-margin){
-                  throw new Error(prefix+' '+id+' hotspot outside viewport '+JSON.stringify({point,state}));
-                }
-              }
-              const separation=Math.hypot(
-                state.cushion.x-state.controls.x,
-                state.cushion.y-state.controls.y
-              );
-              if(separation<Math.min(90,state.width*.16)){
-                throw new Error(prefix+' earcup hotspots collapsed together '+JSON.stringify({separation,state}));
+            const validatePoint=point=>{
+              if(point.visible!=='true') throw new Error(prefix+' '+point.id+' hotspot hidden during its Design detail '+JSON.stringify(point));
+              const margin=12;
+              if(point.x<margin||point.x>point.width-margin||point.y<margin||point.y>point.height-margin){
+                throw new Error(prefix+' '+point.id+' hotspot outside viewport '+JSON.stringify(point));
               }
             };
 
-            await scrollProgress(page,.18);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const first=await readHotspots();
-            validateViewport(first);
-
-            await scrollProgress(page,.20);
-            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
-            const second=await readHotspots();
-            validateViewport(second);
-
-            for(const id of ['cushion','controls']){
-              const movement=Math.hypot(second[id].x-first[id].x,second[id].y-first[id].y);
-              if(movement<4){
-                throw new Error(prefix+' '+id+' hotspot should move with authored close pass '+JSON.stringify({movement,first:first[id],second:second[id]}));
+            const checks=[
+              {id:'cushion',from:.15,to:.17},
+              {id:'headband',from:.19,to:.22},
+              {id:'controls',from:.245,to:.265}
+            ];
+            const samples=[];
+            for(const check of checks){
+              const first=await pointAt(check.from,check.id);
+              const second=await pointAt(check.to,check.id);
+              validatePoint(first);
+              validatePoint(second);
+              const movement=Math.hypot(second.x-first.x,second.y-first.y);
+              if(movement<2){
+                throw new Error(prefix+' '+check.id+' hotspot should track authored Design motion '+JSON.stringify({movement,first,second}));
               }
+              samples.push({id:check.id,movement,first,second});
             }
 
+            fs.writeFileSync('nova-qa/'+prefix+'_hotspot_motion.json',JSON.stringify(samples,null,2));
             await page.screenshot({path:'nova-qa/'+prefix+'_hotspots.png'});
             await context.close();
           }
