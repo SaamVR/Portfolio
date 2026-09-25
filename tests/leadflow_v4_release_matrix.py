@@ -8,12 +8,14 @@ def audit(width,height,theme,port,run_presets=False):
         stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     errs=[]
     try:
-        for _ in range(120):
+        tab=None
+        for _ in range(300):
             try:
                 tabs=json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list"))
                 tab=next(x for x in tabs if x.get("type")=="page" and x.get("url")=="about:blank");break
             except:time.sleep(.05)
-        if not tab: raise RuntimeError("Chrome DevTools page did not start")\n        ws=websocket.create_connection(tab["webSocketDebuggerUrl"],timeout=10);seq=0
+        if not tab: raise RuntimeError("Chrome DevTools page did not start")
+        ws=websocket.create_connection(tab["webSocketDebuggerUrl"],timeout=10);seq=0
         def c(method,params=None):
             nonlocal seq
             seq+=1;i=seq
