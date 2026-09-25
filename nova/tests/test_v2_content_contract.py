@@ -24,7 +24,7 @@ def test_v3_uses_real_reference_specs_with_explicit_source_disclosure():
         "Reference hardware benchmark",
         "Sony WH-1000XM6",
         "8.96 oz",
-        "1.18 in driver",
+        "30 mm / 1.18 in",
         "Bluetooth 5.3",
         "30 hrs",
         "40 hrs",
