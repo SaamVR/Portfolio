@@ -36,6 +36,12 @@ export function composeVisualState(baseState, interactionState=createInteraction
   if(iw > 0){
     out.product.inspectionYaw = ((inspection.modelYaw || 0) + (inspection.yaw || 0)) * iw;
     out.product.inspectionPitch = (inspection.pitch || 0) * iw;
+
+    // Inspection is a full-product turntable, not another close-up camera beat.
+    // Keep the crown and both earcups comfortably inside the viewport while
+    // Front / Side / Rear or manual drag own the scene.
+    out.camera.target[1] += .34 * iw;
+    out.camera.position[2] += .18 * iw;
   }
 
   const hotspot = interactionState.hotspot || {};
