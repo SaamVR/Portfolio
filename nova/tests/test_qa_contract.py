@@ -177,3 +177,9 @@ def test_v3_visual_qa_measures_motion_continuity_and_detail_sequence():
         "design_detail_controls.png",
     ]:
         assert token in qa
+
+
+def test_v3_mobile_design_interaction_uses_stable_detail_control():
+    assert "data-detail-id=\"cushion\"" in qa
+    assert "mobile design detail did not expand cushion annotation" in qa
+    assert "await hotspot.tap()" not in qa
