@@ -36,6 +36,7 @@ try:
     time.sleep(.05)
     if ev("document.readyState==='complete' && !!window.LeadFlowStorytelling"):break
 
+  ev("document.documentElement.style.scrollBehavior='auto'")
   def center(selector):
     ev(f"document.querySelector({json.dumps(selector)}).scrollIntoView({{behavior:'auto',block:'center'}})")
     time.sleep(.08)
