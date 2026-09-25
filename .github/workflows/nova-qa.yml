@@ -181,6 +181,43 @@ jobs:
                 };
               },{label:check.label});
               await page.screenshot({path:'nova-qa/'+prefix+'_collision_'+check.label+'.png'});
+              if(!result.skipped && result.ratio>.04 && check.label==='resolution'){
+                await page.waitForTimeout(1000);
+                const settled=await page.evaluate(async ({label})=>{
+                  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+                  const stage=document.querySelector('.stage.is-active');
+                  const headline=stage?.querySelector('h1,h2');
+                  const canvas=document.querySelector('#webgl');
+                  if(!headline||!canvas) return {skipped:true,label};
+                  const rect=headline.getBoundingClientRect();
+                  const x0=Math.max(0,Math.floor(rect.left));
+                  const y0=Math.max(0,Math.floor(rect.top));
+                  const x1=Math.min(innerWidth,Math.ceil(rect.right));
+                  const y1=Math.min(innerHeight,Math.ceil(rect.bottom));
+                  const probe=document.createElement('canvas');
+                  probe.width=innerWidth;
+                  probe.height=innerHeight;
+                  const ctx=probe.getContext('2d',{willReadFrequently:true});
+                  ctx.drawImage(canvas,0,0,innerWidth,innerHeight);
+                  const image=ctx.getImageData(x0,y0,x1-x0,y1-y0);
+                  let occupied=0;
+                  let sampled=0;
+                  const stride=4;
+                  for(let y=0;y<image.height;y+=stride){
+                    for(let x=0;x<image.width;x+=stride){
+                      const alpha=image.data[(y*image.width+x)*4+3];
+                      sampled++;
+                      if(alpha>96) occupied++;
+                    }
+                  }
+                  return {
+                    skipped:false,label,ratio:sampled?occupied/sampled:0,
+                    rect:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom}
+                  };
+                },{label:check.label});
+                await page.screenshot({path:'nova-qa/'+prefix+'_collision_'+check.label+'_settled.png'});
+                throw new Error(prefix+' resolution convergence diagnostic '+JSON.stringify({initial:result,settled}));
+              }
               if(!result.skipped && result.ratio>.04){
                 throw new Error(prefix+' headline/product collision at '+check.label+' '+JSON.stringify(result));
               }
