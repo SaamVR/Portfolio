@@ -125,7 +125,7 @@ body[data-range="inspect"] .hotspot[data-visible="true"] span{
 
 
 /* R10 final refinement: case-study handoff, legibility and interaction polish. */
-#webgl,.hotspot-layer,.model-status{transition:opacity .56s cubic-bezier(.22,.61,.36,1)}
+#webgl,.hotspot-layer,.model-status{transition:opacity .42s cubic-bezier(.22,.61,.36,1)}
 body[data-case-study="true"] #webgl,
 body[data-case-study="true"] .hotspot-layer,
 body[data-case-study="true"] .model-status{opacity:0;pointer-events:none}
