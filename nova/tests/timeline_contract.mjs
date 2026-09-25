@@ -234,3 +234,7 @@ const secondDisplayed=easingAdapter.getAnimationPose();
 assert.ok(secondDisplayed>firstDisplayed,'displayed source animation should advance toward the new scroll pose');
 assert.ok(secondDisplayed<poseB.product.pose,'displayed source animation should ease toward the target instead of snapping');
 assert.ok(Math.abs(secondDisplayed-firstDisplayed)<=.04,'one rendered frame must bound skeletal animation pose movement');
+
+const v3MobileHero=sampleTimeline(.02,'mobile');
+assert.ok(v3MobileHero.product.position[1] < .12,
+  `V3 mobile Hero should lift the opened source pose clear of the wordmark, got y=${v3MobileHero.product.position[1]}`);
