@@ -2,7 +2,7 @@ name: NOVA Production Bundle
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: [main, "nova/v2-integration", "nova/v3-real-product-motion"]
     paths:
       - ".github/workflows/nova-build.yml"
       - "nova/site/**"
@@ -54,6 +54,7 @@ jobs:
           test -f nova/site/interactions/inspection-controller.js
           test -f nova/site/interactions/hotspot-controller.js
           test -f nova/site/interactions/mode-controller.js
+          test -f nova/site/interactions/detail-controller.js
           test -f nova/site/assets/headphones-web.gltf
           test -f nova/site/vendor/three.module.js
           test -f nova/site/vendor/three.core.js
