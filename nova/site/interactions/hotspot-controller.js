@@ -42,7 +42,8 @@ export function createHotspotController({THREE,camera,anchors={},elements={}}={}
           modelRoot?.localToWorld?.(world);
         }
         world.project(camera);
-        const visible=Number.isFinite(world.x)&&Number.isFinite(world.y)&&world.z>=-1.2&&world.z<=1.2&&Math.abs(world.x)<=1.15&&Math.abs(world.y)<=1.15;
+        const projectionMargin=1.35;
+        const visible=Number.isFinite(world.x)&&Number.isFinite(world.y)&&world.z>=-1.2&&world.z<=1.2&&Math.abs(world.x)<=projectionMargin&&Math.abs(world.y)<=projectionMargin;
         el.dataset.visible=String(visible);
         if(visible){
           const screenOffset=anchor.screenOffset||[0,0];
