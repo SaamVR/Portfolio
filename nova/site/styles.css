@@ -904,3 +904,31 @@ body[data-benchmark-panel="open"] .facts-panel{transform:none}
   .practical-grid{grid-template-columns:1fr}
   .benchmark-note{font-size:14px}
 }
+
+
+/* V3 mobile Design: three compact selectors, one product focus, no stacked card wall. */
+@media (max-width:700px){
+  .stage--design .stage-inner{padding-bottom:8svh}
+  .stage--design .copy>p:not(.eyebrow){margin-top:18px}
+  .stage--design .design-detail-rail{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+    width:100%;
+    margin-top:14px;
+    overflow:visible;
+  }
+  .stage--design .design-detail-rail button{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:4px;
+    min-width:0;
+    min-height:48px;
+    padding:8px 6px;
+    text-align:center;
+  }
+  .stage--design .design-detail-rail button span{font-size:9px}
+  .stage--design .design-detail-rail button strong{font-size:10px}
+  .stage--design .design-detail-rail button small{display:none}
+  .stage--design .design-detail-rail button[aria-pressed="true"]{transform:translateY(-2px)}
+  .stage--design .interaction-note{display:none}
+}
