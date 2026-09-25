@@ -19,7 +19,7 @@ test("guided tour camera settling is cancellable and bounded",()=>{
   assert.match(app,/timeout/);
 });
 test("guided qualification progress reads the real six-stage execution container",()=>{
-  assert.match(app,/\$\$\("#steps \.exec-step\.done"\)\.length/);
+  assert.match(app,/document\.querySelectorAll\("#steps \.exec-step\.done"\)\.length/);
   assert.doesNotMatch(app,/#executionSteps/);
 });
 test("reveal staggering restarts inside each card group",()=>{
