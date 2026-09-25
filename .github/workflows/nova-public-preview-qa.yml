@@ -47,10 +47,12 @@ jobs:
               title:document.title,
               model:document.body.dataset.modelState,
               hero:document.body.innerText.includes('Hear beyond.'),
-              behind:document.body.innerText.includes('Behind NOVA.'),
+              caseStudy:document.body.innerText.includes('Designed like a launch.') && document.body.innerText.includes('Built like a product.'),
+              guided:Boolean(document.querySelector('#guidedTourStart')),
+              evidence:Boolean(document.querySelector('#validation-evidence')),
               runtime:document.querySelector('#runtimeState')?.textContent||''
             }));
-            if(basics.model!=='ready'||!basics.hero||!basics.behind||!basics.runtime.includes('LIVE')){
+            if(basics.model!=='ready'||!basics.hero||!basics.caseStudy||!basics.guided||!basics.evidence||!basics.runtime.includes('LIVE')){
               throw new Error(label+' deployed runtime not ready '+JSON.stringify(basics));
             }
             return page;
