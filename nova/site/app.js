@@ -277,21 +277,26 @@ function resize(){
 
 function measureProductFrame(){
   if(!rendererAvailable || !model) return null;
-  if(!primaryProductBounds || primaryProductBounds.isEmpty()) return null;
-  centerGroup.updateWorldMatrix(true,false);
-  // Use the cable-excluded product bounds captured at load, then transform that
-  // box through the live presentation hierarchy. This keeps the probe focused on
-  // the headphone rather than hidden GLTF helper/cable geometry.
-  const box=primaryProductBounds.clone().applyMatrix4(centerGroup.matrixWorld);
-  const min=box.min, max=box.max;
-  const corners=[
-    [min.x,min.y,min.z],[min.x,min.y,max.z],[min.x,max.y,min.z],[min.x,max.y,max.z],
-    [max.x,min.y,min.z],[max.x,min.y,max.z],[max.x,max.y,min.z],[max.x,max.y,max.z]
-  ].map(values=>new THREE.Vector3(...values).project(camera));
-  const left=(Math.min(...corners.map(v=>v.x))+1)*.5*innerWidth;
-  const right=(Math.max(...corners.map(v=>v.x))+1)*.5*innerWidth;
-  const top=(1-Math.max(...corners.map(v=>v.y)))*.5*innerHeight;
-  const bottom=(1-Math.min(...corners.map(v=>v.y)))*.5*innerHeight;
+  model.updateMatrixWorld(true);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity,vertices=0;
+  const point=new THREE.Vector3();
+  model.traverse(obj=>{
+    if(!obj.isMesh || !obj.visible || obj.name==='Circle013_0' || obj.name==='Circle.013_0') return;
+    const position=obj.geometry?.attributes?.position;
+    if(!position) return;
+    for(let i=0;i<position.count;i++){
+      obj.getVertexPosition(i,point);
+      point.applyMatrix4(obj.matrixWorld).project(camera);
+      if(!Number.isFinite(point.x)||!Number.isFinite(point.y)||!Number.isFinite(point.z)) continue;
+      const x=(point.x+1)*.5*innerWidth;
+      const y=(1-point.y)*.5*innerHeight;
+      minX=Math.min(minX,x); minY=Math.min(minY,y);
+      maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
+      vertices++;
+    }
+  });
+  if(!vertices) return null;
+  const left=minX,top=minY,right=maxX,bottom=maxY;
   const width=Math.max(0,right-left);
   const height=Math.max(0,bottom-top);
   const visibleLeft=Math.max(0,left);
@@ -301,7 +306,7 @@ function measureProductFrame(){
   const visibleArea=Math.max(0,visibleRight-visibleLeft)*Math.max(0,visibleBottom-visibleTop);
   const area=Math.max(1,width*height);
   return {
-    left,top,right,bottom,width,height,
+    left,top,right,bottom,width,height,vertices,
     visibleRatio:visibleArea/area,
     viewport:{width:innerWidth,height:innerHeight}
   };
