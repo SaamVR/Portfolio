@@ -2,11 +2,13 @@ name: NOVA Hotspot QA
 
 on:
   push:
-    branches: ["nova/v2-integration"]
+    branches: ["nova/v2-integration", "nova/v3-real-product-motion"]
     paths:
       - ".github/workflows/nova-hotspot-qa.yml"
       - "nova/site/app.js"
       - "nova/site/interactions/hotspot-controller.js"
+      - "nova/site/interactions/detail-controller.js"
+      - "nova/site/runtime/timeline.js"
   workflow_dispatch:
 
 permissions:
