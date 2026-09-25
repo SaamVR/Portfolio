@@ -333,13 +333,29 @@ function updateInteractionInfluences(base,dt,now){
     ? modeInfluence.noise
     : {mode:noiseMode,weight:0};
 
-  if(hotspotController && (base.range==='design' || base.range==='inspect')){
+  if(hotspotController && (base.range==='design' || base.range==='adaptive' || base.range==='inspect')){
     centerGroup.updateWorldMatrix(true,false);
+    if(base.range==='adaptive') hotspotController.focus('controls');
     hotspotController.update({
       modelRoot:centerGroup,
       viewport:{width:innerWidth,height:innerHeight},
       dt
     });
+    if(base.range==='design'){
+      const order=['cushion','headband','controls'];
+      const active=order[Math.min(order.length-1,Math.floor(base.rangeProgress*order.length))];
+      document.body.dataset.detailFocus=active;
+      for(const [id,el] of Object.entries(hotspotElements)){
+        if(id!==active) el.dataset.visible='false';
+      }
+    }else if(base.range==='adaptive'){
+      document.body.dataset.detailFocus='controls';
+      for(const [id,el] of Object.entries(hotspotElements)){
+        if(id!=='controls') el.dataset.visible='false';
+      }
+    }else{
+      delete document.body.dataset.detailFocus;
+    }
     interactionState.hotspot=hotspotController.getInfluence();
   }else{
     hideHotspots();
@@ -400,6 +416,9 @@ const actions={
   clearHotspot(){
     hotspotController?.clear();
   },
+  focusControlInput(){
+    hotspotController?.focus('controls');
+  },
   setInspectionView(view){
     inspectionView=view;
     inspectionController.setView(view);
@@ -414,7 +433,7 @@ const actions={
     hotspotController?.clear();
     if(step==='comfort'){
       foldState='open';
-      foldController.begin('open',currentComposedState?.product.pose ?? .24);
+      foldController.begin('open',currentComposedState?.product.pose ?? .28);
       inspectionView='front';
       inspectionController.reset();
       scrollToProgress(.20);
@@ -433,7 +452,7 @@ const actions={
     }
     if(step==='controls'){
       foldState='open';
-      foldController.begin('open',currentComposedState?.product.pose ?? .50);
+      foldController.begin('open',currentComposedState?.product.pose ?? .40);
       scrollToProgress(.79);
       if(rendererAvailable) scheduleTourDetail(()=>{
         inspectionView='side';
