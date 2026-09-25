@@ -70,12 +70,14 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // V1-style source-clip choreography: keep the physical product legible while the
-  // authored GLTF pose continues to evolve underneath V2's camera and UI layers.
+  // V3: Hero resolves into one stable Design study pose.
   [0.000,.240],[0.045,.285],[0.090,.320],[0.120,.300],
-  [0.160,.270],[0.180,.285],[0.200,.205],[0.240,.270],[0.280,.240],
-  [0.300,.460],[0.320,.700],
-  [0.360,.760],[0.410,.710],[0.450,.740],
+  [0.160,.290],[0.180,.290],[0.200,.292],[0.220,.295],[0.240,.300],[0.260,.305],
+  // Callouts clear before this wider, progressive bridge into the open listening pose.
+  [0.280,.310],[0.290,.335],[0.300,.390],[0.310,.460],[0.320,.530],
+  [0.330,.600],[0.340,.660],[0.350,.700],[0.360,.720],
+  // Commercial chapters retain subtle source-clip breathing without large structural changes.
+  [0.400,.750],[0.440,.720],[0.450,.740],
   [0.490,.700],[0.540,.760],[0.580,.720],
   [0.620,.680],[0.670,.770],[0.720,.720],
   [0.760,.680],[0.790,.740],[0.830,.700],[0.860,.730],
