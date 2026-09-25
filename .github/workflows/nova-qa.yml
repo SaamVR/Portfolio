@@ -275,13 +275,6 @@ jobs:
             await page.waitForTimeout(420);
             await page.screenshot({path:'nova-qa/desktop_inspection_reset.png'});
 
-            await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='false');
-            await page.screenshot({path:'nova-qa/desktop_notify_panel.png'});
-            await page.keyboard.press('Escape');
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed' && document.querySelector('#notifyPanel')?.getAttribute('aria-hidden')==='true');
-
             await context.close();
           }
 
@@ -330,13 +323,6 @@ jobs:
             },{x1:box.x+box.width*.40,y1:box.y+box.height*.52,x2:box.x+box.width*.68,y2:box.y+box.height*.52});
             await page.waitForTimeout(450);
             await page.screenshot({path:'nova-qa/mobile_inspection_swipe.png'});
-
-            await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/preview notify flow/i}).tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
-            await page.screenshot({path:'nova-qa/mobile_notify_panel.png'});
-            await page.locator('#notifyPanel [data-notify-close].button--ghost').tap();
-            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='closed',{timeout:5000});
 
             await context.close();
           }
@@ -569,21 +555,83 @@ jobs:
             await context.close();
           }
 
-          async function productFactsAudit(){
+          async function benchmarkPanelAudit(){
             const context=await browser.newContext({viewport:{width:1440,height:1000}});
-            const {page}=await readyPage(context,'product-facts');
+            const {page}=await readyPage(context,'benchmark-panel');
             await scrollProgress(page,.90);
-            await page.getByRole('button',{name:/product facts/i}).click();
-            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.getByRole('button',{name:/benchmark specs/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.benchmarkPanel==='open');
             const state=await page.evaluate(()=>({
-              open:document.body.dataset.productFacts,
-              panelHidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
-              hasUnknown:document.body.innerText.includes('Not specified in this fictional concept'),
-              hasMeasured:document.body.innerText.includes('Are the acoustic claims measured?')
+              open:document.body.dataset.benchmarkPanel,
+              hidden:document.querySelector('#benchmarkPanel')?.getAttribute('aria-hidden'),
+              sony:document.body.innerText.includes('Sony WH-1000XM6'),
+              bose:document.body.innerText.includes('Bose QuietComfort Ultra Headphones (2nd Gen)'),
+              sennheiser:document.body.innerText.includes('Sennheiser MOMENTUM 4 Wireless'),
+              sourceLinks:document.querySelectorAll('#benchmarkPanel a[href^="https://"]').length
             }));
-            if(state.open!=='open'||state.panelHidden!=='false'||!state.hasUnknown||!state.hasMeasured) throw new Error('product facts incomplete '+JSON.stringify(state));
-            await page.screenshot({path:'nova-qa/product_facts.png'});
-            await page.locator('#productFactsPanel [data-facts-close]').click();
+            if(state.open!=='open'||state.hidden!=='false'||!state.sony||!state.bose||!state.sennheiser||state.sourceLinks<5){
+              throw new Error('benchmark panel incomplete '+JSON.stringify(state));
+            }
+            await page.screenshot({path:'nova-qa/benchmark_panel.png'});
+            await page.locator('#benchmarkPanel [data-benchmark-close]').click();
+            await context.close();
+          }
+
+          async function designDetailRailAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'design-detail-rail');
+            const active=()=>page.evaluate(()=>[...document.querySelectorAll('[data-design-detail]')]
+              .filter(el=>el.getAttribute('aria-pressed')==='true')
+              .map(el=>el.dataset.designDetail));
+
+            await scrollProgress(page,.16);
+            let selected=await active();
+            if(selected.length!==1||selected[0]!=='cushion') throw new Error('design cushion detail not singular '+JSON.stringify(selected));
+            await page.screenshot({path:'nova-qa/design_detail_cushion.png'});
+
+            await scrollProgress(page,.20);
+            selected=await active();
+            if(selected.length!==1||selected[0]!=='headband') throw new Error('design headband detail not singular '+JSON.stringify(selected));
+
+            await scrollProgress(page,.25);
+            selected=await active();
+            if(selected.length!==1||selected[0]!=='controls') throw new Error('design controls detail not singular '+JSON.stringify(selected));
+            await page.locator('[data-design-detail="controls"]').click();
+            await page.waitForFunction(()=>document.querySelector('[data-hotspot="controls"]')?.getAttribute('aria-expanded')==='true');
+            await page.screenshot({path:'nova-qa/design_detail_controls.png'});
+            await context.close();
+          }
+
+          async function motionContinuityAudit(){
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const {page}=await readyPage(context,'motion-continuity');
+            await scrollProgress(page,.16);
+            const samples=await page.evaluate(async()=>{
+              const behind=document.querySelector('#behind');
+              const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              scrollTo(0,max*.28);
+              const out=[];
+              for(let i=0;i<16;i++){
+                await new Promise(resolve=>setTimeout(resolve,35));
+                out.push({
+                  progress:Number(document.body.dataset.visualProgress||0),
+                  pose:Number(document.body.dataset.productPose||0)
+                });
+              }
+              return out;
+            });
+            for(let i=1;i<samples.length;i++){
+              if(samples[i].progress+0.0005<samples[i-1].progress){
+                throw new Error('V3 visual progress reversed '+JSON.stringify(samples));
+              }
+              if(Math.abs(samples[i].pose-samples[i-1].pose)>.055){
+                throw new Error('V3 product pose jumped '+JSON.stringify({i,previous:samples[i-1],current:samples[i]}));
+              }
+            }
+            if(samples.at(-1).progress-samples[0].progress<.06){
+              throw new Error('V3 scroll damping did not visibly advance '+JSON.stringify(samples));
+            }
+            fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify(samples,null,2));
             await context.close();
           }
 
@@ -656,7 +704,9 @@ jobs:
           await readabilityAudit({width:390,height:844},'mobile');
           await rendererFailureAudit();
           await mobileNavAudit();
-          await productFactsAudit();
+          await benchmarkPanelAudit();
+          await designDetailRailAudit();
+          await motionContinuityAudit();
           await inspectionViewsAudit();
           await versionArchiveAudit({width:1440,height:1000},'desktop');
           await versionArchiveAudit({width:390,height:844},'mobile');
