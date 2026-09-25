@@ -13,6 +13,19 @@ export function createRenderAdapter({
 }){
   if(!THREE || !camera || !presentation || !renderer) throw new Error('render adapter missing required dependencies');
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
+  let animationPose=null;
+  const ANIMATION_DAMPING=13;
+  const smoothAnimationPose=(target,dt)=>{
+    if(animationPose===null || !Number.isFinite(animationPose)){
+      animationPose=target;
+      return animationPose;
+    }
+    const damped=damp(animationPose,target,ANIMATION_DAMPING,dt);
+    const maxDelta=Math.max(.004,Math.min(.04,dt*1.8));
+    const delta=Math.max(-maxDelta,Math.min(maxDelta,damped-animationPose));
+    animationPose+=delta;
+    return animationPose;
+  };
   const applyVec=(obj,key,values,lambda,dt)=>{
     obj[key].x=damp(obj[key].x,values[0],lambda,dt);
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
@@ -37,7 +50,10 @@ export function createRenderAdapter({
       presentation.scale.y=damp(presentation.scale.y,s,4.5,step);
       presentation.scale.z=damp(presentation.scale.z,s,4.5,step);
 
-      if(mixer && Number.isFinite(clipDuration)) mixer.setTime(state.product.pose*clipDuration);
+      if(mixer && Number.isFinite(clipDuration)){
+        const displayedPose=smoothAnimationPose(state.product.pose,step);
+        mixer.setTime(displayedPose*clipDuration);
+      }
 
       renderer.toneMappingExposure=damp(renderer.toneMappingExposure,state.lighting.exposure,3.7,step);
       if(lights){
@@ -55,6 +71,7 @@ export function createRenderAdapter({
         if(lights.warm) lights.warm.intensity=damp(lights.warm.intensity,state.lighting.warm,3.7,step);
       }
       environment?.apply?.(state.environment,step);
-    }
+    },
+    getAnimationPose(){ return animationPose; }
   };
 }
