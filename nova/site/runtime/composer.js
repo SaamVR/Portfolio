@@ -39,9 +39,10 @@ export function composeVisualState(baseState, interactionState=createInteraction
 
   const hotspot = interactionState.hotspot || {};
   const hw = clamp01(hotspot.weight);
+  const hotspotCameraWeight = hw * (1-iw);
   for(let i=0;i<3;i++){
-    out.camera.position[i] += (hotspot.cameraOffset?.[i] || 0) * hw;
-    out.camera.target[i] += (hotspot.targetOffset?.[i] || 0) * hw;
+    out.camera.position[i] += (hotspot.cameraOffset?.[i] || 0) * hotspotCameraWeight;
+    out.camera.target[i] += (hotspot.targetOffset?.[i] || 0) * hotspotCameraWeight;
   }
   out.lighting.key *= 1 + .12 * hw;
 
