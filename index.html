@@ -76,7 +76,140 @@
       </div>
     </div></section>
 
-    <section id="workspace" class="section shell"><div class="section-head"><div><p class="tag">CRM WORKSPACE PREVIEW</p><h2>A workspace for the next action.</h2></div><p>Review qualified leads, understand their priority, and inspect what the workflow prepared. This preview reads from the same demo CRM records created above.</p></div><div class="ops-dashboard"><aside class="ops-input-panel ops-sync-panel"><div class="ops-panel-kicker"><small>SHARED WORKFLOW STATE</small></div><h3>One submission. One workspace.</h3><p>The lead form above is the single input for this case study. Each completed run updates this workspace and the full demo CRM from the same browser-local record set.</p><div class="ops-sync-flow"><span>Lead form</span><i>→</i><span>Rules-based score</span><i>→</i><span>Demo CRM</span><i>→</i><span>Workspace</span></div><a class="secondary-btn full" href="#demo">Run another lead</a><div class="ops-input-status"><span class="ops-status-icon">i</span><div><b>Demo CRM</b><small>Records persist in this browser only.</small></div></div></aside><div class="ops-console"><header class="ops-console-top"><div class="ops-console-brand"><span>LF</span><div><b>Lead Operations</b><small>Qualification workspace</small></div></div><div class="ops-console-actions"><div class="ops-console-state"><span class="ops-live-dot"></span><b>DEMO</b><small id="opsLastSync">synced now</small></div><button id="opsOpenCrm" type="button">Open full CRM <span>↗</span></button></div></header><div class="ops-kpis"><article><span>Pipeline</span><strong id="opsTotal">0</strong><small>demo leads</small></article><article><span>High priority</span><strong id="opsHot">0</strong><small id="opsHotRate">0% of pipeline</small></article><article><span>Average score</span><strong id="opsAverage">0</strong><small>lead priority score</small></article><article><span>Immediate</span><strong id="opsImmediate">0</strong><small>ASAP timeline</small></article></div><div class="ops-main-grid"><section class="ops-panel"><div class="ops-panel-head"><div><small>QUALIFICATION TREND</small><b>Recent lead scores</b></div><span>0–100</span></div><div class="ops-score-chart" id="opsScoreChart"></div></section><section class="ops-panel"><div class="ops-panel-head"><div><small>LEAD SOURCES</small><b>Inbound mix</b></div><span id="opsSourceCount">0 sources</span></div><div class="ops-source-list" id="opsSourceList"></div></section></div><section class="ops-panel ops-pipeline-panel"><div class="ops-panel-head"><div><small>DEMO PIPELINE</small><b>Latest qualified leads</b></div><span id="opsPipelineCount">0 records</span></div><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>Lead</th><th>Source</th><th>Score</th><th>Status</th><th>Timeline</th></tr></thead><tbody id="opsPipelineRows"></tbody></table></div></section><section class="ops-panel ops-activity-panel"><div class="ops-panel-head"><div><small>WORKFLOW ACTIVITY</small><b>Latest demo events</b></div><span><i class="ops-live-dot"></i> local state</span></div><div class="ops-activity-feed" id="opsActivityFeed"></div></section></div></div></section>
+    <section id="workspace" class="section shell">
+      <div class="section-head">
+        <div>
+          <p class="tag">CRM WORKSPACE PREVIEW</p>
+          <h2>A workspace for the next action.</h2>
+        </div>
+        <p>Review qualification state, urgency, and the next action from the same browser-local records created in the interactive workflow.</p>
+      </div>
+
+      <div class="ops-dashboard" aria-label="Lead Operations dashboard">
+        <header class="ops-dashboard-toolbar">
+          <div class="ops-dashboard-title">
+            <span class="ops-brand-mark">LF</span>
+            <div>
+              <small>LEAD OPERATIONS</small>
+              <h3>Qualification workspace</h3>
+            </div>
+          </div>
+          <div class="ops-toolbar-actions">
+            <div class="ops-sync-state">
+              <i class="ops-live-dot"></i>
+              <span>Demo workspace</span>
+              <small id="opsLastSync">Synced now</small>
+            </div>
+            <a class="secondary-btn" href="#demo">Run another lead</a>
+            <button class="secondary-btn" id="opsOpenCrm" type="button">Open full CRM <span>↗</span></button>
+          </div>
+        </header>
+
+        <div class="ops-kpis" aria-label="Pipeline summary">
+          <article>
+            <span>Pipeline</span>
+            <strong id="opsTotal">0</strong>
+            <small>browser-local leads</small>
+          </article>
+          <article class="ops-kpi-attention">
+            <span>High priority</span>
+            <strong id="opsHot">0</strong>
+            <small id="opsHotRate">0% of pipeline</small>
+          </article>
+          <article>
+            <span>Average score</span>
+            <strong class="ops-score-value"><span id="opsAverage">0</span><em>/100</em></strong>
+            <small>qualification score</small>
+          </article>
+          <article>
+            <span>Immediate follow-up</span>
+            <strong id="opsImmediate">0</strong>
+            <small id="opsImmediateRate">0% ASAP</small>
+          </article>
+        </div>
+
+        <div class="ops-analytics-primary">
+          <section class="ops-panel ops-distribution-panel">
+            <header class="ops-panel-head">
+              <div><small>PIPELINE MIX</small><b>Qualification distribution</b></div>
+              <span>Current records</span>
+            </header>
+            <div class="ops-distribution-layout">
+              <div id="opsDistribution" class="ops-donut" role="img" aria-label="Qualification distribution"></div>
+              <div id="opsDistributionLegend" class="ops-donut-legend"></div>
+            </div>
+          </section>
+
+          <section class="ops-panel ops-trend-panel">
+            <header class="ops-panel-head">
+              <div><small>SCORE TREND</small><b>Recent qualification scores</b></div>
+              <span>0–100</span>
+            </header>
+            <div id="opsScoreTrend" class="ops-score-trend"></div>
+          </section>
+        </div>
+
+        <div class="ops-analytics-secondary">
+          <section class="ops-panel">
+            <header class="ops-panel-head">
+              <div><small>NEXT ACTION</small><b>Attention queue</b></div>
+              <span>What happens next</span>
+            </header>
+            <div id="opsActionQueue" class="ops-action-queue"></div>
+          </section>
+
+          <section class="ops-panel">
+            <header class="ops-panel-head">
+              <div><small>SOURCE QUALITY</small><b>Inbound mix + score</b></div>
+              <span>Count / average</span>
+            </header>
+            <div id="opsSourceQuality" class="ops-source-quality"></div>
+          </section>
+
+          <section class="ops-panel">
+            <header class="ops-panel-head">
+              <div><small>URGENCY</small><b>Timeline mix</b></div>
+              <span>Current records</span>
+            </header>
+            <div id="opsUrgencyMix" class="ops-urgency-mix"></div>
+          </section>
+        </div>
+
+        <section class="ops-panel ops-pipeline-panel">
+          <header class="ops-panel-head">
+            <div><small>DEMO PIPELINE</small><b>Latest qualified leads</b></div>
+            <span id="opsPipelineCount">0 records</span>
+          </header>
+          <div class="ops-table-wrap">
+            <table class="ops-table">
+              <thead>
+                <tr>
+                  <th>Lead</th>
+                  <th>Source</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                  <th>Timeline</th>
+                  <th>Next action</th>
+                </tr>
+              </thead>
+              <tbody id="opsPipelineRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ops-panel ops-activity-panel">
+          <header class="ops-panel-head">
+            <div><small>RECENT ACTIVITY</small><b>What changed</b></div>
+            <span><i class="ops-live-dot"></i> local state</span>
+          </header>
+          <div id="opsActivityFeed" class="ops-activity-feed"></div>
+          <details class="ops-technical-details">
+            <summary>Technical event details</summary>
+            <div id="opsTechnicalActivity" class="ops-technical-activity"></div>
+          </details>
+        </section>
+      </div>
+    </section>
 
     <section id="reliability" class="section band"><div class="shell"><div class="section-head"><div><p class="tag">WHEN SOMETHING GOES WRONG</p><h2>Make exceptions visible and recoverable.</h2></div><p>Explore duplicate handling, a simulated external-CRM timeout, and the rules-based human-review path.</p></div><div class="reliability-lab"><div class="reliability-copy"><small>SCENARIO DETAILS</small><b>Implemented behavior and simulated scenarios stay clearly separated.</b><p>Duplicate handling runs in the demo. Timeout recovery is shown as a simulation, while review routing follows explicit score thresholds.</p></div><div class="reliability-actions"><button type="button" data-edge="duplicate">Duplicate lead · implemented</button><button type="button" data-edge="timeout">CRM timeout · simulated</button><button type="button" data-edge="review">Needs human review · implemented</button></div><div class="reliability-log" id="reliabilityLog"><div><code>scenario.ready</code><span>Select a scenario to inspect what happened, what the demo does, and what remains pending.</span></div></div></div></div></section>
 
@@ -117,6 +250,7 @@
   <div class="followup-modal" id="followupModal" aria-hidden="true"><div class="followup-dialog" role="dialog" aria-modal="true" aria-label="Follow-up draft"><button id="closeFollowup" class="drawer-close" type="button">×</button><p class="tag">DRAFT — NOT SENT</p><h3 id="followupTitle">Follow-up draft</h3><div class="message-preview"><small>SUBJECT</small><b id="followupSubject"></b><small>MESSAGE</small><p id="followupBody"></p></div><p class="microcopy">Prepared from the lead context and qualification result. This public demo does not send messages.</p></div></div>
 
   <div class="tour-status" id="tourStatus" aria-hidden="true"><span id="tourIndex">1 / 4</span><b id="tourLabel">Preparing walkthrough…</b><button id="cancelTour" type="button" aria-label="Exit guided walkthrough">×</button></div>
+  <script src="./dashboard.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

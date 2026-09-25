@@ -14,9 +14,9 @@ function applyTheme(theme){const next=theme==="light"?"light":"dark";document.do
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)}catch{return null}})()||"dark");
 $("#themeToggle").addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem(THEME_KEY,next)}catch{}});
 const starter=[
-{id:"demo-001",name:"Alex Chen",company:"Northstar Labs",budget:12000,budgetLabel:"$7,500–$15,000",need:"Need automated CRM lead routing for our inbound requests",timeline:"weeks",timelineLabel:"1–2 weeks",score:87,intent:"High",budgetFit:"Strong",urgency:"High",status:"hot",summary:"Northstar Labs needs automated CRM lead routing. The selected budget and timeline support a sales review.",followup:"Hi Alex,\n\nThanks for sharing the workflow. I’d start by mapping the current intake and deciding which qualification and CRM steps should be automated versus reviewed.\n\nWould a short workflow review this week be useful?",subject:"Re: Lead routing at Northstar Labs",created:"Demo data"},
-{id:"demo-002",name:"Mina Patel",company:"Studio Eight",budget:2000,budgetLabel:"$1,000–$3,000",need:"We need a CRM workflow for contact form follow-up",timeline:"month",timelineLabel:"Within a month",score:67,intent:"Medium",budgetFit:"Good",urgency:"Medium",status:"review",summary:"Studio Eight has a defined automation need. The current score supports human review before a sales handoff.",followup:"Hi Mina,\n\nThanks for the context. There’s a clear automation opportunity here. I’d start by mapping the existing process and identifying which steps should be automated versus kept for human review.\n\nIf useful, I can outline a practical first version for Studio Eight.",subject:"Re: Contact form automation at Studio Eight",created:"Demo data"},
-{id:"demo-003",name:"Ryan Cole",company:"Independent",budget:500,budgetLabel:"Under $1,000",need:"Just exploring options for lead follow-up",timeline:"exploring",timelineLabel:"Just exploring",score:39,intent:"Low",budgetFit:"Limited",urgency:"Low",status:"nurture",summary:"Independent is exploring lead follow-up. Current budget, urgency, or intent signals support nurture rather than immediate sales review.",followup:"Hi Ryan,\n\nThanks for reaching out. A useful first step is to list the repetitive lead tasks you handle manually each week. From there, we can identify the highest-value automation opportunity without overbuilding.\n\nHappy to share a few examples if that helps.",subject:"A few lead automation starting points",created:"Demo data"}
+{id:"demo-001",name:"Alex Chen",company:"Northstar Labs",source:"Website Form",budget:12000,budgetLabel:"$7,500–$15,000",need:"Need automated CRM lead routing for our inbound requests",timeline:"weeks",timelineLabel:"1–2 weeks",score:87,intent:"High",budgetFit:"Strong",urgency:"High",status:"hot",summary:"Northstar Labs needs automated CRM lead routing. The selected budget and timeline support a sales review.",followup:"Hi Alex,\n\nThanks for sharing the workflow. I’d start by mapping the current intake and deciding which qualification and CRM steps should be automated versus reviewed.\n\nWould a short workflow review this week be useful?",subject:"Re: Lead routing at Northstar Labs",created:"Demo data"},
+{id:"demo-002",name:"Mina Patel",company:"Studio Eight",source:"Meta Lead Ads",budget:2000,budgetLabel:"$1,000–$3,000",need:"We need a CRM workflow for contact form follow-up",timeline:"month",timelineLabel:"Within a month",score:67,intent:"Medium",budgetFit:"Good",urgency:"Medium",status:"review",summary:"Studio Eight has a defined automation need. The current score supports human review before a sales handoff.",followup:"Hi Mina,\n\nThanks for the context. There’s a clear automation opportunity here. I’d start by mapping the existing process and identifying which steps should be automated versus kept for human review.\n\nIf useful, I can outline a practical first version for Studio Eight.",subject:"Re: Contact form automation at Studio Eight",created:"Demo data"},
+{id:"demo-003",name:"Ryan Cole",company:"Independent",source:"Referral",budget:500,budgetLabel:"Under $1,000",need:"Just exploring options for lead follow-up",timeline:"exploring",timelineLabel:"Just exploring",score:39,intent:"Low",budgetFit:"Limited",urgency:"Low",status:"nurture",summary:"Independent is exploring lead follow-up. Current budget, urgency, or intent signals support nurture rather than immediate sales review.",followup:"Hi Ryan,\n\nThanks for reaching out. A useful first step is to list the repetitive lead tasks you handle manually each week. From there, we can identify the highest-value automation opportunity without overbuilding.\n\nHappy to share a few examples if that helps.",subject:"A few lead automation starting points",created:"Demo data"}
 ];
 function loadLeads(){try{const x=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");if(Array.isArray(x))return x}catch{}saveJSON(STORAGE_KEY,starter);return [...starter]}
 let leads=loadLeads();const saveLeads=()=>saveJSON(STORAGE_KEY,leads);
@@ -57,9 +57,133 @@ $("#bpRename").addEventListener("click",()=>{const v=$("#bpNodeLabel").value.tri
 const stackEls={source:$("#stackSource"),crm:$("#stackCrm"),notify:$("#stackNotify")};function syncStack(){$("#stackFlowSource").textContent=stackEls.source.value;$("#stackFlowCrm").textContent=stackEls.crm.value;$("#stackFlowNotify").textContent=stackEls.notify.value}Object.values(stackEls).forEach(el=>el.addEventListener("change",syncStack));
 const edgeCases={duplicate:[["duplicate.search","Actual demo criterion: normalized name + company","info"],["duplicate.match","Existing browser-local record matched","info"],["demo.crm.upsert","Existing record is updated instead of creating another row","ok"],["workflow.complete","No additional demo CRM record is created","ok"]],timeout:[["simulated.crm.timeout","Simulated failure scenario: external CRM request times out","warn"],["simulated.retry.plan","Illustrative recovery: schedule a bounded retry with backoff","info"],["pending.production","No retry job executes in this public demo","warn"],["next.step","Production version would require durable retry state and idempotent delivery","info"]],review:[["qualification.score","Rules-based score falls inside the configured review range","warn"],["routing.guardrail","Automatic sales-review path is not selected","info"],["review.queue","Lead remains visible for a person to review","ok"],["workflow.complete","No model-confidence claim is used in this decision","ok"]]};
 $$('[data-edge]').forEach(btn=>btn.addEventListener("click",()=>{$$('[data-edge]').forEach(b=>b.classList.toggle("active",b===btn));$("#reliabilityLog").innerHTML=(edgeCases[btn.dataset.edge]||[]).map(([c,m,s])=>`<div class="${s}"><code>${escapeHtml(c)}</code><span>${escapeHtml(m)}</span></div>`).join("")}));
-let opsActivity=[];function pushOpsActivity(code,message,state="ok"){opsActivity.unshift({code,message,state,time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});opsActivity=opsActivity.slice(0,6);renderOpsActivity()}function renderOpsActivity(){const box=$("#opsActivityFeed");const fallback=leads.slice(0,4).map(l=>({code:"demo.record",message:l.name+" · "+l.company+" · "+l.score+"/100",state:l.status,time:"demo"}));const rows=opsActivity.length?opsActivity:fallback;box.innerHTML=rows.map(r=>`<div class="ops-activity-row ${r.state}"><span class="ops-activity-pulse"></span><time>${escapeHtml(r.time)}</time><code>${escapeHtml(r.code)}</code><b>${escapeHtml(r.message)}</b></div>`).join("")}
-function sourceForLead(l,i){return l.source||({"demo-001":"Website Form","demo-002":"Meta Lead Ads","demo-003":"Referral"}[l.id]||["Website Form","Meta Lead Ads","Typeform","Referral"][i%4])}
-function renderOps(){const total=leads.length,hot=leads.filter(l=>l.status==="hot").length,avg=total?Math.round(leads.reduce((s,l)=>s+l.score,0)/total):0,urgent=leads.filter(l=>l.timeline==="asap").length;$("#opsTotal").textContent=total;$("#opsHot").textContent=hot;$("#opsHotRate").textContent=(total?Math.round(hot/total*100):0)+"% of pipeline";$("#opsAverage").textContent=avg;$("#opsImmediate").textContent=urgent;const recent=leads.slice(0,8).reverse();$("#opsScoreChart").innerHTML=recent.map((l,i)=>`<div class="ops-chart-item ${l.status}"><b>${l.score}</b><div><i style="height:${l.score}%"></i></div><span>${escapeHtml((l.name||"?")[0])}</span></div>`).join("");const counts={};leads.forEach((l,i)=>counts[sourceForLead(l,i)]=(counts[sourceForLead(l,i)]||0)+1);const max=Math.max(1,...Object.values(counts));$("#opsSourceCount").textContent=Object.keys(counts).length+" sources";$("#opsSourceList").innerHTML=Object.entries(counts).map(([s,c])=>`<div class="ops-source-row"><div><span>${escapeHtml(s)}</span><b>${c}</b></div><i><em style="width:${c/max*100}%"></em></i></div>`).join("");$("#opsPipelineCount").textContent=Math.min(5,total)+" records";$("#opsPipelineRows").innerHTML=leads.slice(0,5).map((l,i)=>`<tr><td><b>${escapeHtml(l.name)}</b><small>${escapeHtml(l.company)}</small></td><td>${escapeHtml(sourceForLead(l,i))}</td><td><strong>${l.score}</strong></td><td><span class="ops-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.timelineLabel)}</td></tr>`).join("");$("#opsLastSync").textContent="synced now";renderOpsActivity()}
+let opsActivity=[];
+function nextActionLabel(lead){
+  const raw=String(lead?.action||"");
+  if(/sales/i.test(raw)||lead?.status==="hot")return "Sales review";
+  if(/human|review/i.test(raw)||lead?.status==="review")return "Human review";
+  if(/nurture/i.test(raw)||lead?.status==="nurture")return "Nurture";
+  return raw||"Review lead";
+}
+function dashboardStatusLabel(key){return({hot:"High priority",review:"Needs review",nurture:"Nurture",other:"Other"})[key]||"Other"}
+function activitySentence(lead){
+  const name=lead?.name||"Lead";
+  if(lead?.status==="hot")return name+" qualified as high priority";
+  if(lead?.status==="review")return name+" routed to human review";
+  if(lead?.status==="nurture")return name+" moved to nurture";
+  return name+" updated in the demo CRM";
+}
+function pushOpsActivity(code,message,state="ok"){
+  opsActivity.unshift({code,message,state,time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});
+  opsActivity=opsActivity.slice(0,6);
+  renderOpsActivity();
+}
+function renderOpsActivity(){
+  const human=$("#opsActivityFeed"),technical=$("#opsTechnicalActivity");
+  if(!human||!technical)return;
+  const recent=leads.slice(0,4);
+  if(!recent.length){
+    human.innerHTML='<div class="ops-empty-state">Run the interactive demo to create the first local record.</div>';
+    technical.innerHTML='<div class="ops-empty-state">No technical events yet.</div>';
+    return;
+  }
+  human.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Demo data")+'</em></div>').join("");
+  const technicalRows=opsActivity.length?opsActivity:recent.map(l=>({code:"demo.record",message:(l.name||"Lead")+" · "+(l.score||0)+"/100",state:l.status||"other",time:"demo"}));
+  technical.innerHTML=technicalRows.map(r=>'<div class="ops-activity-row '+escapeHtml(r.state||"other")+'"><span class="ops-activity-pulse"></span><time>'+escapeHtml(r.time)+'</time><code>'+escapeHtml(r.code)+'</code><b>'+escapeHtml(r.message)+'</b></div>').join("");
+}
+function sourceForLead(l){return String(l?.source||"Unspecified").trim()||"Unspecified"}
+function renderDistribution(model){
+  const box=$("#opsDistribution"),legend=$("#opsDistributionLegend");
+  if(!box||!legend)return;
+  const items=[
+    ["hot",model.status.hot,model.statusPct.hot],
+    ["review",model.status.review,model.statusPct.review],
+    ["nurture",model.status.nurture,model.statusPct.nurture],
+    ["other",model.status.other,model.statusPct.other]
+  ].filter(([,count])=>count>0);
+  if(!model.total){
+    box.innerHTML='<svg viewBox="0 0 130 130" aria-hidden="true"><circle class="ops-donut-track" cx="65" cy="65" r="50"></circle><text class="ops-donut-number" x="65" y="61" text-anchor="middle">0</text><text class="ops-donut-caption" x="65" y="79" text-anchor="middle">leads</text></svg>';
+    box.setAttribute("aria-label","Qualification distribution: no leads yet");
+    legend.innerHTML='<div class="ops-empty-state">Run a lead to build the pipeline mix.</div>';
+    return;
+  }
+  let offset=0;
+  const segments=items.map(([key,,percent])=>{
+    const circle='<circle class="ops-donut-segment '+key+'" cx="65" cy="65" r="50" pathLength="100" stroke-dasharray="'+percent+' '+(100-percent)+'" stroke-dashoffset="'+(-offset)+'"></circle>';
+    offset+=percent;
+    return circle;
+  }).join("");
+  box.innerHTML='<svg viewBox="0 0 130 130" aria-hidden="true"><circle class="ops-donut-track" cx="65" cy="65" r="50"></circle>'+segments+'<text class="ops-donut-number" x="65" y="61" text-anchor="middle">'+model.total+'</text><text class="ops-donut-caption" x="65" y="79" text-anchor="middle">leads</text></svg>';
+  box.setAttribute("aria-label","Qualification distribution: "+items.map(([key,count,p])=>dashboardStatusLabel(key)+" "+count+" ("+p+"%)").join(", "));
+  legend.innerHTML=items.map(([key,count,percent])=>'<div class="ops-legend-row"><span class="ops-legend-dot '+key+'"></span><div><b>'+dashboardStatusLabel(key)+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+percent+'%</strong></div>').join("");
+}
+function renderScoreTrend(model){
+  const box=$("#opsScoreTrend");if(!box)return;
+  const rows=model.recentScores.slice().reverse();
+  if(!rows.length){box.innerHTML='<div class="ops-empty-state">Run a lead to build the score trend.</div>';return}
+  const w=720,h=220,left=46,right=16,top=18,bottom=48,plotH=h-top-bottom,plotW=w-left-right;
+  const y=score=>top+(100-score)/100*plotH;
+  const gap=plotW/rows.length,barW=Math.min(58,Math.max(24,gap*.58));
+  const guides=[100,80,55,0].map(v=>'<g class="ops-trend-guide '+(v===80?"hot-threshold":v===55?"review-threshold":"")+'"><line x1="'+left+'" y1="'+y(v)+'" x2="'+(w-right)+'" y2="'+y(v)+'"></line><text x="4" y="'+(y(v)+4)+'">'+v+'</text></g>').join("");
+  const bars=rows.map((lead,i)=>{
+    const x=left+gap*i+(gap-barW)/2,barY=y(lead.score),barH=top+plotH-barY;
+    const first=escapeHtml((lead.name||"Lead").split(/\s+/)[0]);
+    return '<g class="ops-trend-bar '+lead.status+'"><rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4"></rect><text class="score" x="'+(x+barW/2)+'" y="'+(barY-7)+'" text-anchor="middle">'+lead.score+'</text><text class="name" x="'+(x+barW/2)+'" y="'+(h-19)+'" text-anchor="middle">'+first+'</text></g>';
+  }).join("");
+  box.innerHTML='<svg viewBox="0 0 720 220" role="img" aria-label="Recent lead qualification scores">'+guides+bars+'</svg>';
+}
+function renderActionQueue(model){
+  const box=$("#opsActionQueue");if(!box)return;
+  const rows=[
+    ["salesReview","Sales review",model.actions.salesReview,"hot"],
+    ["humanReview","Human review",model.actions.humanReview,"review"],
+    ["nurture","Nurture",model.actions.nurture,"nurture"],
+    ["other","Other",model.actions.other,"other"]
+  ].filter(([, ,count])=>count>0);
+  if(!rows.length){box.innerHTML='<div class="ops-empty-state">No queued actions yet.</div>';return}
+  box.innerHTML=rows.map(([,label,count,state])=>'<div class="ops-queue-row"><span class="ops-queue-icon '+state+'"></span><div><b>'+label+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+count+'</strong></div>').join("");
+}
+function renderSourceQuality(model){
+  const box=$("#opsSourceQuality");if(!box)return;
+  if(!model.sources.length){box.innerHTML='<div class="ops-empty-state">No source data yet.</div>';return}
+  box.innerHTML=model.sources.map(source=>'<div class="ops-quality-row"><div><b>'+escapeHtml(source.name)+'</b><span>'+source.count+' lead'+(source.count===1?"":"s")+'</span></div><div class="ops-quality-track" aria-label="Average score '+source.averageScore+' out of 100"><i style="width:'+source.averageScore+'%"></i></div><strong>'+source.averageScore+'<small>/100 avg</small></strong></div>').join("");
+}
+function renderUrgency(model){
+  const box=$("#opsUrgencyMix");if(!box)return;
+  const active=model.urgency.filter(i=>i.count>0);
+  if(!active.length){box.innerHTML='<div class="ops-empty-state">No timeline data yet.</div>';return}
+  box.innerHTML='<div class="ops-urgency-bar">'+active.map(item=>'<span class="'+item.key+'" style="width:'+item.pct+'%" title="'+escapeHtml(item.label)+' '+item.pct+'%"></span>').join("")+'</div><div class="ops-urgency-list">'+active.map(item=>'<div><span class="ops-urgency-dot '+item.key+'"></span><b>'+escapeHtml(item.label)+'</b><strong>'+item.count+'</strong><small>'+item.pct+'%</small></div>').join("")+'</div>';
+}
+
+function animateDashboardNumber(el,to){
+  if(!el)return;
+  const target=Math.max(0,Number(to)||0),reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(reduce){el.textContent=String(Math.round(target));el.dataset.value=String(target);return}
+  const from=Number(el.dataset.value||el.textContent||0)||0,start=performance.now(),duration=460;
+  const tick=now=>{const p=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-p,3);el.textContent=String(Math.round(from+(target-from)*eased));if(p<1)requestAnimationFrame(tick);else el.dataset.value=String(target)};
+  requestAnimationFrame(tick);
+}
+function replayDashboardMotion(){
+  const dashboard=$(".ops-dashboard");if(!dashboard)return;
+  dashboard.classList.remove("ops-animate");void dashboard.offsetWidth;dashboard.classList.add("ops-animate");
+}
+function renderOps(){
+  const enriched=leads.map(l=>({...l,source:sourceForLead(l),action:l.action||nextActionLabel(l)}));
+  const model=window.LeadFlowDashboard.buildDashboardModel(enriched);
+  animateDashboardNumber($("#opsTotal"),model.total);
+  animateDashboardNumber($("#opsHot"),model.status.hot);
+  $("#opsHotRate").textContent=model.statusPct.hot+"% of pipeline";
+  animateDashboardNumber($("#opsAverage"),model.averageScore);
+  animateDashboardNumber($("#opsImmediate"),model.immediate.count);
+  $("#opsImmediateRate").textContent=model.immediate.pct+"% ASAP";
+  renderDistribution(model);renderScoreTrend(model);renderActionQueue(model);renderSourceQuality(model);renderUrgency(model);
+  $("#opsPipelineCount").textContent=Math.min(5,model.total)+" records";
+  $("#opsPipelineRows").innerHTML=leads.length?leads.slice(0,5).map(l=>'<tr><td><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td>'+escapeHtml(sourceForLead(l))+'</td><td><strong class="ops-score-cell">'+l.score+'</strong></td><td><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td>'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
+  $("#opsLastSync").textContent="Synced now";
+  renderOpsActivity();
+  replayDashboardMotion();
+}
+
 function renderCRM(){const q=$("#crmSearch").value.trim().toLowerCase(),filter=$("#crmFilter").value,filtered=leads.filter(l=>(!q||l.name.toLowerCase().includes(q)||l.company.toLowerCase().includes(q))&&(filter==="all"||l.status===filter));$("#crmRows").innerHTML=filtered.map(l=>`<tr data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(l.name)} at ${escapeHtml(l.company)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}"><td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.company)}</td><td><span class="crm-score">${l.score}</span></td><td><span class="crm-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.intent)}</td><td>${escapeHtml(l.timelineLabel)}</td><td>${escapeHtml(l.created)}</td></tr>`).join("");$("#crmEmpty").style.display=filtered.length?"none":"block";$("#crmTotal").textContent=leads.length;$("#crmHot").textContent=leads.filter(l=>l.status==="hot").length;$("#crmReview").textContent=leads.filter(l=>l.status==="review").length;$("#crmNurture").textContent=leads.filter(l=>l.status==="nurture").length;const settings=readSettings();$("#crmHotRule").textContent="score "+settings.hot+"+";$("#crmReviewRule").textContent="score "+settings.review+"–"+(settings.hot-1);$("#crmNurtureRule").textContent="score below "+settings.review;$$('#crmRows tr').forEach(row=>{const open=()=>openLead(row.dataset.id);row.addEventListener("click",open);row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open()}})})}
 function renderAnalytics(){const total=Math.max(1,leads.length),hot=leads.filter(l=>l.status==="hot").length,review=leads.filter(l=>l.status==="review").length,nurture=leads.filter(l=>l.status==="nurture").length,avg=leads.length?Math.round(leads.reduce((s,l)=>s+l.score,0)/leads.length):0,high=leads.length?Math.round(leads.filter(l=>l.intent==="High").length/leads.length*100):0,urgent=leads.length?Math.round(leads.filter(l=>l.timeline==="asap").length/leads.length*100):0;$("#analyticsAvg").textContent=avg;$("#analyticsIntent").textContent=high+"%";$("#analyticsUrgent").textContent=urgent+"%";$("#analyticsTotal").textContent=leads.length+" lead"+(leads.length===1?"":"s");[["Hot",hot],["Review",review],["Nurture",nurture]].forEach(([n,v])=>{$("#bar"+n).style.width=Math.round(v/total*100)+"%";$("#bar"+n+"Value").textContent=v});$("#scoreBandFill").style.width=avg+"%";$("#scoreBandMarker").style.left="calc("+avg+"% - 5px)";const settings=readSettings();$("#analyticsInsight").textContent=avg>=settings.hot?"The current demo pipeline is weighted toward higher-priority opportunities.":avg>=settings.review?"The demo pipeline is mixed, with a meaningful share of leads needing review.":"Most current demo leads are early-stage and better suited to nurture."}
 function renderHistory(){const rows=leads.slice(0,5).map(l=>`<div class="run-history-row"><span class="run-dot ${l.status}"></span><div><b>${escapeHtml(l.name)} · ${escapeHtml(l.company)}</b><small>Qualification → demo CRM → ${l.status==="hot"?"sales review":"routing prepared"}</small></div><em>${escapeHtml(l.created)}</em></div>`).join("");$("#runHistoryRows").innerHTML=rows||'<div class="crm-empty" style="display:block">No workflow runs yet.</div>';$("#runHistoryCount").textContent=leads.length+" run"+(leads.length===1?"":"s")}
