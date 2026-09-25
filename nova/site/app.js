@@ -73,10 +73,10 @@ scene.add(camera);
 
 const normalizationRoot=new THREE.Group();
 const presentation=new THREE.Group();
-const orientationGroup=new THREE.Group();
+const inspectionGroup=new THREE.Group();
 const centerGroup=new THREE.Group();
-orientationGroup.add(centerGroup);
-presentation.add(orientationGroup);
+inspectionGroup.add(centerGroup);
+presentation.add(inspectionGroup);
 normalizationRoot.add(presentation);
 scene.add(normalizationRoot);
 
@@ -103,7 +103,7 @@ let clip=null;
 let clipDuration=27.70833;
 let primaryProductBounds=null;
 let adapter=rendererAvailable?createRenderAdapter({
-  THREE,camera,presentation,orientation:orientationGroup,mixer:null,clipDuration,renderer,lights,environment,orientationX
+  THREE,camera,presentation,inspection:inspectionGroup,mixer:null,clipDuration,renderer,lights,environment,orientationX
 }):null;
 let lastTime=performance.now();
 
@@ -212,7 +212,7 @@ function hideHotspots(){
 function rebuildAdapter(){
   if(!rendererAvailable) return;
   adapter=createRenderAdapter({
-    THREE,camera,presentation,orientation:orientationGroup,mixer,clipDuration,renderer,lights,environment,orientationX
+    THREE,camera,presentation,orientation:inspectionGroup,mixer,clipDuration,renderer,lights,environment,orientationX
   });
 }
 
@@ -251,9 +251,9 @@ function loadModel(){
     presentation.position.set(0,0,0);
     presentation.rotation.set(0,0,0);
     presentation.scale.set(1,1,1);
-    orientationGroup.position.set(0,0,0);
-    orientationGroup.rotation.set(0,0,0);
-    orientationGroup.scale.set(1,1,1);
+    inspectionGroup.position.set(0,0,0);
+    inspectionGroup.rotation.set(0,0,0);
+    inspectionGroup.scale.set(1,1,1);
     centerGroup.position.set(0,0,0);
     centerGroup.rotation.set(0,0,0);
     centerGroup.scale.set(1,1,1);
