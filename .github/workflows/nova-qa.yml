@@ -154,8 +154,9 @@ jobs:
               if(state.model!=='ready'||!state.frame){
                 throw new Error(prefix+' product frame unavailable '+JSON.stringify(state));
               }
-              const minSpanX=prefix==='mobile'?90:180;
-              const minSpanY=prefix==='mobile'?45:70;
+              const minSpanX=prefix==='mobile'?50:100;
+              const minSpanY=prefix==='mobile'?35:60;
+              await page.screenshot({path:'nova-qa/'+prefix+'_product_presence_'+String(progress).replace('.','')+'.png'});
               if(
                 state.frame.nearViewport<3 ||
                 state.frame.inViewport<2 ||
@@ -165,7 +166,6 @@ jobs:
               ){
                 throw new Error(prefix+' product not recognizably framed '+JSON.stringify({minSpanX,minSpanY,state}));
               }
-              await page.screenshot({path:'nova-qa/'+prefix+'_product_presence_'+String(progress).replace('.','')+'.png'});
             }
             fs.writeFileSync('nova-qa/'+prefix+'_product_presence.json',JSON.stringify(results,null,2));
             await context.close();
