@@ -71,15 +71,17 @@ jobs:
               }),progress);
               const minSpanX=prefix==='mobile'?50:100;
               const minSpanY=prefix==='mobile'?35:60;
+              const intentionalDesignCrop=state.range==='design';
+              const landmarksOk=state.frame && (intentionalDesignCrop
+                ? state.frame.nearViewport>=3 && state.frame.inViewport>=2 && state.frame.earcupsInViewport>=1
+                : state.frame.inViewport>=3 && state.frame.earcupsInViewport>=2);
               if(
                 !state.frame ||
-                state.frame.nearViewport<3 ||
-                state.frame.inViewport<2 ||
-                state.frame.earcupsInViewport<1 ||
+                !landmarksOk ||
                 state.frame.spanX<minSpanX ||
                 state.frame.spanY<minSpanY
               ){
-                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minSpanX,minSpanY,state}));
+                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minSpanX,minSpanY,intentionalDesignCrop,state}));
               }
               await page.screenshot({path:'nova-v3-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
             }
