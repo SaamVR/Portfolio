@@ -295,3 +295,72 @@ def test_r13_compact_behind_parent_does_not_add_padding_outside_sticky_child():
     assert ".stage--behind{box-sizing:border-box;min-height:110svh" in compact
     assert "color:#eee8de;padding:0}" in compact
     assert ".behind-transition{box-sizing:border-box;position:sticky!important;top:0;min-height:100svh" in compact
+
+
+def test_v3_buyer_facing_product_content_has_realistic_design_spec():
+    product_html = html.split('<section id="behind"', 1)[0]
+    required = [
+        "260 g",
+        "40 mm dynamic",
+        "20 Hz – 40 kHz",
+        "Bluetooth 5.4",
+        "SBC",
+        "AAC",
+        "LDAC",
+        "LC3",
+        "30 h",
+        "40 h",
+        "2.5 h",
+        "10 min",
+        "5 h",
+        "USB-C digital audio",
+        "3.5 mm",
+        "two active devices",
+        "hybrid adaptive ANC",
+    ]
+    for phrase in required:
+        assert phrase in product_html
+
+def test_v3_product_journey_has_no_demo_or_fictional_language():
+    product_html = html.split('<section id="behind"', 1)[0].lower()
+    forbidden = [
+        "fictional product",
+        "demo only",
+        "concept preview",
+        "preview notification",
+        "what the demo",
+        "no data leaves this browser",
+        "conceptual interaction",
+        "not specified in this fictional concept",
+    ]
+    for phrase in forbidden:
+        assert phrase not in product_html
+
+def test_v3_hero_and_resolution_surface_practical_specs():
+    assert 'class="hero-proof"' in html
+    for phrase in ["260 g", "30 h ANC", "Bluetooth 5.4"]:
+        assert phrase in html
+    assert "View full specs" in html
+    assert "What’s included" in html or "What's included" in html
+
+def test_v3_product_facts_are_technical_specs_and_practical_faq():
+    assert 'id="productFactsPanel"' in html
+    assert "Technical specifications" in html
+    assert "Design specification" in html
+    for phrase in [
+        "Battery & charging",
+        "Connectivity",
+        "Audio",
+        "Fit & materials",
+        "In the box",
+        "Can I use NOVA wired?",
+        "Can NOVA stay connected to two devices?",
+    ]:
+        assert phrase in html
+
+def test_v3_case_study_contains_single_honest_concept_disclosure():
+    case_html = html.split('<section id="behind"', 1)[1]
+    disclosure = "NOVA is an original portfolio product concept."
+    assert disclosure in case_html
+    assert "project-defined engineering target" in case_html
+    assert "not a manufactured-product certification" in case_html
