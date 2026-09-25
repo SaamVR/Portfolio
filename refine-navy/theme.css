@@ -9,6 +9,7 @@
   --accent:#76A9DA;
   --accent2:#9CC5EC;
   --accent-readable:#8FC0EE;
+  --meta-readable:#A8BACB;
   --story-focus-ring:rgba(118,169,218,.28);
   --bg:#0B111A;
   --bg2:#101925;
@@ -74,6 +75,7 @@ html[data-theme=light]{
   --accent:#285F93;
   --accent2:#1D4F7E;
   --accent-readable:#245B8F;
+  --meta-readable:#506273;
   --story-focus-ring:rgba(40,95,147,.22);
   --bg:#F3F6F9;
   --bg2:#E8EEF4;
@@ -84,7 +86,7 @@ html[data-theme=light]{
   --surface-3:#E2EAF1;
   --text:#1E2934;
   --text-soft:#34495B;
-  --muted:#586B7C;
+  --muted:#506273;
   --line:#C1CDD8;
   --line2:#A7B8C7;
 }
@@ -169,3 +171,6 @@ html[data-theme=light] .capability:hover{background:rgba(40,95,147,.05);border-l
 html[data-theme=light] .capability span{color:#53697C}
 html[data-theme=light] #roi .roi-primary strong{color:#245B8F}
 html[data-theme=light] .incident-neutral-mark{background:#E7EFF6;color:#214D76;border-color:#91ABC3}
+
+html[data-theme=light] .portfolio-next-eyebrow{color:#506273}
+html[data-theme=light] .footer{color:#506273}
