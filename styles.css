@@ -2848,3 +2848,36 @@ html[data-theme=light] .architecture-payload{background:#155D3D;color:#FFFFFF}
   .tour-status-copy>#tourLabel{font-size:13px}
   .tour-status-copy>#tourBeat{font-size:12px}
 }
+
+/* V3 readability floor: storytelling labels remain informational, never micro-decorative. */
+.workflow-story-packet b,
+.ops-story-ribbon small,
+.ops-story-token,
+.incident-rail article small,
+.incident-token,
+.incident-retry-plan,
+.review-score-track>span,
+.architecture-story-head small,
+.architecture-payload{
+  font-size:12px!important;
+}
+@media(max-width:680px){
+  .architecture-payload{font-size:12px!important}
+}
+
+/* V3 light-theme storytelling contrast corrections. */
+html[data-theme=light] .ops-story-token{
+  color:#24503B!important;
+  border-color:#6F9B83!important;
+  background:#EEF5F1!important;
+}
+html[data-theme=light] .incident-rail article{
+  opacity:1;
+}
+html[data-theme=light] .incident-rail article small{
+  color:#3F5F50!important;
+}
+html[data-theme=light] .incident-rail article p{
+  color:#465F53!important;
+}
+html[data-theme=light] .ops-story-token{color:#173C2A!important}
