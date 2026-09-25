@@ -183,3 +183,15 @@ test("achromatic variants neutralize inherited CRM analytics and tour chrome",()
     assert.match(block,/html\[data-theme=light\] \.tour-status\{[\s\S]*?background:rgba\(255,255,255,\.97\)!important/);
   }
 });
+
+test("achromatic variants neutralize the rendered Operations workspace chrome",()=>{
+  for(const slug of ["refine-brown","refine-navy"]){
+    const css=read(slug+"/theme.css");
+    const block=css.slice(css.lastIndexOf("/* LEADFLOW REFINE — ACHROMATIC CANVAS"));
+    assert.match(block,/html\[data-theme=light\] \.ops-table th\{background:#EFEFEF!important;color:#444444!important/);
+    assert.match(block,/html\[data-theme=light\] \.ops-table-wrap\{background:#FFFFFF!important/);
+    assert.match(block,/html\[data-theme=light\] \.ops-chart-item>div\{background:#E4E4E4!important/);
+    assert.match(block,/html\[data-theme=light\] \.ops-story-ribbon\{background:#FFFFFF!important/);
+    assert.match(block,/html\[data-theme=light\] \.ops-story-token\{background:#F3F3F3!important/);
+  }
+});
