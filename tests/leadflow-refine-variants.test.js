@@ -178,8 +178,8 @@ test("achromatic variants neutralize inherited CRM analytics and tour chrome",()
       "html[data-theme=light] .crm-analytics-v2 .analytics-panel{background:#FFFFFF!important;border-color:#D2D2D2!important}",
       "html[data-theme=light] .crm-analytics-v2 .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}",
       "html[data-theme=light] .tour-progress{background:#DEDEDE!important}",
-      "html[data-theme=light] .tour-status{background:rgba(255,255,255,.97)!important"
     ];
     for(const rule of required)assert.ok(block.includes(rule),slug+" missing strict neutral override: "+rule);
+    assert.match(block,/html\[data-theme=light\] \.tour-status\{[\s\S]*?background:rgba\(255,255,255,\.97\)!important/);
   }
 });
