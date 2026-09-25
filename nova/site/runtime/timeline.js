@@ -113,8 +113,11 @@ function applyCompositionInfluences(state,p){
   const behind=ramp(p,.962,.988);
 
   // Camera framing does the heavy lifting so the product itself stays spatially stable.
-  state.camera.target[1] -= .54 * spatial;
-  state.camera.position[2] += .12 * spatial;
+  // Keep the full product silhouette inside the viewport during the Sound pass.
+  // The previous -.54 target shift pushed the headphone above the top edge,
+  // especially on short desktop and mobile viewports.
+  state.camera.target[1] -= .16 * spatial;
+  state.camera.position[2] += .26 * spatial;
 
   state.camera.target[0] += .58 * adaptive;
   state.camera.target[1] -= .10 * adaptive;
@@ -136,13 +139,15 @@ function viewportAdjusted(state, viewportClass){
   if(viewportClass === 'mobile'){
     state.camera.position[0] *= .24;
     state.camera.target[0] *= .12;
-    state.camera.target[1] -= .14;
+    // Mobile keeps a complete, legible product silhouette above the copy.
+    // Do not park the rig beyond the top edge just to create negative space.
+    state.camera.target[1] += .02;
     state.product.position[0] *= .12;
-    state.product.position[1] += .30;
+    state.product.position[1] += .06;
     state.product.yaw *= .62;
     state.product.pitch *= .58;
-    state.camera.position[2] += .72;
-    state.camera.fov += 1.1;
+    state.camera.position[2] += .94;
+    state.camera.fov += 1.8;
   } else if(viewportClass === 'tablet'){
     state.camera.position[0] *= .68;
     state.camera.target[0] *= .68;
