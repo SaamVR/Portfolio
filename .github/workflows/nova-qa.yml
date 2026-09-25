@@ -2,7 +2,7 @@ name: NOVA Visual QA
 
 on:
   push:
-    branches: [main, "nova/v2-integration"]
+    branches: [main, "nova/v2-integration", "nova/v3-refinement"]
     paths:
       - ".github/workflows/nova-qa.yml"
       - "nova/qa-trigger.txt"
