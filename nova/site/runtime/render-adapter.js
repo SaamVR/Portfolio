@@ -14,6 +14,7 @@ export function createRenderAdapter({
   if(!THREE || !camera || !presentation || !renderer) throw new Error('render adapter missing required dependencies');
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
   let renderedPose=null;
+  let renderedTarget=null;
   const applyVec=(obj,key,values,lambda,dt)=>{
     obj[key].x=damp(obj[key].x,values[0],lambda,dt);
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
@@ -26,7 +27,13 @@ export function createRenderAdapter({
       applyVec(camera,'position',state.camera.position,4.2,step);
       camera.fov=damp(camera.fov,state.camera.fov,4.2,step);
       camera.updateProjectionMatrix();
-      camera.lookAt(...state.camera.target);
+      if(renderedTarget===null) renderedTarget=[...state.camera.target];
+      else{
+        renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],4.8,step);
+        renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],4.8,step);
+        renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],4.8,step);
+      }
+      camera.lookAt(...renderedTarget);
 
       presentation.position.x=damp(presentation.position.x,state.product.position[0],4.5,step);
       presentation.position.y=damp(presentation.position.y,state.product.position[1],4.5,step);
@@ -40,7 +47,12 @@ export function createRenderAdapter({
 
       if(mixer && Number.isFinite(clipDuration)){
         const targetPose=Math.max(0,Math.min(1,state.product.pose));
-        renderedPose=renderedPose===null ? targetPose : damp(renderedPose,targetPose,9.0,step);
+        if(renderedPose===null) renderedPose=targetPose;
+        else{
+          const candidate=damp(renderedPose,targetPose,7.2,step);
+          const maxPoseDelta=Math.max(.0015,step*.55);
+          renderedPose += Math.max(-maxPoseDelta,Math.min(maxPoseDelta,candidate-renderedPose));
+        }
         mixer.setTime(renderedPose*clipDuration);
       }
 
