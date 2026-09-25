@@ -251,6 +251,17 @@ function loadModel(){
 
     buildHotspotController(size);
     rebuildAdapter();
+
+    // Model readiness must not depend on network/load speed. Snap once to the
+    // authored state for the current scroll position, then use damping only for
+    // subsequent transitions.
+    const readyBase=sampleAuthoredState();
+    const readyState=composeVisualState(readyBase,interactionState);
+    adapter?.snap?.(readyState);
+    currentComposedState=readyState;
+    publishState(readyState);
+    renderer.render(scene,camera);
+
     document.body.dataset.modelState='ready';
     set3dAvailability(true);
     if(runtimeState) runtimeState.textContent=`${clip?.name || 'GLTF'} / ${clipDuration.toFixed(2)} SEC / LIVE`;
