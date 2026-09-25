@@ -371,3 +371,78 @@ Treat this version as the visual/UIUX freeze for the LeadFlow portfolio showcase
 
 ### Freeze status
 Treat `bcc98f7` / `797dc1f0...` as the final LeadFlow visual/UIUX showcase freeze. Further work should be limited to bug fixes, content corrections, portfolio-link maintenance, or materially new product functionality.
+
+
+## CRM ANALYTICS / NAV / WALKTHROUGH POLISH — superseding production state
+
+- Production source commit: `fb35fcc1c9593dd6699e8127ff7a7bff00b37ebf` (`refine LeadFlow CRM analytics nav and walkthrough`).
+- Latest immutable Cloudflare deployment: https://3d82ce5f.leadflow-ai-bhy.pages.dev
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Frozen legacy remains: https://leadflow-ai-bhy.pages.dev/v1/
+
+### Pipeline Analytics + CRM readability
+- Rebuilt the Demo CRM Pipeline Analytics tab from the old 3-KPI / 2-panel micro-dashboard into a practical operations analytics surface driven by the existing `LeadFlowDashboard.buildDashboardModel(...)` data model.
+- Analytics now includes:
+  - Average score;
+  - High-priority share;
+  - Needs-review queue count;
+  - Immediate-follow-up share;
+  - qualification distribution donut + legend;
+  - recent qualification score trend;
+  - source quality count + average score;
+  - urgency/timeline mix;
+  - average-score priority position + contextual pipeline readout.
+- Fixed the old light-mode Analytics KPI bug where dark cards inherited dark text.
+- CRM typography was raised across Leads / Analytics / Automations / Settings, including threshold outputs, helper copy, status chips, integration details, history text and drawer metadata.
+- Runtime whole-CRM typography/contrast audit reports zero visible text below 12px and zero measured normal-text contrast failures across all four CRM tabs in dark/light at desktop and true 390px.
+- Analytics runtime text floor is 12.5px in the public browser audit.
+
+### Full-width nav + theme control
+- Navbar is now true edge-to-edge/full viewport with a centered `.nav-inner` layout rail.
+- Added an animated appearance pill with moving moon/sun thumb and explicit `Dark` / `Light` label.
+- Theme control updates `aria-pressed` and an action-specific aria-label.
+- Normal phone widths keep the Dark/Light text label; ultra-narrow widths collapse to icon-only.
+- Public true 360px verification: document width 360px, navbar 0–360px, theme label visible, and `Open CRM ↗` remains one line with no overflow.
+
+### Guided walkthrough v2
+- Replaced the old fixed 4-step / 1300ms loop with a 6-stage completion-aware walkthrough.
+- Tour sequence:
+  1. Workflow presentation — waits through a full visible workflow motion cycle.
+  2. Interactive demo — submits the high-priority example and runs all six execution stages.
+  3. Result — only advances after `#execStatus === COMPLETE`.
+  4. CRM Workspace — waits for dashboard analytics/update motion.
+  5. Reliability — exception/human-review safeguards.
+  6. Architecture — implemented system boundaries.
+- Added walkthrough target focus, readable status panel, six-step index, and animated progress rail.
+- Reduced-motion keeps the same logical sequence while shortening presentation holds.
+- Fresh normal-motion runtime proof:
+  - step 1 starts ~0.01s;
+  - step 2 starts ~5.30s;
+  - workflow reaches COMPLETE ~11.65s;
+  - result step starts ~12.67s;
+  - workspace ~15.19s;
+  - reliability ~19.48s;
+  - architecture ~22.51s;
+  - walkthrough completion/close ~26.55s;
+  - zero browser exceptions.
+- Public canonical normal-motion verification independently reproduced the sequence: workflow COMPLETE ~11.75s, result ~12.77s, total ~26.76s.
+
+### Final verification
+- Node suite: 26/26 PASS.
+- Dedicated CRM runtime audit: PASS.
+- Existing final-showcase runtime audit: PASS.
+- New targeted `leadflow_crm_nav_walkthrough_runtime_audit.py`: PASS.
+- Public static verification passed on immutable + canonical.
+- Public true-390 Analytics verification passed in both dark/light:
+  - document width exactly 390px;
+  - runtime Analytics text floor 12.5px;
+  - all four detailed analytics regions render;
+  - light KPI surfaces are white/readable.
+- Public theme interaction verified `Dark → Light` with moving thumb and correct ARIA state.
+- Public normal-motion guided walkthrough verified all 6 steps and waits for workflow completion before result.
+- Root API remains `deterministic-qualification-v2`; Sarah / Acme Dental still returns 92.
+- `/v1/` remains legacy and `/v1/api/qualify` remains `deterministic-qualification-v1`.
+- No changes were made to `v1`, `functions/v1`, or `functions/api/qualify.js`.
+
+### Current freeze state
+Treat `fb35fcc` / `3d82ce5f...` as the current LeadFlow showcase freeze. The Pipeline Analytics readability issue, walkthrough timing defect, navbar width, and Light/Dark toggle presentation have all been superseded by this build.
