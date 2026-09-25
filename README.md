@@ -1,118 +1,342 @@
-# SaamVR — Product Engineering & Automation Portfolio
+<div align="center">
 
-I build practical digital products at the intersection of **AI automation, SaaS, commerce, interactive web experiences, and product design**.
+# SAAMVR
 
-Most of my production product repositories are private. This portfolio is the public evidence layer: it explains the products, architecture, responsibilities, live demonstrations, and engineering decisions without publishing commercial source code.
+### Product Engineering · AI Automation · SaaS · Interactive Web
 
-## Selected work
+**I turn product ideas into working systems — from architecture and automation to interface, testing and deployment.**
 
-| Project | Focus | What it demonstrates | Access |
-| --- | --- | --- | --- |
-| **EZComo / EcomCMS** | Multi-tenant commerce SaaS | Next.js, TypeScript, Supabase, RLS, merchant admin, CMS/page builder, storefront runtime, onboarding, media and platform operations | Private commercial repository |
-| **SM Manager** | Conversational commerce AI | Messenger commerce, stateful conversation pipeline, deterministic cart/order authority, OpenAI-assisted NLU, Supabase, React admin, reliability tooling | Private commercial repository |
-| **Virtual Agent** | Embeddable 3D AI receptionist | Three.js/VRM, semantic avatar behavior, grounded business answers, website navigation/actions, scheduling architecture, tenant isolation | Private product repository |
-| **Booking Agent** | Conversational booking SaaS | Multi-tenant booking architecture, deterministic reservation authority, Supabase/RLS, provider-neutral AI, web-first booking | Private product repository |
-| **LeadFlow AI** | Lead qualification & CRM automation | Qualification workflow, CRM routing, analytics, operations dashboard, workflow/reliability presentation | [Live demo](https://leadflow-ai-bhy.pages.dev/) |
-| **StayPilot Automation OS** | Hotel operations automation | Policy-aware workflows, approvals, event idempotency, audit traces, webhook architecture, durable processing | [Source](https://github.com/SaamVR/staypilot-hotel-os) · [Live demo](https://staypilot-hotel-os.pages.dev/) |
-| **NOVA** | Interactive 3D product web experience | Product storytelling, motion/interaction design, 3D presentation and frontend engineering | Private source / live showcase |
-| **EZComo Homepage** | SaaS product storytelling | Responsive product marketing, animated merchant story/demo and iterative UI/UX refinement | [Public preview repository](https://github.com/SaamVR/ezcomo-homepage-v6-preview) |
+[View Live Portfolio](https://leadflow-ai-bhy.pages.dev/) · [StayPilot Demo](https://staypilot-hotel-os.pages.dev/) · [Public Repositories](https://github.com/SaamVR?tab=repositories)
 
-## Engineering areas
+![Next.js](https://img.shields.io/badge/Next.js-Product_Engineering-111111?style=flat-square&logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-Applications-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Data_%26_Auth-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
+![React](https://img.shields.io/badge/React-Interfaces-20232A?style=flat-square&logo=react)
+![Three.js](https://img.shields.io/badge/Three.js-Interactive_3D-111111?style=flat-square&logo=threedotjs)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-Edge_%26_Deploy-F38020?style=flat-square&logo=cloudflare&logoColor=white)
 
-**AI & automation** — conversational systems, deterministic action boundaries, LLM integrations, agent workflows, workflow orchestration, webhooks, reliability and failure handling.
-
-**Web & SaaS** — React, Next.js, TypeScript, Supabase/PostgreSQL, authentication, RLS, APIs, multi-tenant product architecture, Cloudflare and Railway/Vercel-style deployment workflows.
-
-**Interactive product experiences** — Three.js, VRM/GLB, 3D product presentation, motion systems, responsive UI/UX and product storytelling.
-
-**Product engineering** — requirements → architecture → implementation → QA/stress testing → deployment evidence → iterative refinement.
-
-## Private engineering work
-
-A large part of my substantial engineering work lives in private repositories because it contains product IP, infrastructure details, credentials/configuration boundaries, or commercial implementation.
-
-I do **not** publish private source merely to make the profile look active. Instead:
-
-- GitHub's private-contribution visibility can show activity without exposing repository contents.
-- The case studies here identify the product, problem, architecture, stack and my responsibilities.
-- Public demos and sanitized showcase material provide inspectable evidence where appropriate.
-- Detailed private repository history can be demonstrated during a serious technical review when appropriate.
-
-## Project snapshots
-
-### EZComo / EcomCMS
-
-Bangladesh-first multi-tenant commerce CMS and storefront platform.
-
-**Core stack:** Next.js App Router · React · TypeScript · Tailwind · Supabase Postgres/Auth/RLS/Edge Functions · Cloudinary.
-
-**Product surface:** merchant administration, page-builder CMS, onboarding, media management, tenant storefront rendering, store-scoped commerce data and platform lifecycle/entitlement logic.
-
-**Engineering evidence:** active issue/PR-driven development, production-aware migrations, accessibility work, responsive merchant UI, validation/error-state hardening and release reconciliation.
-
-### SM Manager
-
-Facebook Messenger commerce assistant designed for Bangladeshi f-commerce sellers.
-
-**Core stack:** Express · Supabase · React admin · OpenAI-assisted NLU · Facebook Messenger integration.
-
-**System design:** webhook intake → normalized events → stateful conversation pipeline → deterministic product/cart/order services → persistence → Messenger response and operational admin surfaces.
-
-AI interprets messy customer language; authoritative commerce operations remain deterministic.
-
-### Virtual Agent
-
-Receptionist-first embeddable 3D AI website agent.
-
-**Core concepts:** Three.js + VRM/GLB rendering, lazy embeddable runtime, semantic avatar behavior engine, structured website context, allowlisted website actions and provider-neutral AI/scheduling adapters.
-
-The product direction is a practical receptionist loop: greet → answer grounded questions → guide the visitor → show availability → capture contact details → confirm booking.
-
-### Booking Agent
-
-Multi-tenant conversational booking and customer-growth SaaS for appointment businesses.
-
-**Architecture rule:** AI handles language and conversation; a deterministic reservation engine remains authoritative for availability, inventory/resource identity, pricing, booking, cancellation and rescheduling.
-
-**Initial stack:** Next.js · TypeScript · Supabase Auth/PostgreSQL/RLS · provider-neutral LLM gateway · official channel APIs · Railway.
-
-### LeadFlow AI
-
-Automation-focused portfolio product demonstrating lead qualification, configurable CRM routing, analytics, operational visibility and workflow design.
-
-**[Open the live experience](https://leadflow-ai-bhy.pages.dev/)**
-
-### StayPilot Automation OS
-
-Hotel automation prototype centered on operational workflows rather than static dashboard mockups.
-
-It demonstrates shared operational state, role-aware approvals, execution traces, idempotent event handling, safe webhook patterns, retry/dead-letter concepts and production-aware backend boundaries.
-
-**[View source](https://github.com/SaamVR/staypilot-hotel-os)** · **[Open live demo](https://staypilot-hotel-os.pages.dev/)**
-
-## How I work
-
-My projects generally move through:
-
-**Product problem → system boundaries → architecture → implementation → integration → adversarial/stress testing → release evidence → UX refinement.**
-
-For visual/product work, I iterate from rough direction through approval, implementation and detailed refinement rather than treating the first render as final.
-
-## Public repositories
-
-This account intentionally mixes public demonstrations with private production work. The strongest public-facing entry points are:
-
-- [Portfolio](https://github.com/SaamVR/Portfolio)
-- [StayPilot Automation OS](https://github.com/SaamVR/staypilot-hotel-os)
-- [EZComo Homepage V6 Preview](https://github.com/SaamVR/ezcomo-homepage-v6-preview)
-- [VR / interactive work](https://github.com/SaamVR/vr)
-
-## Verification
-
-Claims in this portfolio should be treated as project documentation, not as a substitute for repository evidence. Where source is private, I can demonstrate appropriate repository history, architecture and implementation evidence during a technical review without exposing commercial IP publicly.
+</div>
 
 ---
 
-**GitHub:** [@SaamVR](https://github.com/SaamVR)
+## Selected Products
 
-> This portfolio is being expanded with sanitized case studies, architecture diagrams and project-specific engineering evidence.
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🛒 EZComo / EcomCMS
+**Multi-tenant commerce SaaS**
+
+A Bangladesh-first commerce platform combining merchant administration, a page-builder CMS, tenant storefront runtime, onboarding, media management and store-scoped commerce data.
+
+**Engineering:** Next.js · React · TypeScript · Supabase · PostgreSQL · Auth · RLS · Edge Functions · Cloudinary
+
+**What it demonstrates:** multi-tenant architecture, commerce product design, CMS systems, data isolation and production-aware platform engineering.
+
+🔒 **Private commercial repository**
+
+</td>
+<td width="50%" valign="top">
+
+### 💬 SM Manager
+**Conversational commerce AI**
+
+A Facebook Messenger commerce assistant for Bangladeshi f-commerce sellers. Customer language flows through a stateful conversation pipeline while product, variant, cart and order operations remain deterministic.
+
+**Engineering:** Express · React · Supabase · OpenAI-assisted NLU · Messenger integration · reliability tooling
+
+**What it demonstrates:** conversational architecture, structured commerce actions, state management, operational tooling and failure-resistant AI boundaries.
+
+🔒 **Private commercial repository**
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🧑‍💼 Virtual Agent
+**Embeddable 3D AI receptionist**
+
+A receptionist-first website agent that combines an interactive 3D avatar with grounded business answers, website guidance and appointment-booking architecture.
+
+**Engineering:** Three.js · VRM/GLB · semantic behavior engine · Context Bridge · allowlisted Action Bridge · provider-neutral AI/scheduling adapters
+
+**What it demonstrates:** AI + 3D interaction design, embeddable runtimes, controlled agent actions and performance-aware frontend architecture.
+
+🔒 **Private product repository**
+
+</td>
+<td width="50%" valign="top">
+
+### 📅 Booking Agent
+**Conversational booking SaaS**
+
+A multi-tenant booking and customer-growth platform for hotels, salons, clinics and appointment businesses.
+
+**Engineering:** Next.js · TypeScript · Supabase Auth/PostgreSQL/RLS · provider-neutral Semantic Gateway · official channel APIs · Railway
+
+**Architecture principle:** AI manages language and conversation; the deterministic reservation engine owns availability, pricing, inventory and booking mutations.
+
+🔒 **Private product repository**
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### ⚡ LeadFlow AI
+**Lead qualification & CRM automation**
+
+An interactive automation product demonstrating lead qualification, configurable CRM routing, analytics, operational visibility and workflow/reliability design.
+
+**What it demonstrates:** business automation, workflow UX, CRM logic, operations dashboards and production-oriented presentation.
+
+➡️ **[Open live experience](https://leadflow-ai-bhy.pages.dev/)**
+
+</td>
+<td width="50%" valign="top">
+
+### 🏨 StayPilot Automation OS
+**Hotel operations automation**
+
+A policy-aware hotel automation system built around shared operational state, approvals, event processing and inspectable automation traces.
+
+**What it demonstrates:** role-aware authority, idempotent events, webhook architecture, retries/dead-lettering, auditability and safe automation boundaries.
+
+➡️ **[Live demo](https://staypilot-hotel-os.pages.dev/)** · **[Source](https://github.com/SaamVR/staypilot-hotel-os)**
+
+</td>
+</tr>
+</table>
+
+### 🎧 NOVA — Interactive 3D Product Experience
+
+A product-storytelling experiment focused on scroll-driven 3D presentation, product viewpoints, interaction choreography, responsive motion and polished frontend experience.
+
+**Focus:** Three.js/WebGL-style product presentation · animation systems · interaction design · UI/UX · product storytelling
+
+🔒 Private development source / showcase project
+
+### 🏪 EZComo Product Website
+
+Responsive SaaS marketing and product storytelling for the EZComo commerce platform, including animated merchant demonstrations and iterative UI/UX refinement.
+
+➡️ **[Public V6 preview source](https://github.com/SaamVR/ezcomo-homepage-v6-preview)**
+
+---
+
+## What I Build
+
+| AI & Automation | SaaS & Web Products | Interactive Experiences |
+| --- | --- | --- |
+| Conversational systems | Multi-tenant applications | Three.js / VRM / GLB |
+| LLM integrations | React / Next.js / TypeScript | 3D product presentation |
+| Agent/action boundaries | Supabase / PostgreSQL / RLS | Motion & interaction systems |
+| Workflow orchestration | Auth, APIs & webhooks | Responsive UI/UX |
+| Reliability & failure handling | Cloud/edge deployment | Product storytelling |
+
+I work across the product lifecycle rather than treating design, frontend, backend and automation as isolated disciplines.
+
+---
+
+## Engineering Approach
+
+```text
+Product problem
+      ↓
+System boundaries & authority
+      ↓
+Architecture / data contracts
+      ↓
+Implementation
+      ↓
+Integration & workflow validation
+      ↓
+Stress / adversarial testing
+      ↓
+Release evidence
+      ↓
+UX + product refinement
+```
+
+A recurring principle across my AI products is **controlled intelligence**: language models interpret ambiguous human input, while deterministic services retain authority over consequential business state such as price, stock, cart contents, bookings, permissions and approvals.
+
+---
+
+## Private Work, Public Evidence
+
+Most substantial product development on this account is intentionally private because those repositories contain commercial IP, infrastructure details or unreleased product implementation.
+
+That does **not** mean the work is absent from the portfolio.
+
+| Public evidence | What it communicates |
+| --- | --- |
+| GitHub contribution activity | Development continuity over time |
+| These project case studies | Product scope, architecture and responsibilities |
+| Live demonstrations | Working UX and product behavior |
+| Public showcase repositories | Inspectable implementation where safe |
+| Architecture / technical documentation | Engineering reasoning and system boundaries |
+| Private technical review | Repository history and implementation evidence when appropriate |
+
+I do not publish proprietary source simply to inflate public repository activity.
+
+---
+
+## Featured Engineering Themes
+
+<details open>
+<summary><b>🤖 AI systems that can safely take actions</b></summary>
+
+<br>
+
+My automation projects separate **interpretation** from **authority**. AI can understand a customer request, but validated application services decide whether a cart, order, booking, approval or external action is actually permitted.
+
+This pattern appears across SM Manager, Booking Agent, Virtual Agent and automation-oriented portfolio work.
+
+</details>
+
+<details>
+<summary><b>🧱 Multi-tenant SaaS architecture</b></summary>
+
+<br>
+
+EZComo, Booking Agent and related products are designed around tenant-aware data, authentication, authorization boundaries, store/business-scoped state and explicit production contracts rather than single-user demo assumptions.
+
+</details>
+
+<details>
+<summary><b>🛡️ Reliability before “AI magic”</b></summary>
+
+<br>
+
+I use deterministic fallbacks, validation, idempotency, bounded retries, explicit failure states, audit traces and stress testing where workflows affect real business state.
+
+</details>
+
+<details>
+<summary><b>✨ Design + engineering in the same workflow</b></summary>
+
+<br>
+
+My background also covers visual design and interactive experiences, so product development includes information hierarchy, responsive behavior, motion, storytelling and usability alongside technical architecture.
+
+</details>
+
+---
+
+## Project Evidence
+
+### EZComo / EcomCMS — Commerce Platform
+
+**Problem:** small merchants need a storefront and commerce-management system that remains usable on mobile while supporting multiple store identities and configurable presentation.
+
+**Built around:** tenant storefront rendering, merchant admin, CMS schemas/templates, onboarding, media management, commerce data and platform lifecycle logic.
+
+**Technical foundation:** Next.js App Router, React, TypeScript, Tailwind, Supabase Postgres/Auth/RLS/Edge Functions and Cloudinary-assisted media.
+
+**Engineering emphasis:** tenant isolation, responsive administration, reusable CMS contracts, validation, migration discipline and production-aware workflows.
+
+---
+
+### SM Manager — Conversational Commerce
+
+**Problem:** real customer messages are messy—Bangla, Banglish, English, typos, incomplete requests and multi-turn corrections—while commerce state must remain exact.
+
+**Runtime model:**
+
+```text
+Messenger webhook
+      ↓
+normalized customer event
+      ↓
+stateful conversation pipeline
+      ↓
+intent / product / variant resolution
+      ↓
+deterministic cart + order services
+      ↓
+Supabase persistence
+      ↓
+customer response + admin visibility
+```
+
+**Engineering emphasis:** state-aware conversation handling, deterministic commerce authority, structured responses, recovery/fallback behavior and operational QA.
+
+---
+
+### Virtual Agent — 3D AI Receptionist
+
+**Product loop:**
+
+```text
+Visitor lands
+ → lightweight greeting
+ → asks a question
+ → grounded business answer
+ → page guidance / approved action
+ → real availability
+ → contact capture
+ → confirmed booking
+```
+
+The avatar runtime is intentionally separated from the language model: the model does not directly manipulate individual bones or frames. Semantic behavior is translated through a controlled behavior layer.
+
+---
+
+### Booking Agent — Reservation Authority + Conversational UX
+
+The core architectural boundary is simple:
+
+> **AI interprets the request. The reservation engine decides what is true and what may change.**
+
+That keeps availability, pricing, inventory/resource identity, booking creation, cancellation and rescheduling behind deterministic authority while preserving a natural conversational interface.
+
+---
+
+### StayPilot — Observable Automation
+
+StayPilot focuses on the parts automation demos often omit: authority, approvals, execution traces, idempotency, retries, paused states, safe outbound integrations and inspectable operational behavior.
+
+**[Explore the public repository →](https://github.com/SaamVR/staypilot-hotel-os)**  
+**[Run the live demo →](https://staypilot-hotel-os.pages.dev/)**
+
+---
+
+## Tooling & Technologies
+
+<div align="center">
+
+**Frontend & Product**  
+React · Next.js · TypeScript · JavaScript · HTML/CSS · Three.js
+
+**Backend & Data**  
+Node.js · Express · PostgreSQL · Supabase · REST APIs · Webhooks
+
+**AI & Automation**  
+LLM integrations · conversational pipelines · semantic gateways · structured actions · workflow orchestration
+
+**Infrastructure & Quality**  
+GitHub Actions · Cloudflare · Railway · Vercel · RLS · CI validation · browser QA · stress testing
+
+</div>
+
+---
+
+## Working With Me
+
+I am most interested in work where **product thinking, automation and implementation overlap**—AI-enabled SaaS, business workflow automation, interactive product sites, dashboards, commerce systems and agent-like customer experiences.
+
+For commercial/private projects, I can walk through appropriate architecture, repository history and implementation evidence during a technical review without publishing proprietary code.
+
+<div align="center">
+
+### Explore the work
+
+**[LeadFlow AI](https://leadflow-ai-bhy.pages.dev/)** · **[StayPilot](https://staypilot-hotel-os.pages.dev/)** · **[StayPilot Source](https://github.com/SaamVR/staypilot-hotel-os)** · **[EZComo Preview](https://github.com/SaamVR/ezcomo-homepage-v6-preview)**
+
+<br>
+
+**[@SaamVR on GitHub](https://github.com/SaamVR)**
+
+</div>
