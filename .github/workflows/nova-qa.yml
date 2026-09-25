@@ -283,29 +283,40 @@ jobs:
             const {page}=await readyPage(context,'mobile-interactions');
 
             await scrollProgress(page,.18);
-            const hotspot=page.locator('[data-hotspot="cushion"]');
-            await page.waitForFunction(()=>document.querySelector('[data-hotspot="cushion"]')?.dataset.visible==='true');
-            await hotspot.tap();
+            const cushionDetail=page.locator('[data-design-detail="cushion"]');
+            await cushionDetail.tap();
             await page.waitForFunction(()=>{
-              const el=document.querySelector('[data-hotspot="cushion"]');
-              const label=el?.querySelector('span');
-              return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
+              const marker=document.querySelector('[data-hotspot="cushion"]');
+              const detail=document.querySelector('[data-design-detail="cushion"]');
+              return document.body.dataset.designDetail==='cushion'
+                && detail?.getAttribute('aria-pressed')==='true'
+                && marker?.getAttribute('aria-expanded')==='true'
+                && marker?.dataset.visible==='true';
             });
-            const expandedLabel=await hotspot.locator('span').evaluate(el=>{
-              const rect=el.getBoundingClientRect();
+            const cushionState=await page.evaluate(()=>{
+              const marker=document.querySelector('[data-hotspot="cushion"]');
+              const rect=marker.getBoundingClientRect();
               return {
-                display:getComputedStyle(el).display,
-                text:el.textContent?.trim()||'',
-                labelRect:{left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom},
+                detail:document.body.dataset.designDetail,
+                opacity:Number(getComputedStyle(marker).opacity),
+                pointer:getComputedStyle(marker).pointerEvents,
+                markerRect:{left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom},
                 viewport:{width:innerWidth,height:innerHeight}
               };
             });
-            if(expandedLabel.display==='none'||!expandedLabel.text) throw new Error('expanded hotspot label missing '+JSON.stringify(expandedLabel));
-            if(expandedLabel.labelRect.left<8||expandedLabel.labelRect.right>expandedLabel.viewport.width-8){
-              throw new Error('expanded hotspot label outside viewport '+JSON.stringify(expandedLabel));
-            }
-            await page.screenshot({path:'nova-qa/mobile_hotspot_detail.png'});
-            await hotspot.tap();
+            if(cushionState.opacity<.5) throw new Error('mobile cushion marker not visible '+JSON.stringify(cushionState));
+            if(cushionState.pointer!=='none') throw new Error('mobile moving marker should not own touch '+JSON.stringify(cushionState));
+            await page.screenshot({path:'nova-qa/mobile_design_detail_cushion.png'});
+
+            const controlsDetail=page.locator('[data-design-detail="controls"]');
+            await controlsDetail.tap();
+            await page.waitForFunction(()=>{
+              const marker=document.querySelector('[data-hotspot="controls"]');
+              return document.body.dataset.designDetail==='controls'
+                && document.querySelector('[data-design-detail="controls"]')?.getAttribute('aria-pressed')==='true'
+                && marker?.getAttribute('aria-expanded')==='true';
+            });
+            await page.screenshot({path:'nova-qa/mobile_design_detail_controls.png'});
 
             await scrollProgress(page,.36);
             await page.locator('[data-listening-mode="ambient"]').tap();
