@@ -30,7 +30,7 @@ const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.72,foldedPose:.50,duration:.92});
+const foldController = createFoldController({openPose:.28,foldedPose:.40,duration:.88});
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
@@ -63,7 +63,7 @@ try{
   canvas.hidden=true;
   set3dAvailability(false);
   if(runtimeState) runtimeState.textContent='STATIC MODE / 3D UNAVAILABLE';
-  console.warn('NOVA WebGL renderer unavailable; continuing with static product experience.',error);
+  console.warn('QC Ultra visualization WebGL renderer unavailable; continuing with static product experience.',error);
 }
 
 const scene=new THREE.Scene();
@@ -255,13 +255,13 @@ function loadModel(){
     set3dAvailability(true);
     if(runtimeState) runtimeState.textContent=`${clip?.name || 'GLTF'} / ${clipDuration.toFixed(2)} SEC / LIVE`;
   },xhr=>{
-    if(xhr.total && runtimeState) runtimeState.textContent=`LOADING NOVA / ${Math.round(xhr.loaded/xhr.total*100)}%`;
+    if(xhr.total && runtimeState) runtimeState.textContent=`LOADING QC ULTRA / ${Math.round(xhr.loaded/xhr.total*100)}%`;
   },error=>{
     document.body.dataset.modelState='error';
     set3dAvailability(false);
     hideHotspots();
     if(runtimeState) runtimeState.textContent='3D MODEL UNAVAILABLE';
-    console.error('NOVA GLTF load failed',error);
+    console.error('QC Ultra visualization GLTF load failed',error);
   });
 }
 
