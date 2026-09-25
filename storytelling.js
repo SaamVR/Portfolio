@@ -60,7 +60,11 @@
       STORY_NAMES.forEach(nextStoryEpoch);
       cancelAnimations();
       document?.documentElement?.classList?.remove("story-active");
-      document?.querySelectorAll?.(".story-focus")?.forEach?.(el=>el.classList.remove("story-focus"));
+      document?.querySelectorAll?.(".story-focus,.ops-story-focus,.incident-focus,.arch-story-focus")?.forEach?.(el=>{
+        el.classList.remove("story-focus","ops-story-focus","incident-focus","arch-story-focus");
+      });
+      document?.querySelector?.(".ops-dashboard")?.classList?.remove("ops-story-playing");
+      document?.querySelectorAll?.('[data-story-state="playing"]')?.forEach?.(el=>{el.dataset.storyState="cancelled"});
     }
 
     function wait(ms,context){
@@ -133,6 +137,7 @@
 
       async function setBeat(index,title,copy,hold=620){
         if(context.cancelled())return false;
+        storyOptions.onProgress?.({story:"workflow",fraction:(index+1)/4,beat:title});
         stages.forEach((stage,i)=>stage.classList.toggle("story-focus",i===index));
         if(caption)caption.textContent=title;
         if(detail)detail.textContent=copy;
@@ -220,6 +225,7 @@
 
       for(let index=0;index<4;index++){
         if(context.cancelled())return;
+        storyOptions.onProgress?.({story:"reliability",fraction:(index+1)/4,beat:config.beats[index][0]});
         beats.forEach((beat,i)=>beat.classList.toggle("incident-focus",i===index));
         const title=q("#incidentBeatTitle"+index),copy=q("#incidentBeatCopy"+index);
         if(title)title.textContent=config.beats[index][0];
@@ -265,8 +271,11 @@
       }
       storyOptions.renderBefore?.(story);
 
+      let focusCount=0;
       const focus=async(selector,title,copy,region,hold=520)=>{
         if(context.cancelled())return false;
+        focusCount+=1;
+        storyOptions.onProgress?.({story:"operations",fraction:Math.min(1,focusCount/8),beat:title});
         qa("#workspace .ops-story-focus").forEach(el=>el.classList.remove("ops-story-focus"));
         const target=q(selector);
         target?.classList.add("ops-story-focus");
@@ -334,7 +343,10 @@
         ],{duration:context.reducedMotion?1:duration,easing:"cubic-bezier(.22,.75,.2,1)",fill:"forwards"});
         el.style.transform="translate3d("+(to.x-ox)+"px,"+(to.y-oy)+"px,0)";
       };
+      let architectureProgress=0;
       const focus=async(node,title,copy,hold=560)=>{
+        architectureProgress+=1;
+        storyOptions.onProgress?.({story:"architecture",fraction:Math.min(1,architectureProgress/5),beat:title});
         qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus"));
         node.classList.add("arch-story-focus");
         if(caption)caption.textContent=title;

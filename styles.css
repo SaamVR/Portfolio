@@ -2823,3 +2823,28 @@ html[data-theme=light] .architecture-payload{background:#155D3D;color:#FFFFFF}
   #architecture [data-arch-node],
   #architecture .arch-arrow{transition:none!important;animation:none!important}
 }
+
+/* V3 guided story director */
+.tour-status-copy{gap:4px}
+.tour-status-copy>#tourChapter{
+  font:650 12px/1.35 var(--font-mono);
+  letter-spacing:.06em;
+  color:var(--accent-readable,var(--accent));
+}
+.tour-status-copy>#tourLabel{
+  font-size:13.5px;
+  line-height:1.35;
+  color:var(--text-primary,var(--text));
+}
+.tour-status-copy>#tourBeat{
+  display:block;
+  min-height:17px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--text-secondary,var(--muted));
+}
+.tour-status .tour-progress{margin-top:4px}
+@media(max-width:680px){
+  .tour-status-copy>#tourLabel{font-size:13px}
+  .tour-status-copy>#tourBeat{font-size:12px}
+}

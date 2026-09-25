@@ -31,7 +31,7 @@ function workflowStoryLead(){
   const qual=scoreLead(data);
   return {...data,...qual,action:qual.action};
 }
-function playWorkflowStory(){return storyDirector?.playWorkflowStory({lead:workflowStoryLead()})||Promise.resolve({status:"complete",story:"workflow"})}
+function playWorkflowStory(options={}){return storyDirector?.playWorkflowStory({lead:workflowStoryLead(),...options})||Promise.resolve({status:"complete",story:"workflow"})}
 
 async function qualifyOnServer(data,settings){const proof=$("#backendProof"),status=$("#backendStatus"),trace=$("#backendTrace"),started=performance.now();try{proof.className="backend-proof checking";status.textContent="CONTACTING SERVER";trace.textContent="POST /api/qualify";const r=await fetch("/api/qualify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...data,thresholds:{hot:settings.hot,review:settings.review}})}),p=await r.json();if(!r.ok||!p.ok||!p.qualification)throw new Error();const ms=Math.max(1,Math.round(performance.now()-started));proof.className="backend-proof live";status.textContent="LIVE API RESPONSE";trace.textContent="trace "+String(p.traceId||"").slice(0,8)+" · "+ms+"ms";return{...p.qualification,serverMs:ms,traceId:p.traceId}}catch{proof.className="backend-proof fallback";status.textContent="BROWSER FALLBACK ACTIVE";trace.textContent="server unavailable";return null}}
 function makeSummary(data,qual){const clean=data.need.trim().replace(/[.!]+$/,"").replace(/^(we|i)\s+(need|want)\s+/i,"").replace(/^need\s+/i,""),need=clean?clean.charAt(0).toLowerCase()+clean.slice(1):"workflow support";if(qual.status==="hot")return data.company+" needs "+need+". The selected budget and timeline support a sales review.";if(qual.status==="review")return data.company+" needs "+need+". The current score supports human review before a sales handoff.";return data.company+" is exploring "+need+". Current budget, urgency, or intent signals support nurture rather than immediate sales review."}
@@ -69,10 +69,10 @@ const edgeCases={duplicate:[["duplicate.search","Actual demo criterion: normaliz
 function renderReliabilityLog(scenario){
   $("#reliabilityLog").innerHTML=(edgeCases[scenario]||[]).map(([c,m,state])=>'<div class="'+state+'"><code>'+escapeHtml(c)+'</code><span>'+escapeHtml(m)+'</span></div>').join("");
 }
-function playReliabilityStory(scenario){
+function playReliabilityStory(scenario,options={}){
   $$("[data-edge]").forEach(btn=>btn.classList.toggle("active",btn.dataset.edge===scenario));
   renderReliabilityLog(scenario);
-  return storyDirector?.playReliabilityStory(scenario,{settings:readSettings(),recordCount:leads.length,score:67})||Promise.resolve({status:"complete",story:"reliability"});
+  return storyDirector?.playReliabilityStory(scenario,{settings:readSettings(),recordCount:leads.length,score:67,...options})||Promise.resolve({status:"complete",story:"reliability"});
 }
 $$("[data-edge]").forEach(btn=>btn.addEventListener("click",()=>playReliabilityStory(btn.dataset.edge)));
 let opsActivity=[];
@@ -226,7 +226,7 @@ function renderOperationsStoryRegion(region,story){
   if(region==="rows")renderOpsRows(rowLeads,model);
   if(region==="activity")renderOpsActivity(rowLeads);
 }
-function playLeadOperationsStory(){
+function playLeadOperationsStory(options={}){
   const story=getOperationsStoryContext();
   if(!story)return Promise.resolve({status:"complete",story:"operations"});
   $("#opsStoryReplay").disabled=false;
@@ -234,7 +234,8 @@ function playLeadOperationsStory(){
     storyContext:story,
     renderBefore:state=>renderOpsModel(state.beforeModel,state.beforeLeads,{motion:false,activity:true}),
     renderRegion:renderOperationsStoryRegion,
-    renderFinal:()=>renderOps()
+    renderFinal:()=>renderOps(),
+    ...options
   })||Promise.resolve({status:"complete",story:"operations"});
 }
 function workspaceStoryVisible(){
@@ -330,10 +331,29 @@ function openCrm(){crmReturnFocus=document.activeElement instanceof HTMLElement?
 function closeLeadDrawer(){$("#leadDrawer").classList.remove("open");$$('#crmRows tr').forEach(r=>{r.classList.remove('selected');r.removeAttribute('aria-current')});if(drawerReturnFocus?.isConnected)drawerReturnFocus.focus()}$("#closeDrawer").addEventListener("click",closeLeadDrawer);function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;drawerReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;$("#drawerName").textContent=l.name;$("#drawerCompany").textContent=l.company;$("#drawerScore").textContent=l.score;$("#drawerStatus").textContent=l.status==="hot"?"HIGH PRIORITY":l.status==="review"?"NEEDS REVIEW":"NURTURE";$("#drawerNeed").textContent=l.need;$("#drawerBudget").textContent=l.budgetLabel;$("#drawerTimeline").textContent=l.timelineLabel;$("#drawerSummary").textContent=l.summary;$("#drawerFollowup").textContent=l.followup;$$('#crmRows tr').forEach(r=>{const sel=r.dataset.id===id;r.classList.toggle('selected',sel);if(sel)r.setAttribute('aria-current','true');else r.removeAttribute('aria-current')});$("#leadDrawer").classList.add("open");setTimeout(()=>$("#closeDrawer").focus(),40)}
 $("#showFollowup").addEventListener("click",()=>{if(!currentLead)return;followupReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;$("#followupTitle").textContent="Follow-up draft for "+currentLead.name;$("#followupSubject").textContent=currentLead.subject;$("#followupBody").textContent=currentLead.followup;$("#followupModal").classList.add("open");$("#followupModal").setAttribute("aria-hidden","false");setTimeout(()=>$("#closeFollowup").focus(),40)});function closeFollow(){$("#followupModal").classList.remove("open");$("#followupModal").setAttribute("aria-hidden","true");if(followupReturnFocus?.isConnected)followupReturnFocus.focus()}$("#closeFollowup").addEventListener("click",closeFollow);$("#followupModal").addEventListener("click",e=>{if(e.target===$("#followupModal"))closeFollow()});
 let guided=false,cancelled=false;
-function setTourStatus(index,total,label){
+const tourChapters=[
+  ["FOLLOW THE LEAD","See one lead move through the workflow."],
+  ["RUN IT FOR REAL","Execute the real six-stage demo workflow."],
+  ["WHY 92?","Read the score, rationale, and prepared next action."],
+  ["OPERATIONS","Watch one lead change the operational dashboard."],
+  ["SAFETY","See a simulated timeout without pretending a retry ran."],
+  ["UNDER THE HOOD","Trace the same lead through the implementation."]
+];
+function updateTourProgress(index,total,{fraction=0,beat=""}={}){
+  const safeFraction=Math.max(0,Math.min(1,Number(fraction)||0));
   $("#tourIndex").textContent=index+" / "+total;
-  $("#tourLabel").textContent=label;
-  $("#tourProgressBar").style.width=Math.round(index/total*100)+"%";
+  if(beat){$("#tourBeat").textContent=beat;$("#tourLabel").textContent=beat}
+  $("#tourProgressBar").style.width=Math.round(((index-1)+safeFraction)/total*100)+"%";
+}
+function setTourChapter(index,total,chapter,beat){
+  $("#tourIndex").textContent=index+" / "+total;
+  $("#tourChapter").textContent=chapter;
+  $("#tourLabel").textContent=chapter;
+  $("#tourBeat").textContent=beat;
+  updateTourProgress(index,total,{fraction:0});
+}
+function tourStoryOptions(index,total){
+  return {onProgress:state=>updateTourProgress(index,total,{fraction:state.fraction,beat:state.beat})};
 }
 function resetTourFocus(){
   $$(".tour-focus").forEach(el=>el.classList.remove("tour-focus"));
@@ -344,7 +364,13 @@ function focusTourTarget(selector){
   if(target)target.classList.add("tour-focus");
   return target;
 }
+function scrollTourTarget(selector){
+  const target=focusTourTarget(selector);
+  target?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  return target;
+}
 function endTour(){
+  storyDirector?.cancelAll();
   guided=false;cancelled=true;resetTourFocus();
   $("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");
   $("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';
@@ -353,48 +379,70 @@ function endTour(){
 function finishTour(){
   guided=false;cancelled=false;resetTourFocus();
   $("#tourProgressBar").style.width="100%";
+  $("#tourChapter").textContent="COMPLETE";
   $("#tourLabel").textContent="Walkthrough complete";
-  setTimeout(()=>{if(!guided){$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';$("#tourProgressBar").style.width="0%"}},700);
+  $("#tourBeat").textContent="Workflow, operations, safety, and architecture are now in their settled states.";
+  setTimeout(()=>{if(!guided){$("#tourStatus").classList.remove("open");$("#tourStatus").setAttribute("aria-hidden","true");$("#guidedDemo").disabled=false;$("#guidedDemo").innerHTML='<span>▶</span> Guided walkthrough';$("#tourProgressBar").style.width="0%"}},900);
 }
 function tourHoldMs(ms){
-  return delay(matchMedia("(prefers-reduced-motion: reduce)").matches?Math.min(360,ms):ms);
+  return delay(matchMedia("(prefers-reduced-motion: reduce)").matches?Math.min(320,ms):ms);
 }
 async function waitForWorkflowCompletion(timeout=12000){
   const started=performance.now();
   while(!cancelled&&performance.now()-started<timeout){
-    if($("#execStatus").textContent==="COMPLETE"&&!running)return true;
+    const done=$$("#executionSteps .exec-step.done").length;
+    if(guided)updateTourProgress(2,6,{fraction:Math.min(.96,Math.max(.08,done/6)),beat:done?done+" of 6 execution stages complete":"Submitting the lead…"});
+    if($("#execStatus").textContent==="COMPLETE"&&!running){if(guided)updateTourProgress(2,6,{fraction:1,beat:"All six execution stages complete"});return true}
     await delay(90);
   }
   return false;
 }
-async function visitTourStep(selector,index,total,label,hold){
-  if(cancelled)return false;
-  setTourStatus(index,total,label);
-  const target=focusTourTarget(selector);
-  target?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
-  await tourHoldMs(hold);
-  return !cancelled;
-}
 async function runGuidedWalkthrough(){
   if(guided||running)return;
   guided=true;cancelled=false;
+  storyDirector?.cancelAll();
   $("#guidedDemo").disabled=true;$("#guidedDemo").innerHTML='<span>●</span> Walkthrough running';
   $("#tourStatus").classList.add("open");$("#tourStatus").setAttribute("aria-hidden","false");
   const total=6;
-  if(!await visitTourStep("#workflow",1,total,"Watch the four-stage workflow complete a full motion cycle",5200))return;
-  setTourStatus(2,total,"Run a real example through all six execution stages");
-  focusTourTarget("#demo")?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
-  await tourHoldMs(650);
+
+  workflowStoryPlayed=true;
+  setTourChapter(1,total,...tourChapters[0]);
+  scrollTourTarget("#workflow");
+  let storyResult=await playWorkflowStory(tourStoryOptions(1,total));
+  if(cancelled||storyResult.status==="cancelled")return;
+
+  setTourChapter(2,total,...tourChapters[1]);
+  scrollTourTarget("#demo");
+  await tourHoldMs(420);
   $('[data-lead-preset="hot"]')?.click();
   $("#leadForm").requestSubmit();
   const completed=await waitForWorkflowCompletion();
   if(!completed||cancelled){if(!cancelled)endTour();return}
-  await tourHoldMs(900);
-  if(!await visitTourStep("#resultCard",3,total,"Read the completed score, rationale, and prepared next action",2600))return;
-  renderOps();replayDashboardMotion();
-  if(!await visitTourStep("#workspace",4,total,"Let the CRM analytics and operational dashboard finish updating",4200))return;
-  if(!await visitTourStep("#reliability",5,total,"Review exception handling and human-review safeguards",3000))return;
-  if(!await visitTourStep("#architecture",6,total,"Finish on the implemented architecture and system boundaries",3400))return;
+
+  setTourChapter(3,total,...tourChapters[2]);
+  scrollTourTarget("#resultCard");
+  updateTourProgress(3,total,{fraction:.35,beat:"92 / 100 · high priority"});
+  await tourHoldMs(1100);
+  updateTourProgress(3,total,{fraction:1,beat:"Sales review is prepared, not sent"});
+  if(cancelled)return;
+
+  pendingOpsStory=false;
+  setTourChapter(4,total,...tourChapters[3]);
+  scrollTourTarget("#workspace");
+  storyResult=await playLeadOperationsStory(tourStoryOptions(4,total));
+  if(cancelled||storyResult.status==="cancelled")return;
+
+  setTourChapter(5,total,...tourChapters[4]);
+  scrollTourTarget("#reliability");
+  storyResult=await playReliabilityStory("timeout",tourStoryOptions(5,total));
+  if(cancelled||storyResult.status==="cancelled")return;
+
+  architectureStoryPlayed=true;
+  setTourChapter(6,total,...tourChapters[5]);
+  scrollTourTarget("#architecture");
+  storyResult=await playArchitectureStory(tourStoryOptions(6,total));
+  if(cancelled||storyResult.status==="cancelled")return;
+
   if(!cancelled)finishTour();
 }
 $("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
@@ -412,7 +460,7 @@ if("IntersectionObserver" in window){
   },{threshold:[.42]});
   workflowStoryObserver.observe($("#workflow"));
 }
-function playArchitectureStory(){return storyDirector?.playArchitectureStory({lead:workflowStoryLead()})||Promise.resolve({status:"complete",story:"architecture"})}
+function playArchitectureStory(options={}){return storyDirector?.playArchitectureStory({lead:workflowStoryLead(),...options})||Promise.resolve({status:"complete",story:"architecture"})}
 $("#architectureReplay")?.addEventListener("click",()=>playArchitectureStory());
 let architectureStoryPlayed=false;
 let architectureStoryObserver=null;
