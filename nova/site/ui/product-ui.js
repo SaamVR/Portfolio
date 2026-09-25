@@ -3,6 +3,7 @@ const NOISE = new Set(['adaptive','transparency']);
 const FOLD = new Set(['open','fold']);
 const INSPECTION = new Set(['front','side','rear']);
 const TOUR_ORDER = ['comfort','fold','controls'];
+const CONTROL_ORDER = ['power','multifunction','volume'];
 const NAV_TARGET = {
   design:'#design',
   spatial:'#sound',
@@ -13,17 +14,18 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'Spatial opens the presentation for a wider, more immersive listening feel.',
-  focus:'Focus reduces surrounding motion so attention stays tightly centered.',
-  ambient:'Ambient keeps the visual field open to the world around you.'
+  spatial:'Bose Immersive Audio expands the presentation beyond the earcups for a spatialized listening experience.',
+  focus:'Cinema Mode moves the soundstage forward and emphasizes dialogue for video, podcasts and spoken-word content.',
+  ambient:'Standard listening settles the spatial treatment for conventional stereo playback.'
 };
 const NOISE_COPY = {
-  adaptive:'Adaptive represents focused isolation in this concept demonstration.',
-  transparency:'Transparency represents awareness and a more open connection to the environment.'
+  adaptive:'Quiet Mode prioritizes noise cancellation for focused listening.',
+  transparency:'Aware Mode keeps environmental sound present; ActiveSense can smooth sudden noise spikes.'
 };
 
 const actions = {};
 let bound = false;
+let manualControlInput = null;
 
 function setPressed(selector,value,dataKey){
   document.querySelectorAll(selector).forEach(button => {
@@ -62,7 +64,6 @@ export function bindProductUI(nextActions={}){
   bound=true;
 
   document.body.dataset.mobileNav='closed';
-  document.body.dataset.notifyConcept='closed';
   document.body.dataset.productFacts='closed';
   document.body.dataset.guidedTour='closed';
 
@@ -101,6 +102,17 @@ export function bindProductUI(nextActions={}){
       if(!INSPECTION.has(view) || button.disabled) return;
       setPressed('[data-inspection-view]',view,'inspectionView');
       actions.setInspectionView?.(view);
+    });
+  });
+
+  document.querySelectorAll('[data-control-input]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      manualControlInput=button.dataset.controlInput;
+      document.querySelectorAll('[data-control-input]').forEach(item=>{
+        item.setAttribute('aria-current',String(item===button));
+      });
+      document.body.dataset.controlInput=manualControlInput;
+      actions.focusControlInput?.(manualControlInput);
     });
   });
 
@@ -185,30 +197,7 @@ export function bindProductUI(nextActions={}){
   factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
   document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
 
-  const notifyTrigger=document.querySelector('#notifyConcept');
-  const notifyPanel=document.querySelector('#notifyPanel');
-  const notifyShell=document.querySelector('.interest-shell');
-  const setNotifyOpen=open=>setDialog({
-    open,bodyKey:'notifyConcept',trigger:notifyTrigger,panel:notifyPanel,shell:notifyShell,focusTarget:notifyPanel
-  });
-  notifyTrigger?.addEventListener('click',()=>setNotifyOpen(true));
-
-  const notifyForm=document.querySelector('#notifyDemoForm');
-  const notifyStatus=document.querySelector('#notifyDemoStatus');
-  notifyForm?.addEventListener('submit',event=>{
-    event.preventDefault();
-    const input=notifyForm.querySelector('input[type="email"]');
-    if(!input?.checkValidity()){
-      input?.reportValidity();
-      return;
-    }
-    notifyForm.dataset.state='confirmed';
-    if(notifyStatus) notifyStatus.textContent='Preview confirmed / no data was sent';
-    input.value='';
-  });
-  document.querySelectorAll('[data-notify-close]').forEach(button=>button.addEventListener('click',()=>setNotifyOpen(false)));
-
-  const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
+  const projectBrief='I would like an interactive 3D product website like this QuietComfort Ultra portfolio concept, adapted to my real product, verified specifications, brand assets and conversion goal.';
   const briefButton=document.querySelector('#copyProjectBrief');
   const briefStatus=document.querySelector('#projectBriefStatus');
   briefButton?.addEventListener('click',async()=>{
@@ -222,7 +211,6 @@ export function bindProductUI(nextActions={}){
 
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape') return;
-    if(document.body.dataset.notifyConcept==='open') setNotifyOpen(false);
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);
     if(document.body.dataset.mobileNav==='open') setMobileNav(false);
@@ -242,6 +230,18 @@ export function updateProductUI(state){
     else link.removeAttribute('aria-current');
   });
   document.querySelector('#experienceProgress')?.style.setProperty('width', `${Math.round((state?.progress||0)*100)}%`);
+  if((ui.range || state?.range)==='adaptive'){
+    const automatic=CONTROL_ORDER[Math.min(CONTROL_ORDER.length-1,Math.floor((state?.rangeProgress||0)*CONTROL_ORDER.length))];
+    const active=manualControlInput || automatic;
+    document.body.dataset.controlInput=active;
+    document.querySelectorAll('[data-control-input]').forEach(item=>{
+      item.setAttribute('aria-current',String(item.dataset.controlInput===active));
+    });
+  }else{
+    manualControlInput=null;
+    delete document.body.dataset.controlInput;
+  }
+
   if(state?.interaction){
     setPressed('[data-listening-mode]',state.interaction.listeningMode,'listeningMode');
     setPressed('[data-noise-mode]',state.interaction.noiseMode,'noiseMode');
