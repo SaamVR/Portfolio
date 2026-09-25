@@ -238,9 +238,9 @@ jobs:
             };
 
             const checks=[
-              {id:'cushion',from:.15,to:.17},
-              {id:'headband',from:.19,to:.22},
-              {id:'controls',from:.245,to:.265}
+              {id:'cushion',from:.15,to:.17,expectMotion:true,maxMovement:150},
+              {id:'headband',from:.19,to:.22,expectMotion:false,maxMovement:24},
+              {id:'controls',from:.245,to:.265,expectMotion:true,maxMovement:90}
             ];
             const samples=[];
             for(const check of checks){
@@ -253,10 +253,14 @@ jobs:
               const edgeClamped=[first,second].some(point=>
                 point.x<=margin||point.x>=point.width-margin||point.y<=margin||point.y>=point.height-margin
               );
-              if(!edgeClamped && movement<2){
+              const viewportBound=Math.min(check.maxMovement,Math.max(24,first.width*.38));
+              if(movement>viewportBound){
+                throw new Error(prefix+' '+check.id+' hotspot motion exceeded bounded Design envelope '+JSON.stringify({movement,viewportBound,first,second}));
+              }
+              if(check.expectMotion && !edgeClamped && movement<2){
                 throw new Error(prefix+' '+check.id+' hotspot should track authored Design motion '+JSON.stringify({movement,first,second}));
               }
-              samples.push({id:check.id,movement,edgeClamped,first,second});
+              samples.push({id:check.id,movement,edgeClamped,expectMotion:check.expectMotion,viewportBound,first,second});
             }
 
             fs.writeFileSync('nova-qa/'+prefix+'_hotspot_motion.json',JSON.stringify(samples,null,2));
