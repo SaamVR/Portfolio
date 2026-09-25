@@ -112,7 +112,7 @@ jobs:
               standardBattery:document.body.innerText.includes('30 hrs NC on / 40 hrs NC off'),
               ldacBattery:document.body.innerText.includes('26 hrs NC on / 36 hrs NC off'),
               multipoint:document.body.innerText.includes('Multipoint: 2 devices'),
-              wiredCaveat:document.body.innerText.includes('Bluetooth is unavailable while the supplied headphone cable is connected'),
+              wiredCaveat:document.querySelector('#productFactsPanel')?.textContent.includes('Bluetooth is unavailable while the supplied headphone cable is connected')||false,
               sourceLinks:[...document.querySelectorAll('#productFactsPanel .reference-source a')].map(a=>a.href)
             }));
             const officialSources=[
