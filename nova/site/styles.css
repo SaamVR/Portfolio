@@ -875,3 +875,28 @@ body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="
   }
   .design-detail-sequence button>small{grid-column:auto;font-size:11px}
 }
+
+
+/* V3 mobile Design: one horizontal engineering rail keeps the product and headline separate. */
+@media (max-width:700px){
+  .stage--design .stage-inner{padding-bottom:4svh}
+  .design-detail-sequence{
+    display:flex;
+    width:calc(100vw - 22px);
+    max-width:none;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    gap:6px;
+    padding:2px 22px 5px 0;
+  }
+  .design-detail-sequence::-webkit-scrollbar{display:none}
+  .design-detail-sequence button{
+    flex:0 0 min(250px,74vw);
+    min-height:72px;
+    grid-template-columns:28px 68px 1fr;
+    grid-template-rows:1fr;
+    align-items:center;
+  }
+  .design-detail-sequence button>small{grid-column:auto}
+}
