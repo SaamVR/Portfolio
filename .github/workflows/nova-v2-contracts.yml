@@ -30,6 +30,9 @@ jobs:
           if [ -f nova/tests/interaction_contract.mjs ]; then
             node nova/tests/interaction_contract.mjs
           fi
+          if [ -f nova/tests/motion_handoff_contract.mjs ]; then
+            node nova/tests/motion_handoff_contract.mjs
+          fi
       - name: Python contracts
         run: |
           python3 -m pip install -q pytest
