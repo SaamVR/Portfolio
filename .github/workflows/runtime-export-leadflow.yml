@@ -1,0 +1,29 @@
+name: LeadFlow runtime source export
+on:
+  push:
+    branches:
+      - runtime-export/leadflow-20260925
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export exact LeadFlow source
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-runtime-source
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            index.html
+            app.js
+            styles.css
+            favicon.svg
+            functions
+            v1
+            docs/superpowers/specs/2026-09-25-leadflow-visual-dashboard-redesign.md
+            docs/superpowers/plans/2026-09-25-leadflow-visual-dashboard-redesign.md
