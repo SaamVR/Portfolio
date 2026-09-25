@@ -32,6 +32,8 @@ jobs:
           exit 1
       - name: Guided tour motion audit
         run: python3 tests/leadflow_v41_motion_runtime_audit.py
+      - name: Manual motion-control audit
+        run: python3 tests/leadflow_v41_manual_motion_runtime_audit.py
       - name: V4 responsive regression
         run: python3 tests/leadflow_v4_release_matrix.py
       - name: V4 contrast regression
