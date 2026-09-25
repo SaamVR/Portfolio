@@ -4,6 +4,7 @@ export function createRenderAdapter({
   THREE,
   camera,
   presentation,
+  orientation=presentation,
   mixer,
   clipDuration,
   renderer,
@@ -11,7 +12,8 @@ export function createRenderAdapter({
   environment,
   orientationX=-Math.PI/2
 }){
-  if(!THREE || !camera || !presentation || !renderer) throw new Error('render adapter missing required dependencies');
+  if(!THREE || !camera || !presentation || !orientation || !renderer) throw new Error('render adapter missing required dependencies');
+  const splitOrientation=orientation!==presentation;
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
   let renderedPose=null;
   let renderedTarget=null;
@@ -34,8 +36,15 @@ export function createRenderAdapter({
     camera.lookAt(...renderedTarget);
 
     setVec(presentation,'position',state.product.position);
-    presentation.rotation.x=orientationX+state.product.pitch;
-    presentation.rotation.y=state.product.yaw;
+    if(splitOrientation){
+      presentation.rotation.x=0;
+      presentation.rotation.y=state.product.yaw;
+      orientation.rotation.x=orientationX+state.product.pitch;
+      orientation.rotation.y=0;
+    }else{
+      presentation.rotation.x=orientationX+state.product.pitch;
+      presentation.rotation.y=state.product.yaw;
+    }
     const s=state.product.scale;
     presentation.scale.x=s;
     presentation.scale.y=s;
@@ -82,8 +91,15 @@ export function createRenderAdapter({
       presentation.position.x=damp(presentation.position.x,state.product.position[0],2.85,step);
       presentation.position.y=damp(presentation.position.y,state.product.position[1],2.85,step);
       presentation.position.z=damp(presentation.position.z,state.product.position[2],2.85,step);
-      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,3.40,step);
-      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+      if(splitOrientation){
+        presentation.rotation.x=damp(presentation.rotation.x,0,3.40,step);
+        presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+        orientation.rotation.x=damp(orientation.rotation.x,orientationX+state.product.pitch,3.40,step);
+        orientation.rotation.y=damp(orientation.rotation.y,0,3.00,step);
+      }else{
+        presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,3.40,step);
+        presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.00,step);
+      }
       const s=state.product.scale;
       presentation.scale.x=damp(presentation.scale.x,s,2.85,step);
       presentation.scale.y=damp(presentation.scale.y,s,2.85,step);
