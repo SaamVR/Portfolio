@@ -5,11 +5,13 @@ def run(theme,width,port):
     p=subprocess.Popen(["/usr/bin/google-chrome","--headless","--no-sandbox","--disable-gpu","--remote-allow-origins=*",
         f"--remote-debugging-port={port}",f"--user-data-dir={profile}","about:blank"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
-      for _ in range(120):
+      tab=None
+      for _ in range(300):
         try:
           tabs=json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list"));tab=next(x for x in tabs if x.get("type")=="page" and x.get("url")=="about:blank");break
         except:time.sleep(.05)
-      if not tab: raise RuntimeError("Chrome DevTools page did not start")\n      ws=websocket.create_connection(tab["webSocketDebuggerUrl"],timeout=10);i=0
+      if not tab: raise RuntimeError("Chrome DevTools page did not start")
+      ws=websocket.create_connection(tab["webSocketDebuggerUrl"],timeout=10);i=0
       def c(m,pa=None):
         nonlocal i;i+=1;n=i;ws.send(json.dumps({"id":n,"method":m,"params":pa or {}}))
         while 1:
