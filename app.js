@@ -412,6 +412,20 @@ if("IntersectionObserver" in window){
   },{threshold:[.42]});
   workflowStoryObserver.observe($("#workflow"));
 }
+function playArchitectureStory(){return storyDirector?.playArchitectureStory({lead:workflowStoryLead()})||Promise.resolve({status:"complete",story:"architecture"})}
+$("#architectureReplay")?.addEventListener("click",()=>playArchitectureStory());
+let architectureStoryPlayed=false;
+let architectureStoryObserver=null;
+if("IntersectionObserver" in window){
+  architectureStoryObserver=new IntersectionObserver(entries=>{
+    const hit=entries.find(entry=>entry.isIntersecting&&entry.intersectionRatio>=.3);
+    if(!hit||architectureStoryPlayed)return;
+    architectureStoryPlayed=true;
+    playArchitectureStory();
+    architectureStoryObserver.disconnect();
+  },{threshold:[.3]});
+  architectureStoryObserver.observe($("#architecture"));
+}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#followupModal").classList.contains("open"))closeFollow();else if($("#crmModal").classList.contains("open"))closeCrm();else if(guided)endTour()}});
 renderAll();
 })();

@@ -277,7 +277,27 @@
       </div>
     </div></section>
 
-    <section id="architecture" class="section shell engineering-combo-end"><div class="section-head"><div><p class="tag">HOW IT WORKS</p><h2>A clear path from input to action.</h2></div><p>Each stage has one clear responsibility, so the workflow is easier to inspect, explain, and adapt.</p></div><div class="architecture"><div class="arch-source"><small>INPUT</small><b>Lead form</b><span>Structured browser submission</span></div><div class="arch-arrow">POST →</div><div class="arch-core"><small>LIVE API</small><b>Cloudflare Pages Function</b><span>Validation · trace ID · no-store response</span></div><div class="arch-arrow">JSON →</div><div class="arch-column"><div><small>RULES</small><b>Qualification scoring</b><span>Budget · timeline · intent terms</span></div><div><small>STORAGE</small><b>Demo CRM</b><span>Browser localStorage</span></div></div><div class="arch-arrow">STATE →</div><div class="arch-source"><small>NEXT ACTION</small><b>Draft · review · nurture</b><span>Prepared in the demo; no outbound delivery</span></div></div><div class="stack implemented-stack"><span>Implemented: HTML / CSS / JavaScript</span><span>Cloudflare Pages Function</span><span>REST JSON</span><span>localStorage demo CRM</span></div><details class="architecture-more">
+    <section id="architecture" class="section shell engineering-combo-end" data-story-state="idle">
+      <div class="section-head"><div><p class="tag">HOW IT WORKS</p><h2>A clear path from input to action.</h2></div><p>Follow the same lead through the implemented path, including the point where scoring and browser-local CRM state branch and rejoin.</p></div>
+      <div class="architecture-story-head" aria-live="polite">
+        <div><small>SYSTEM TRACE</small><strong id="architectureStoryCaption">Ready to trace the lead</strong><span id="architectureStoryDetail">Lead form → API → rules + CRM → next action.</span></div>
+        <button id="architectureReplay" class="secondary-btn story-replay" type="button">Replay trace <span aria-hidden="true">↻</span></button>
+      </div>
+      <div class="architecture-story-stage">
+        <span id="architecturePayload" class="architecture-payload story-packet main">LEAD</span>
+        <span id="architectureRulesPayload" class="architecture-payload story-packet branch rules">SCORE</span>
+        <span id="architectureCrmPayload" class="architecture-payload story-packet branch crm">STATE</span>
+        <div class="architecture">
+          <div class="arch-source" data-arch-node="input"><small>INPUT</small><b>Lead form</b><span>Structured browser submission</span></div>
+          <div class="arch-arrow" data-arch-edge="post">POST →</div>
+          <div class="arch-core" data-arch-node="api"><small>LIVE API</small><b>Cloudflare Pages Function</b><span>Validation · trace ID · no-store response</span></div>
+          <div class="arch-arrow" data-arch-edge="json">JSON →</div>
+          <div class="arch-column" data-arch-branch="core"><div data-arch-node="rules"><small>RULES</small><b>Qualification scoring</b><span>Budget · timeline · intent terms</span></div><div data-arch-node="crm"><small>STORAGE</small><b>Demo CRM</b><span>Browser localStorage</span></div></div>
+          <div class="arch-arrow" data-arch-edge="state">STATE →</div>
+          <div class="arch-source" data-arch-node="next"><small>NEXT ACTION</small><b>Draft · review · nurture</b><span>Prepared in the demo; no outbound delivery</span></div>
+        </div>
+      </div>
+      <div class="stack implemented-stack"><span>Implemented: HTML / CSS / JavaScript</span><span>Cloudflare Pages Function</span><span>REST JSON</span><span>localStorage demo CRM</span></div><details class="architecture-more">
   <summary>
     <div><small>OPTIONAL TECHNICAL DETAIL</small><b>Explore integration and implementation details</b></div>
     <span aria-hidden="true">＋</span>

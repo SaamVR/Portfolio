@@ -303,11 +303,87 @@
       if(token)token.classList.add("settled");
     }
 
+    async function architectureDirector(context,storyOptions){
+      const section=q("#architecture"),stage=q("#architecture .architecture-story-stage"),layout=q("#architecture .architecture");
+      const caption=q("#architectureStoryCaption"),detail=q("#architectureStoryDetail"),main=q("#architecturePayload");
+      const rulesToken=q("#architectureRulesPayload"),crmToken=q("#architectureCrmPayload");
+      const nodes={
+        input:q('#architecture [data-arch-node="input"]'),
+        api:q('#architecture [data-arch-node="api"]'),
+        rules:q('#architecture [data-arch-node="rules"]'),
+        crm:q('#architecture [data-arch-node="crm"]'),
+        next:q('#architecture [data-arch-node="next"]')
+      };
+      if(!section||!stage||!layout||Object.values(nodes).some(x=>!x))return;
+      section.dataset.storyState="playing";
+      layout.classList.remove("arch-branch-active","arch-reconverged");
+      qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus","arch-story-complete"));
+      [main,rulesToken,crmToken].forEach(el=>{if(el){el.classList.remove("visible","settled");el.style.opacity="0"}});
+
+      const center=node=>{
+        const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
+        return {x:nr.left-sr.left+nr.width/2,y:nr.top-sr.top+nr.height/2};
+      };
+      const move=async(el,from,to,duration=540)=>{
+        if(!el)return;
+        el.classList.add("visible");el.style.opacity="1";
+        const rect=el.getBoundingClientRect(),ox=rect.width/2,oy=rect.height/2;
+        await context.animate(el,[
+          {transform:"translate3d("+(from.x-ox)+"px,"+(from.y-oy)+"px,0)",opacity:1},
+          {transform:"translate3d("+(to.x-ox)+"px,"+(to.y-oy)+"px,0)",opacity:1}
+        ],{duration:context.reducedMotion?1:duration,easing:"cubic-bezier(.22,.75,.2,1)",fill:"forwards"});
+        el.style.transform="translate3d("+(to.x-ox)+"px,"+(to.y-oy)+"px,0)";
+      };
+      const focus=async(node,title,copy,hold=560)=>{
+        qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus"));
+        node.classList.add("arch-story-focus");
+        if(caption)caption.textContent=title;
+        if(detail)detail.textContent=copy;
+        await context.wait(hold);
+        node.classList.add("arch-story-complete");
+        return !context.cancelled();
+      };
+
+      const input=center(nodes.input),api=center(nodes.api),rules=center(nodes.rules),crm=center(nodes.crm),next=center(nodes.next);
+      if(main){main.style.opacity="1";main.style.transform="translate3d("+(input.x-28)+"px,"+(input.y-14)+"px,0)"}
+      if(!await focus(nodes.input,"Lead enters the system","Structured browser input becomes the payload for the qualification request.",520))return;
+      if(caption)caption.textContent="Validate request";
+      if(detail)detail.textContent="POST /api/qualify reaches the Cloudflare Pages Function.";
+      await move(main,input,api,560);
+      if(!await focus(nodes.api,"Validate request","Required fields are validated and the API returns a traceable, no-store response.",620))return;
+
+      layout.classList.add("arch-branch-active");
+      if(rulesToken){rulesToken.style.opacity="1";rulesToken.style.transform=main?.style.transform||""}
+      if(crmToken){crmToken.style.opacity="1";crmToken.style.transform=main?.style.transform||""}
+      if(main)main.style.opacity="0";
+      if(caption)caption.textContent="Branch the payload";
+      if(detail)detail.textContent="The same validated lead feeds deterministic rules and browser-local CRM state.";
+      await Promise.all([move(rulesToken,api,rules,520),move(crmToken,api,crm,520)]);
+      if(!await focus(nodes.rules,"Score intent + budget + urgency","Qualification Rules resolve score, status, and routing category.",560))return;
+      if(!await focus(nodes.crm,"Persist browser-local state","Demo CRM stores or updates the record locally; no external CRM message is sent.",560))return;
+
+      layout.classList.add("arch-reconverged");
+      if(caption)caption.textContent="Reconverge score + CRM state";
+      if(detail)detail.textContent="Qualification result and CRM state meet before the next action is prepared.";
+      await Promise.all([move(rulesToken,rules,next,520),move(crmToken,crm,next,520)]);
+      if(rulesToken)rulesToken.style.opacity=".25";
+      if(crmToken)crmToken.style.opacity=".25";
+      if(main){main.style.opacity="1";await move(main,api,next,360)}
+      if(!await focus(nodes.next,"Prepare next action","Draft, review, or nurture state is prepared in the demo with no outbound delivery.",700))return;
+
+      qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus"));
+      nodes.next.classList.add("arch-story-focus");
+      section.dataset.storyState="complete";
+      if(caption)caption.textContent="Trace complete · Next action prepared";
+      if(detail)detail.textContent="One lead moved through validation, rules, browser-local CRM state, and a visible next action.";
+      main?.classList.add("settled");
+    }
+
     const directors={
       workflow:workflowDirector,
       operations:operationsDirector,
       reliability:reliabilityDirector,
-      architecture:genericDirector
+      architecture:architectureDirector
     };
 
     async function run(story,storyOptions={}){
