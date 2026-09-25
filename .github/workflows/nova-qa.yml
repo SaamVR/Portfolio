@@ -610,17 +610,25 @@ jobs:
               samples.push(sample);
             }
             let maxJump=0;
+            let visibleComparisons=0;
             const jumps=[];
             for(let i=1;i<samples.length;i++){
               for(const id of ['cushion','hinge','controls']){
                 const a=samples[i-1][id], b=samples[i][id];
+                const endpointsVisible=a.visible==='true' && b.visible==='true';
+                if(!endpointsVisible){
+                  jumps.push({from:samples[i-1].progress,to:samples[i].progress,id,skipped:'not-visible'});
+                  continue;
+                }
                 const jump=Math.hypot(b.x-a.x,b.y-a.y);
+                visibleComparisons++;
                 maxJump=Math.max(maxJump,jump);
                 jumps.push({from:samples[i-1].progress,to:samples[i].progress,id,jump});
               }
             }
-            fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify({maxJump,samples,jumps},null,2));
-            if(maxJump>80) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,jumps}));
+            if(visibleComparisons<6) throw new Error('V3 Design continuity has insufficient visible anchor samples '+JSON.stringify({visibleComparisons,jumps}));
+            fs.writeFileSync('nova-qa/motion_continuity.json',JSON.stringify({maxJump,visibleComparisons,samples,jumps},null,2));
+            if(maxJump>80) throw new Error('V3 Design motion discontinuity '+JSON.stringify({maxJump,visibleComparisons,jumps}));
             await context.close();
           }
 
