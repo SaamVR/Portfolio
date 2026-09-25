@@ -553,3 +553,38 @@ Future V3 work must therefore start from the canonical branch and treat `2283e56
 
 Do not revert to `a85882be...`; that was the previous corrected-framing release and is now superseded by the motion-fluidity release.
 
+
+
+### Canonical-branch repeat validation
+
+Fast-forwarding `nova/v3-motion-polish` to the proven QA-trigger head caused the normal source-path workflows to re-run on the canonical branch.
+
+All repeated gates passed on head:
+`abe52b802ba3b8b80c160c95e55f2cc36039b969`
+
+Canonical repeat Contracts:
+- run: `36178342249`
+- conclusion: SUCCESS
+
+Canonical repeat Production Bundle:
+- run: `36178341813`
+- conclusion: SUCCESS
+- artifact: `10883546351`
+- name: `nova-production-site`
+
+Canonical repeat Focused Hotspot QA:
+- run: `36178341799`
+- conclusion: SUCCESS
+- artifact: `10882469820`
+
+Canonical repeat Full Visual QA:
+- run: `36178341756`
+- conclusion: SUCCESS
+- core job: SUCCESS
+- extended job: SUCCESS
+- core artifact: `10883775953`
+- core digest: `sha256:11ffc6556ba23d775f1f8bbb311d9a2442966779b911fd8164a4cdab98aa2a6b`
+- extended artifact: `10882744927`
+- extended digest: `sha256:a16fd2ecd4f41b0e1a5187004a85fc5ff4d5e9200bb1160e2845c14d1c1ac67a`
+
+These reruns are redundant validation of the already deployed site bytes; no second deployment was necessary.
