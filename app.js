@@ -527,7 +527,7 @@ async function runGuidedWalkthrough(){
 }
 $("#cancelTour").addEventListener("click",()=>{closeCrm();endTour()});
 $("#guidedDemo").addEventListener("click",runGuidedWalkthrough);
-$("#workflowReplay")?.addEventListener("click",()=>playWorkflowStory());
+$("#workflowReplay")?.addEventListener("click",()=>{workflowStoryPlayed=true;workflowStoryObserver?.disconnect();playWorkflowStory()});
 let workflowStoryPlayed=false;
 let workflowStoryObserver=null;
 if("IntersectionObserver" in window){
@@ -541,7 +541,7 @@ if("IntersectionObserver" in window){
   workflowStoryObserver.observe($("#workflow"));
 }
 function playArchitectureStory(options={}){return storyDirector?.playArchitectureStory({lead:workflowStoryLead(),...options})||Promise.resolve({status:"complete",story:"architecture"})}
-$("#architectureReplay")?.addEventListener("click",()=>playArchitectureStory());
+$("#architectureReplay")?.addEventListener("click",()=>{architectureStoryPlayed=true;architectureStoryObserver?.disconnect();playArchitectureStory()});
 let architectureStoryPlayed=false;
 let architectureStoryObserver=null;
 if("IntersectionObserver" in window){

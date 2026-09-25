@@ -98,3 +98,10 @@ test("Scenario Story has a neutral visual state before a scenario is selected",(
   assert.match(html,/Choose a scenario/);
   assert.match(css,/\.incident-scene\.neutral-scene/);
 });
+
+test("manual Workflow and Architecture replay suppress automatic observer restart",()=>{
+  assert.match(app,/workflowReplay[^\n]*workflowStoryPlayed=true/);
+  assert.match(app,/workflowStoryObserver\?\.disconnect\(\)/);
+  assert.match(app,/architectureReplay[^\n]*architectureStoryPlayed=true/);
+  assert.match(app,/architectureStoryObserver\?\.disconnect\(\)/);
+});
