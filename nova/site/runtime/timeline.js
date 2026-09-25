@@ -108,10 +108,14 @@ function segment(progress){
 }
 
 function applyCompositionInfluences(state,p){
+  const designClearance=windowWeight(p,.12,.16,.24,.28);
   const spatial=windowWeight(p,.24,.30,.43,.49);
   const adaptive=windowWeight(p,.42,.47,.565,.58);
   const resolution=windowWeight(p,.82,.87,.945,.965);
   const behind=ramp(p,.962,.988);
+
+  // Keep the close Design study clear of the wider detail rail without shrinking the product.
+  state.product.position[0] += .08 * designClearance;
 
   // Camera framing does the heavy lifting so the product itself stays spatially stable.
   state.camera.target[1] -= .54 * spatial;
