@@ -338,10 +338,12 @@ def test_v3_scroll_progress_is_damped_for_smooth_motion():
     assert "SCROLL_DAMPING" in app
 
 def test_v3_meta_and_product_summary_are_project_ready():
-    assert 'content="NOVA is an interactive 3D headphone product study benchmarked against current premium over-ear hardware."' in html
-    assert "Premium over-ear benchmark" in html
-    assert "30–60 h battery class" in html
-    assert "254–293 g benchmark" in html
+    assert 'content="NOVA is a real-time interactive 3D headphone visualization built from a measured GLTF asset and verified browser runtime."' in html
+    assert "Project specifications" in html
+    for phrase in ["31.3K triangles","14 skinned meshes","36-joint rig","12 × 1K WebP maps","1.86 MB GLTF"]:
+        assert phrase in html
+    assert "30–60 h battery class" not in html
+    assert "254–293 g benchmark" not in html
 
 
 def test_v3_mobile_design_uses_compact_three_selector_rail():
@@ -349,3 +351,32 @@ def test_v3_mobile_design_uses_compact_three_selector_rail():
     assert ".stage--design.design-detail-rail{grid-template-columns:repeat(3,minmax(0,1fr))" in compact
     assert ".stage--design.design-detail-railbuttonsmall{display:none}" in compact
     assert ".stage--design.interaction-note{display:none}" in compact
+
+
+def test_v3_project_specs_are_measured_asset_facts_not_nova_hardware_claims():
+    for phrase in [
+        "28 render primitives",
+        "31,306 triangles",
+        "36 joints",
+        "5 materials",
+        "12 × 1024² WebP textures",
+        "3 animation clips",
+        "42 channels",
+        "27.708 s",
+        "2.45 MiB 3D asset payload",
+    ]:
+        assert phrase in html
+    assert "Market reference" in html
+    assert "These manufacturer figures are reference context, not NOVA hardware specifications." in html
+
+def test_v3_visible_mode_labels_are_presentation_controls_not_fake_headphone_features():
+    for phrase in ["Wide","Focus","Context","Isolate","Reveal"]:
+        assert f">{phrase}<" in html
+    for phrase in [">Spatial<",">Ambient<",">Adaptive<",">Transparency<"]:
+        assert phrase not in html
+
+def test_v3_design_shows_only_one_marker_at_a_time():
+    compact = css.replace(" ", "").replace("\n", "")
+    assert 'body[data-range="design"].hotspot{opacity:0' in compact
+    for detail in ["cushion","headband","controls"]:
+        assert f'body[data-range="design"][data-design-detail="{detail}"].hotspot[data-hotspot="{detail}"]' in compact
