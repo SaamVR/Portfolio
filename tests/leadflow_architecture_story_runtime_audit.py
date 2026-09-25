@@ -26,7 +26,10 @@ def run(width,height):
         c("Emulation.setEmulatedMedia",{"features":[{"name":"prefers-reduced-motion","value":"reduce"}]})
         c("Page.navigate",{"url":URL});time.sleep(.9)
         e("document.documentElement.style.scrollBehavior='auto';document.querySelector('#architecture').scrollIntoView({block:'center',behavior:'auto'})")
-        time.sleep(.35)
+        for _ in range(80):
+            if e("document.querySelector('#architecture').dataset.storyState")=="complete":break
+            time.sleep(.05)
+        else:raise AssertionError("architecture story incomplete")
         out=e("""(()=>{const s=document.querySelector('#architecture'),a=s.querySelector('.architecture');return{
           state:s.dataset.storyState,
           caption:document.querySelector('#architectureStoryCaption').textContent.trim(),
@@ -48,7 +51,11 @@ def run(width,height):
         assert "Trace complete" in out["caption"],out
         assert out["mainOpacity"]=="1",out
         assert out["replayH"]>=44 and out["docW"]<=out["viewport"] and out["viewport"]==width,out
-        e("document.querySelector('#architectureReplay').click()");time.sleep(.3)
+        e("document.querySelector('#architectureReplay').click()")
+        for _ in range(80):
+            if e("document.querySelector('#architecture').dataset.storyState")=="complete":break
+            time.sleep(.05)
+        else:raise AssertionError("architecture replay incomplete")
         assert e("document.querySelector('#architecture').dataset.storyState")=="complete"
         assert not errs,errs
         r=c("Page.captureScreenshot",{"format":"png","fromSurface":True});open(f"{OUT}/architecture-{width}.png","wb").write(base64.b64decode(r["data"]))

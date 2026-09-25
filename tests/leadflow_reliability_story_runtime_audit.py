@@ -29,7 +29,12 @@ def run(width,height):
         time.sleep(.2)
         for scenario in ("duplicate","review","timeout"):
             e(f"document.querySelector('[data-edge=\"{scenario}\"]').click()")
-            time.sleep(.25)
+            for _ in range(80):
+                state=e("document.querySelector('#reliability').dataset.storyState")
+                active=e("document.querySelector('#reliability').dataset.incidentScenario")
+                if state=="complete" and active==scenario:break
+                time.sleep(.05)
+            else:raise AssertionError("reliability story incomplete: "+scenario)
             out=e("""(()=>{const s=document.querySelector('#reliability');return{
               state:s.dataset.storyState,
               scenario:s.dataset.incidentScenario,
@@ -59,7 +64,12 @@ def run(width,height):
                 assert out["retryVisible"] and out["timeoutFailed"],out
         # Re-entrancy: timeout should win after rapid scenario changes.
         e("document.querySelector('[data-edge=\"duplicate\"]').click();document.querySelector('[data-edge=\"timeout\"]').click()")
-        time.sleep(.25)
+        for _ in range(80):
+            state=e("document.querySelector('#reliability').dataset.storyState")
+            active=e("document.querySelector('#reliability').dataset.incidentScenario")
+            if state=="complete" and active=="timeout":break
+            time.sleep(.05)
+        else:raise AssertionError("reliability re-entry story incomplete")
         final=e("""(()=>({state:document.querySelector('#reliability').dataset.storyState,scenario:document.querySelector('#reliability').dataset.incidentScenario,active:[...document.querySelectorAll('#reliability [data-incident-scene].active')].map(x=>x.dataset.incidentScene)}))()""")
         assert final["state"]=="complete" and final["scenario"]=="timeout" and final["active"]==["timeout"],final
         assert not errs,errs

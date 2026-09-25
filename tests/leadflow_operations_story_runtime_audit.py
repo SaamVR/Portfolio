@@ -31,7 +31,12 @@ def run(width,height):
             time.sleep(.05)
         else:raise AssertionError("first workflow incomplete")
         e("document.querySelector('#workspace').scrollIntoView({block:'center',behavior:'auto'})")
-        time.sleep(.45)
+        for _ in range(80):
+            state=e("document.querySelector('#workspace').dataset.storyState")
+            detail=e("document.querySelector('#opsStoryDetail').textContent.toLowerCase()")
+            if state=="complete" and "one lead changed" in detail:break
+            time.sleep(.05)
+        else:raise AssertionError("insert operations story incomplete")
         first=e("""(()=>({state:document.querySelector('#workspace').dataset.storyState,total:document.querySelector('#opsTotal').textContent.trim(),headline:document.querySelector('#opsStoryHeadline').textContent.trim(),detail:document.querySelector('#opsStoryDetail').textContent.trim(),replayDisabled:document.querySelector('#opsStoryReplay').disabled,row:!!document.querySelector('#opsPipelineRows tr[data-story-lead-id^="lead-"]'),focus:document.querySelectorAll('#workspace .ops-story-focus').length,docW:document.documentElement.scrollWidth,viewport:innerWidth}))()""")
         print(width,"INSERT",first)
         assert first["state"]=="complete" and first["total"]=="4",first
@@ -47,7 +52,12 @@ def run(width,height):
             time.sleep(.05)
         else:raise AssertionError("duplicate workflow incomplete")
         e("document.querySelector('#workspace').scrollIntoView({block:'center',behavior:'auto'})")
-        time.sleep(.45)
+        for _ in range(80):
+            state=e("document.querySelector('#workspace').dataset.storyState")
+            detail=e("document.querySelector('#opsStoryDetail').textContent.toLowerCase()")
+            if state=="complete" and "pipeline count stayed truthful" in detail:break
+            time.sleep(.05)
+        else:raise AssertionError("update operations story incomplete")
         duplicate=e("""(()=>({state:document.querySelector('#workspace').dataset.storyState,total:document.querySelector('#opsTotal').textContent.trim(),headline:document.querySelector('#opsStoryHeadline').textContent.trim(),detail:document.querySelector('#opsStoryDetail').textContent.trim(),rows:document.querySelectorAll('#opsPipelineRows tr').length}))()""")
         print(width,"UPDATE",duplicate)
         assert duplicate["state"]=="complete" and duplicate["total"]=="4",duplicate

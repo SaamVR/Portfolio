@@ -29,7 +29,10 @@ def audit(width,height):
         c("Emulation.setEmulatedMedia",{"features":[{"name":"prefers-reduced-motion","value":"reduce"}]})
         c("Page.navigate",{"url":URL});time.sleep(1.0)
         e("document.documentElement.style.scrollBehavior='auto';document.querySelector('#workflow').scrollIntoView({block:'center',behavior:'auto'})")
-        time.sleep(.35)
+        for _ in range(80):
+            if e("document.querySelector('#workflow').dataset.storyState")=="complete":break
+            time.sleep(.05)
+        else:raise AssertionError("workflow story incomplete")
         out=e("""(()=>{const s=document.querySelector('#workflow'),packet=document.querySelector('#workflowStoryPacket');return{state:s.dataset.storyState,caption:document.querySelector('#workflowStoryCaption').textContent.trim(),detail:document.querySelector('#workflowStoryDetail').textContent.trim(),stages:[...s.querySelectorAll('.workflow-stage')].map(x=>({done:x.classList.contains('story-stage-complete'),focus:x.classList.contains('story-focus')})),connectors:[...s.querySelectorAll('.workflow-story-connector')].map(x=>x.classList.contains('story-connector-complete')),packetAnimation:getComputedStyle(packet).animationName,replayH:document.querySelector('#workflowReplay').getBoundingClientRect().height,docW:document.documentElement.scrollWidth,viewport:innerWidth}})()""")
         print(width,out)
         assert out["state"]=="complete",out
@@ -40,7 +43,11 @@ def audit(width,height):
         assert out["replayH"]>=44 and out["docW"]<=out["viewport"],out
         assert out["viewport"]==width,(width,out)
         r=c("Page.captureScreenshot",{"format":"png","fromSurface":True});open(f"{OUT}/workflow-{width}.png","wb").write(base64.b64decode(r["data"]))
-        e("document.querySelector('#workflowReplay').click()");time.sleep(.25)
+        e("document.querySelector('#workflowReplay').click()")
+        for _ in range(80):
+            if e("document.querySelector('#workflow').dataset.storyState")=="complete":break
+            time.sleep(.05)
+        else:raise AssertionError("workflow replay incomplete")
         assert e("document.querySelector('#workflow').dataset.storyState")=="complete"
         assert not errs,errs
     finally:

@@ -22,7 +22,12 @@ def browser(port,reduced):
     def e(expr):return c("Runtime.evaluate",{"expression":expr,"returnByValue":True})["result"].get("value")
     c("Runtime.enable");c("Page.enable");c("Emulation.setDeviceMetricsOverride",{"width":1440,"height":950,"deviceScaleFactor":1,"mobile":False})
     if reduced:c("Emulation.setEmulatedMedia",{"features":[{"name":"prefers-reduced-motion","value":"reduce"}]})
-    c("Page.navigate",{"url":URL});time.sleep(1)
+    c("Page.navigate",{"url":URL})
+    for _ in range(120):
+        ready=e("""(()=>document.readyState==="complete"&&!!window.LeadFlowStorytelling&&document.querySelector('.final-cta')?.classList.contains('reveal-on-scroll'))()""")
+        if ready:break
+        time.sleep(.05)
+    else:raise AssertionError("LeadFlow app did not finish initializing")
     return p,profile,ws,e,errs
 
 def close(p,profile,ws):
