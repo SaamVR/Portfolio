@@ -134,11 +134,11 @@ def test_r12_visual_qa_covers_webgl_failure_mobile_nav_facts_and_named_views():
     for token in [
         "rendererFailureAudit",
         "mobileNavAudit",
-        "productFactsAudit",
+        "benchmarkPanelAudit",
         "inspectionViewsAudit",
         "STATIC MODE / 3D UNAVAILABLE",
         "mobile_nav.png",
-        "product_facts.png",
+        "benchmark_panel.png",
         "inspection_rear.png",
     ]:
         assert token in qa
