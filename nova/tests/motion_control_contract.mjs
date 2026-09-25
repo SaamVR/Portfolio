@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createInspectionController } from '../site/interactions/inspection-controller.js';
 import { createFoldController } from '../site/interactions/fold-controller.js';
+import { composeVisualState, createInteractionState } from '../site/runtime/composer.js';
 
 const DT=1/60;
 
@@ -58,6 +59,29 @@ const DT=1/60;
     'scrolling away from Form should begin fading fold ownership');
   assert.ok(Math.abs(firstReleaseFrame.targetPose-beforeRelease.targetPose)<.004,
     'fold scroll release should not move the controlled pose aggressively while ownership is already fading');
+}
+
+
+{
+  const base={
+    product:{position:[0,0,0],scale:1,yaw:.05,pitch:.01,pose:.72},
+    camera:{position:[0,0,4.4],target:[0,0,0],fov:26},
+    lighting:{exposure:1,hemi:1,key:1,fill:1,rim:1,warm:1,keyColor:0xffffff,rimColor:0xffffff,keyPosition:[1,1,1]},
+    environment:{tone:0,spatialAmount:0,spatialSpread:0,adaptiveAmount:0,openness:0,motion:0},
+    ui:{}
+  };
+  const state=createInteractionState();
+  state.inspection={weight:1,yaw:.32,pitch:.08,modelYaw:Math.PI*.48,view:'side',active:true};
+  const composed=composeVisualState(base,state);
+
+  assert.equal(composed.camera.position[0],base.camera.position[0],
+    'manual inspection yaw must not pan the camera away from the centered product');
+  assert.equal(composed.camera.position[1],base.camera.position[1],
+    'manual inspection pitch must not pan the camera vertically out of frame');
+  assert.ok(Math.abs(composed.product.yaw-(base.product.yaw+Math.PI*.48+.32))<1e-9,
+    'manual inspection yaw should fine-tune the selected product view');
+  assert.ok(Math.abs(composed.product.pitch-(base.product.pitch+.08))<1e-9,
+    'manual inspection pitch should fine-tune product tilt');
 }
 
 console.log('motion_control_contract: PASS');
