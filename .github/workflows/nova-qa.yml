@@ -574,7 +574,9 @@ jobs:
             if(state.open!=='open'||state.panelHidden!=='false'||!state.sony||!state.sennheiser||!state.bose||!state.target||state.sourceCount<3||state.notify){
               throw new Error(prefix+' V3 benchmark incomplete '+JSON.stringify(state));
             }
-            await page.screenshot({path:'nova-qa/v3_benchmark_'+prefix+'.png'});
+            const benchmarkFile=prefix==='mobile'?'v3_benchmark_mobile.png':'v3_benchmark_desktop.png';
+            await page.screenshot({path:'nova-qa/'+benchmarkFile});
+            if(prefix==='desktop') await page.screenshot({path:'nova-qa/product_facts.png'});
             await page.locator('#productFactsPanel [data-facts-close]').click();
             await context.close();
           }
