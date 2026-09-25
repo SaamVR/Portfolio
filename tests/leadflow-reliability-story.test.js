@@ -15,8 +15,8 @@ test("reliability has a four-beat incident rail and scenario scenes",()=>{
   assert.ok(html.includes('id="incidentBoundary"'));
 });
 
-test("timeout story keeps the simulated boundary explicit",()=>{
-  assert.ok(story.includes("RETRY NOT EXECUTED IN THIS PUBLIC DEMO"));
+test("timeout story keeps the connected-delivery boundary explicit",()=>{
+  assert.ok(story.includes("DELIVERY RETRY REQUIRES A CONNECTED CRM"));
   assert.ok(story.includes("durable retry state"));
   assert.ok(story.includes("idempotent delivery"));
 });

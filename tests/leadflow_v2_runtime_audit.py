@@ -18,7 +18,11 @@ try:
         if "error" in x:raise RuntimeError(x["error"])
         return x.get("result",{})
   def e(x):return c("Runtime.evaluate",{"expression":x,"returnByValue":True})["result"].get("value")
-  c("Runtime.enable");c("Page.enable");c("Emulation.setDeviceMetricsOverride",{"width":1440,"height":950,"deviceScaleFactor":1,"mobile":False});c("Page.navigate",{"url":URL});time.sleep(1.3)
+  c("Runtime.enable");c("Page.enable");c("Emulation.setDeviceMetricsOverride",{"width":1440,"height":950,"deviceScaleFactor":1,"mobile":False});c("Page.navigate",{"url":URL})
+  for _ in range(120):
+    ready=e("document.readyState==='complete'&&!!document.querySelector('.crm-analytics-v2')&&document.scripts.length>0")
+    if ready:break
+    time.sleep(.05)
   out=e("""(()=>({title:document.title,theme:document.documentElement.dataset.theme||'dark',progress:!!document.querySelector('#presentationProgressBar'),analytics:!!document.querySelector('.crm-analytics-v2'),toggle:document.querySelector('#themeToggleLabel')?.textContent,srcs:[...document.scripts].map(s=>s.getAttribute('src')).filter(Boolean),docW:document.documentElement.scrollWidth,viewport:innerWidth}))()""")
   e("document.querySelector('#openCrmTop').click();document.querySelector('[data-crm-view=\"analytics\"]').click()");time.sleep(.15)
   crm=e("""(()=>({hidden:document.querySelector('#crmModal').getAttribute('aria-hidden'),title:document.querySelector('#crmViewTitle').textContent.trim(),regions:['analyticsDistribution','analyticsScoreTrend','analyticsSourceQuality','analyticsUrgencyMix'].map(id=>!!document.querySelector('#'+id))}))()""")

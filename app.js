@@ -14,9 +14,9 @@ function applyTheme(theme){const next=theme==="light"?"light":"dark";document.do
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)}catch{return null}})()||"dark");
 $("#themeToggle").addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem(THEME_KEY,next)}catch{}});
 const starter=[
-{id:"demo-001",name:"Alex Chen",company:"Northstar Labs",source:"Website Form",budget:12000,budgetLabel:"$7,500–$15,000",need:"Need automated CRM lead routing for our inbound requests",timeline:"weeks",timelineLabel:"1–2 weeks",score:87,intent:"High",budgetFit:"Strong",urgency:"High",status:"hot",summary:"Northstar Labs needs automated CRM lead routing. The selected budget and timeline support a sales review.",followup:"Hi Alex,\n\nThanks for sharing the workflow. I’d start by mapping the current intake and deciding which qualification and CRM steps should be automated versus reviewed.\n\nWould a short workflow review this week be useful?",subject:"Re: Lead routing at Northstar Labs",created:"Demo data"},
-{id:"demo-002",name:"Mina Patel",company:"Studio Eight",source:"Meta Lead Ads",budget:2000,budgetLabel:"$1,000–$3,000",need:"We need a CRM workflow for contact form follow-up",timeline:"month",timelineLabel:"Within a month",score:67,intent:"Medium",budgetFit:"Good",urgency:"Medium",status:"review",summary:"Studio Eight has a defined automation need. The current score supports human review before a sales handoff.",followup:"Hi Mina,\n\nThanks for the context. There’s a clear automation opportunity here. I’d start by mapping the existing process and identifying which steps should be automated versus kept for human review.\n\nIf useful, I can outline a practical first version for Studio Eight.",subject:"Re: Contact form automation at Studio Eight",created:"Demo data"},
-{id:"demo-003",name:"Ryan Cole",company:"Independent",source:"Referral",budget:500,budgetLabel:"Under $1,000",need:"Just exploring options for lead follow-up",timeline:"exploring",timelineLabel:"Just exploring",score:39,intent:"Low",budgetFit:"Limited",urgency:"Low",status:"nurture",summary:"Independent is exploring lead follow-up. Current budget, urgency, or intent signals support nurture rather than immediate sales review.",followup:"Hi Ryan,\n\nThanks for reaching out. A useful first step is to list the repetitive lead tasks you handle manually each week. From there, we can identify the highest-value automation opportunity without overbuilding.\n\nHappy to share a few examples if that helps.",subject:"A few lead automation starting points",created:"Demo data"}
+{id:"demo-001",name:"Alex Chen",company:"Northstar Labs",source:"Website Form",budget:12000,budgetLabel:"$7,500–$15,000",need:"Need automated CRM lead routing for our inbound requests",timeline:"weeks",timelineLabel:"1–2 weeks",score:87,intent:"High",budgetFit:"Strong",urgency:"High",status:"hot",summary:"Northstar Labs needs automated CRM lead routing. The selected budget and timeline support a sales review.",followup:"Hi Alex,\n\nThanks for sharing the workflow. I’d start by mapping the current intake and deciding which qualification and CRM steps should be automated versus reviewed.\n\nWould a short workflow review this week be useful?",subject:"Re: Lead routing at Northstar Labs",created:"Existing record"},
+{id:"demo-002",name:"Mina Patel",company:"Studio Eight",source:"Meta Lead Ads",budget:2000,budgetLabel:"$1,000–$3,000",need:"We need a CRM workflow for contact form follow-up",timeline:"month",timelineLabel:"Within a month",score:67,intent:"Medium",budgetFit:"Good",urgency:"Medium",status:"review",summary:"Studio Eight has a defined automation need. The current score supports human review before a sales handoff.",followup:"Hi Mina,\n\nThanks for the context. There’s a clear automation opportunity here. I’d start by mapping the existing process and identifying which steps should be automated versus kept for human review.\n\nIf useful, I can outline a practical first version for Studio Eight.",subject:"Re: Contact form automation at Studio Eight",created:"Existing record"},
+{id:"demo-003",name:"Ryan Cole",company:"Independent",source:"Referral",budget:500,budgetLabel:"Under $1,000",need:"Just exploring options for lead follow-up",timeline:"exploring",timelineLabel:"Just exploring",score:39,intent:"Low",budgetFit:"Limited",urgency:"Low",status:"nurture",summary:"Independent is exploring lead follow-up. Current budget, urgency, or intent signals support nurture rather than immediate sales review.",followup:"Hi Ryan,\n\nThanks for reaching out. A useful first step is to list the repetitive lead tasks you handle manually each week. From there, we can identify the highest-value automation opportunity without overbuilding.\n\nHappy to share a few examples if that helps.",subject:"A few lead automation starting points",created:"Existing record"}
 ];
 function loadLeads(){try{const x=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");if(Array.isArray(x))return x}catch{}saveJSON(STORAGE_KEY,starter);return [...starter]}
 let leads=loadLeads();const saveLeads=()=>saveJSON(STORAGE_KEY,leads);
@@ -41,19 +41,19 @@ function eventTime(){return workflowStartedAt?((performance.now()-workflowStarte
 function renderEventLog(){const log=$("#eventLog");if(!eventEntries.length){log.innerHTML='<div class="event-empty">Run the workflow to inspect execution events.</div>';$("#eventCount").textContent="0 events";return}log.innerHTML=eventEntries.map(e=>`<div class="event-row ${e.state}"><time>${escapeHtml(e.time)}</time><code>${escapeHtml(e.code)}</code><span>${escapeHtml(e.message)}</span></div>`).join("");$("#eventCount").textContent=eventEntries.length+" event"+(eventEntries.length===1?"":"s");log.scrollTop=log.scrollHeight}
 function logEvent(code,message,state="ok"){eventEntries.push({time:eventTime(),code,message,state});renderEventLog()}
 function setStep(index,state,note){const step=$(`.exec-step[data-step="${index}"]`);step.classList.remove("active","done");if(state)step.classList.add(state);$(".step-state",step).textContent=state==="done"?"✓":String(index+1);$("em",step).textContent=note||(state==="done"?"Complete":state==="active"?"Running":"Waiting")}
-function resetSteps(){$$(".exec-step").forEach((s,i)=>{s.classList.remove("active","done");$(".step-state",s).textContent=String(i+1);$("em",s).textContent="Waiting"});$("#execStatus").textContent="READY";$("#execMessage").textContent="Waiting for a lead";$("#execRunId").textContent="run —";$("#execTimer").textContent="demo 0.0s";$("#execProgressBar").style.width="0%";$("#execProgressPulse").style.left="0%";$(".execution-card").classList.remove("running")}
+function resetSteps(){$$(".exec-step").forEach((s,i)=>{s.classList.remove("active","done");$(".step-state",s).textContent=String(i+1);$("em",s).textContent="Waiting"});$("#execStatus").textContent="READY";$("#execMessage").textContent="Waiting for a lead";$("#execRunId").textContent="run —";$("#execTimer").textContent="run 0.0s";$("#execProgressBar").style.width="0%";$("#execProgressPulse").style.left="0%";$(".execution-card").classList.remove("running")}
 async function runStage(stage,index,reduced){setStep(index,"active",stage.active);$("#execStatus").textContent=String(index+1).padStart(2,"0")+" / 06";$("#execMessage").textContent=stage.messages[0];logEvent(stage.start,stage.messages[0],"live");const duration=reduced?40:stage.duration;for(let i=1;i<stage.messages.length;i++){await delay(duration/stage.messages.length);$("#execMessage").textContent=stage.messages[i]}await delay(duration/stage.messages.length);$("#execProgressBar").style.width=stage.end+"%";$("#execProgressPulse").style.left=`calc(${stage.end}% - 5px)`;setStep(index,"done",stage.done);$("#execMessage").textContent=stage.doneMessage;logEvent(stage.finish,stage.doneMessage,stage.state||"ok")}
-async function runWorkflow(data){if(running)return;const automation=readAutomation(),settings=readSettings();if(!automation.qualification){$("#formError").textContent="Lead Qualification is disabled in CRM → Automations.";return}running=true;resetSteps();$("#formError").textContent="";$("#resultEmpty").classList.remove("hidden");$("#resultContent").classList.add("hidden");$(".execution-card").classList.add("running");$("#runAutomation").disabled=true;workflowStartedAt=performance.now();const runId="run-"+Date.now().toString(36).slice(-6);$("#execRunId").textContent=runId;eventEntries=[];logEvent("workflow.started",runId,"info");logEvent("lead.received",data.name+" · "+data.company,"live");const duplicate=leads.find(l=>l.name.toLowerCase()===data.name.toLowerCase()&&l.company.toLowerCase()===data.company.toLowerCase());let qual=scoreLead(data,settings);const serverPromise=qualifyOnServer(data,settings),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches,started=workflowStartedAt;const timer=setInterval(()=>$("#execTimer").textContent="demo "+((performance.now()-started)/1000).toFixed(1)+"s",100);
+async function runWorkflow(data){if(running)return;const automation=readAutomation(),settings=readSettings();if(!automation.qualification){$("#formError").textContent="Lead Qualification is disabled in CRM → Automations.";return}running=true;resetSteps();$("#formError").textContent="";$("#resultEmpty").classList.remove("hidden");$("#resultContent").classList.add("hidden");$(".execution-card").classList.add("running");$("#runAutomation").disabled=true;workflowStartedAt=performance.now();const runId="run-"+Date.now().toString(36).slice(-6);$("#execRunId").textContent=runId;eventEntries=[];logEvent("workflow.started",runId,"info");logEvent("lead.received",data.name+" · "+data.company,"live");const duplicate=leads.find(l=>l.name.toLowerCase()===data.name.toLowerCase()&&l.company.toLowerCase()===data.company.toLowerCase());let qual=scoreLead(data,settings);const serverPromise=qualifyOnServer(data,settings),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches,started=workflowStartedAt;const timer=setInterval(()=>$("#execTimer").textContent="run "+((performance.now()-started)/1000).toFixed(1)+"s",100);
 const stages=[
 {duration:780,end:8,active:"Checking",done:"Valid",doneMessage:"Payload validated and normalized",start:"validation.parse",finish:"validation.ok",messages:["Parsing lead payload…","Normalizing required fields…","Input schema validated"]},
-{duration:900,end:22,active:"Searching",done:duplicate?"Matched":"Clear",doneMessage:duplicate?"Existing demo CRM record matched by name + company":"No duplicate demo record found",start:"duplicate.search",finish:duplicate?"duplicate.match":"duplicate.clear",state:duplicate?"info":"ok",messages:["Checking browser-local CRM…","Comparing name + company…",duplicate?"Existing record detected…":"No matching identity found…"]},
+{duration:900,end:22,active:"Searching",done:duplicate?"Matched":"Clear",doneMessage:duplicate?"Existing CRM record matched by name + company":"No matching CRM record found",start:"duplicate.search",finish:duplicate?"duplicate.match":"duplicate.clear",state:duplicate?"info":"ok",messages:["Checking browser-local CRM…","Comparing name + company…",duplicate?"Existing record detected…":"No matching identity found…"]},
 {duration:1250,end:52,active:"Scoring",done:"Scored",doneMessage:"Rules-based qualification complete · "+qual.score+"/100",start:"qualification.rules",finish:"qualification.score",messages:["Reading explicit intent terms…","Applying budget points…","Applying timeline points…","Calculating priority score…"]},
-{duration:900,end:69,active:"Updating",done:"Stored",doneMessage:duplicate?"Demo CRM record updated":"New demo CRM lead created",start:"demo.crm.upsert",finish:duplicate?"demo.crm.updated":"demo.crm.created",messages:["Preparing browser record…",duplicate?"Updating existing local record…":"Creating browser-local record…","Confirming demo CRM state…"]},
+{duration:900,end:69,active:"Updating",done:"Stored",doneMessage:duplicate?"CRM record updated":"New CRM record created",start:"crm.record.upsert",finish:duplicate?"crm.record.updated":"crm.record.created",messages:["Preparing browser record…",duplicate?"Updating existing local record…":"Creating browser-local record…","Confirming CRM state…"]},
 {duration:1100,end:91,active:"Drafting",done:"Drafted",doneMessage:automation.followup&&settings.followup?"Follow-up draft prepared · not sent":"Follow-up drafting disabled",start:"followup.compose",finish:automation.followup&&settings.followup?"followup.draft":"followup.skipped",messages:["Using submitted context…","Preparing next-step copy…","Finalizing draft…"]},
-{duration:780,end:100,active:"Routing",done:"Prepared",doneMessage:"Next action prepared in the demo",start:"routing.evaluate",finish:"routing.prepared",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing sales-review path…":qual.status==="review"?"Preparing human-review path…":"Preparing nurture path…","Saving next-action state…"]}
+{duration:780,end:100,active:"Routing",done:"Prepared",doneMessage:"Next action prepared",start:"routing.evaluate",finish:"routing.prepared",messages:["Selecting routing rule…",qual.status==="hot"?"Preparing sales-review path…":qual.status==="review"?"Preparing human-review path…":"Preparing nurture path…","Saving next-action state…"]}
 ];
 try{for(let i=0;i<stages.length;i++){if(i===2){const server=await serverPromise;if(server){qual=server;stages[2].doneMessage="Live API · rules-based score "+qual.score+"/100 · "+qual.serverMs+"ms";logEvent("api.qualify","Deterministic qualification returned from /api/qualify in "+qual.serverMs+"ms","ok")}else logEvent("api.fallback","Server path unavailable · deterministic browser fallback used","info")}await runStage(stages[i],i,reduced)}}finally{clearInterval(timer)}
-const followupEnabled=automation.followup&&settings.followup,lead={id:duplicate?.id||"lead-"+Date.now(),runId,...data,source:data.source||"Website Form",budgetLabel:budgetLabel(data.budget),timelineLabel:timelineLabel(data.timeline),...qual,summary:makeSummary(data,qual),followupGenerated:followupEnabled,followup:followupEnabled?makeFollowup(data,qual):"Follow-up drafting is disabled in CRM controls for this workflow.",subject:followupEnabled?subjectFor(data):"Follow-up drafting disabled",created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})};if(duplicate)leads=leads.map(l=>l.id===duplicate.id?lead:l);else leads.unshift(lead);saveLeads();currentLead=lead;lastCrmEvent={id:lead.id,at:Date.now(),mode:duplicate?"update":"insert",previousLead:duplicate?{...duplicate}:null};showResult(lead);renderAll();pushOpsActivity("workflow.complete",(lead.action||"Next action")+" prepared · "+lead.name,lead.status);logEvent("workflow.complete",(lead.action||"Next action")+" prepared in the demo",lead.status==="hot"?"hot":"ok");$("#execMessage").textContent="Workflow complete · "+(lead.action||"Next action")+" prepared";$("#execTimer").textContent="demo "+((performance.now()-started)/1000).toFixed(1)+"s";$("#execStatus").textContent="COMPLETE";$(".execution-card").classList.remove("running");$("#runAutomation").disabled=false;$("#runAutomation").innerHTML='Run another example <span>→</span>';running=false;queueLeadOperationsStory()}
+const followupEnabled=automation.followup&&settings.followup,lead={id:duplicate?.id||"lead-"+Date.now(),runId,...data,source:data.source||"Website Form",budgetLabel:budgetLabel(data.budget),timelineLabel:timelineLabel(data.timeline),...qual,summary:makeSummary(data,qual),followupGenerated:followupEnabled,followup:followupEnabled?makeFollowup(data,qual):"Follow-up drafting is disabled in CRM controls for this workflow.",subject:followupEnabled?subjectFor(data):"Follow-up drafting disabled",created:new Date().toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})};if(duplicate)leads=leads.map(l=>l.id===duplicate.id?lead:l);else leads.unshift(lead);saveLeads();currentLead=lead;lastCrmEvent={id:lead.id,at:Date.now(),mode:duplicate?"update":"insert",previousLead:duplicate?{...duplicate}:null};showResult(lead);renderAll();pushOpsActivity("workflow.complete",(lead.action||"Next action")+" prepared · "+lead.name,lead.status);logEvent("workflow.complete",(lead.action||"Next action")+" prepared",lead.status==="hot"?"hot":"ok");$("#execMessage").textContent="Workflow complete · "+(lead.action||"Next action")+" prepared";$("#execTimer").textContent="run "+((performance.now()-started)/1000).toFixed(1)+"s";$("#execStatus").textContent="COMPLETE";$(".execution-card").classList.remove("running");$("#runAutomation").disabled=false;$("#runAutomation").innerHTML='Run another lead <span>→</span>';running=false;queueLeadOperationsStory()}
 function showResult(lead){const derived=lead.factors?.length?lead:{...lead,...scoreLead(lead)};$("#scoreValue").textContent=lead.score;$("#temperature").textContent=lead.status==="hot"?"HIGH PRIORITY":lead.status==="review"?"NEEDS REVIEW":"NURTURE";$("#temperature").className="temperature "+lead.status;$("#resultLead").textContent=lead.name+" · "+lead.company;$("#intent").textContent=lead.intent;$("#budgetFit").textContent=lead.budgetFit;$("#urgency").textContent=lead.urgency;$("#aiSummary").textContent=lead.summary;$("#scoreFactors").innerHTML=(derived.factors||[]).map(f=>`<span><b>${escapeHtml(f.label)}</b><em class="${f.points<0?"negative":""}">${f.points>0?"+":""}${f.points}</em></span>`).join("");$("#routingReason").textContent=derived.routingReason||"Routing follows the configured score thresholds.";$("#resultAction").textContent="Next action: "+(derived.action||"Review");$("#resultEmpty").classList.add("hidden");$("#resultContent").classList.remove("hidden");$("#showFollowup").disabled=lead.followupGenerated===false;$("#showFollowup").textContent=lead.followupGenerated===false?"Follow-up disabled":"View follow-up draft"}
 $("#leadForm").addEventListener("submit",e=>{e.preventDefault();const data={name:$("#leadName").value.trim(),company:$("#leadCompany").value.trim(),budget:Number($("#leadBudget").value),timeline:$("#leadTimeline").value,need:$("#leadNeed").value.trim()},errors=[];if(data.name.length<2)errors.push("Enter a name.");if(data.company.length<2)errors.push("Enter a company.");if(data.need.length<8)errors.push("Describe the automation need in a little more detail.");$("#formError").textContent=errors.join(" ");if(!errors.length)runWorkflow(data)});
 const presets={hot:{name:"Sarah",company:"Acme Dental",budget:"5000",timeline:"asap",need:"We need automated appointment lead follow-up"},review:{name:"Maya",company:"Northstar Studio",budget:"2000",timeline:"month",need:"Need a CRM workflow for client inquiries"},nurture:{name:"Jordan",company:"Field Notes Co.",budget:"500",timeline:"exploring",need:"Just exploring options for a future process"}};
@@ -62,10 +62,10 @@ function calc(){const leadCount=Math.max(0,Math.min(100000,Number($("#calcLeads"
 ["#calcLeads","#calcMinutes","#calcAutomation","#calcReview","#calcCost","#calcOperating"].forEach(id=>$(id).addEventListener("input",calc));calc();
 function generateBlueprint(text){const t=text.toLowerCase(),steps=[];if(t.includes("facebook")||t.includes("meta"))steps.push("Facebook Lead");else if(t.includes("form")||t.includes("website"))steps.push("Web Form");else if(t.includes("email"))steps.push("Email Inquiry");else steps.push("Lead Source");steps.push("Validate");if(t.includes("duplicate")||t.includes("crm")||t.includes("hubspot")||t.includes("pipedrive"))steps.push("Duplicate Check");steps.push("Qualification Rules");if(t.includes("hubspot"))steps.push("HubSpot");else if(t.includes("pipedrive"))steps.push("Pipedrive");else steps.push("CRM");steps.push("Follow-up Draft","Next Action");return [...new Set(steps)].slice(0,7)}
 function renderBlueprint(){const flow=$("#blueprintFlow");flow.innerHTML=blueprintSteps.map((s,i)=>`<button type="button" class="bp-node${i===selectedBpIndex?" selected":""}" data-bp-index="${i}">${escapeHtml(s)}</button>${i<blueprintSteps.length-1?"<i>→</i>":""}`).join("");$$('[data-bp-index]').forEach(btn=>btn.addEventListener("click",()=>{selectedBpIndex=Number(btn.dataset.bpIndex);renderBlueprint()}));$("#bpNodeLabel").value=blueprintSteps[selectedBpIndex]||"";$("#bpEditorHint").textContent="Step "+(selectedBpIndex+1)+" of "+blueprintSteps.length;$("#bpMoveLeft").disabled=selectedBpIndex===0;$("#bpMoveRight").disabled=selectedBpIndex===blueprintSteps.length-1;$("#bpRemove").disabled=blueprintSteps.length<=2}
-$("#generateBlueprint").addEventListener("click",()=>{blueprintSteps=generateBlueprint($("#processText").value);selectedBpIndex=0;renderBlueprint();$("#blueprintConfidence").textContent="Illustrative only";$("#blueprintNote").textContent="Planning aid only — edits here do not change the running demo."});
+$("#generateBlueprint").addEventListener("click",()=>{blueprintSteps=generateBlueprint($("#processText").value);selectedBpIndex=0;renderBlueprint();$("#blueprintConfidence").textContent="Planning model";$("#blueprintNote").textContent="Planning aid only — edits here do not change the running workflow."});
 $("#bpRename").addEventListener("click",()=>{const v=$("#bpNodeLabel").value.trim();if(v){blueprintSteps[selectedBpIndex]=v;renderBlueprint()}});$("#bpMoveLeft").addEventListener("click",()=>{if(selectedBpIndex<=0)return;[blueprintSteps[selectedBpIndex-1],blueprintSteps[selectedBpIndex]]=[blueprintSteps[selectedBpIndex],blueprintSteps[selectedBpIndex-1]];selectedBpIndex--;renderBlueprint()});$("#bpMoveRight").addEventListener("click",()=>{if(selectedBpIndex>=blueprintSteps.length-1)return;[blueprintSteps[selectedBpIndex+1],blueprintSteps[selectedBpIndex]]=[blueprintSteps[selectedBpIndex],blueprintSteps[selectedBpIndex+1]];selectedBpIndex++;renderBlueprint()});$("#bpAdd").addEventListener("click",()=>{blueprintSteps.splice(selectedBpIndex+1,0,"New Step");selectedBpIndex++;renderBlueprint()});$("#bpRemove").addEventListener("click",()=>{if(blueprintSteps.length<=2)return;blueprintSteps.splice(selectedBpIndex,1);selectedBpIndex=Math.min(selectedBpIndex,blueprintSteps.length-1);renderBlueprint()});renderBlueprint();
 const stackEls={source:$("#stackSource"),crm:$("#stackCrm"),notify:$("#stackNotify")};function syncStack(){$("#stackFlowSource").textContent=stackEls.source.value;$("#stackFlowCrm").textContent=stackEls.crm.value;$("#stackFlowNotify").textContent=stackEls.notify.value}Object.values(stackEls).forEach(el=>el.addEventListener("change",syncStack));
-const edgeCases={duplicate:[["duplicate.search","Actual demo criterion: normalized name + company","info"],["duplicate.match","Existing browser-local record matched","info"],["demo.crm.upsert","Existing record is updated instead of creating another row","ok"],["workflow.complete","No additional demo CRM record is created","ok"]],timeout:[["simulated.crm.timeout","Simulated failure scenario: external CRM request times out","warn"],["simulated.retry.plan","Illustrative recovery: schedule a bounded retry with backoff","info"],["pending.production","No retry job executes in this public demo","warn"],["next.step","Production version would require durable retry state and idempotent delivery","info"]],review:[["qualification.score","Rules-based score falls inside the configured review range","warn"],["routing.guardrail","Automatic sales-review path is not selected","info"],["review.queue","Lead remains visible for a person to review","ok"],["workflow.complete","No model-confidence claim is used in this decision","ok"]]};
+const edgeCases={duplicate:[["duplicate.search","Matching criterion: normalized name + company","info"],["duplicate.match","Existing browser-local record matched","info"],["crm.record.upsert","Existing record is updated instead of creating another row","ok"],["workflow.complete","No additional CRM record is created","ok"]],timeout:[["crm.timeout","Connection-timeout scenario: external CRM request does not complete","warn"],["retry.plan","Recovery plan: bounded retry with backoff","info"],["pending.production","Delivery retry requires a connected CRM","warn"],["next.step","Connected delivery requires durable retry state and idempotent delivery","info"]],review:[["qualification.score","Rules-based score falls inside the configured review range","warn"],["routing.guardrail","Automatic sales-review path is not selected","info"],["review.queue","Lead remains visible for a person to review","ok"],["workflow.complete","No model-confidence claim is used in this decision","ok"]]};
 function renderReliabilityLog(scenario){
   $("#reliabilityLog").innerHTML=(edgeCases[scenario]||[]).map(([c,m,state])=>'<div class="'+state+'"><code>'+escapeHtml(c)+'</code><span>'+escapeHtml(m)+'</span></div>').join("");
 }
@@ -74,7 +74,40 @@ function playReliabilityStory(scenario,options={}){
   renderReliabilityLog(scenario);
   return storyDirector?.playReliabilityStory(scenario,{settings:readSettings(),recordCount:leads.length,score:67,...options})||Promise.resolve({status:"complete",story:"reliability"});
 }
+function selectIncidentBeat(index){
+  const section=$("#reliability");
+  const scenario=section?.dataset.incidentScenario&&section.dataset.incidentScenario!=="none"
+    ?section.dataset.incidentScenario
+    :($("[data-edge].active")?.dataset.edge||"duplicate");
+  $$("[data-edge]").forEach(btn=>btn.classList.toggle("active",btn.dataset.edge===scenario));
+  renderReliabilityLog(scenario);
+  const state=storyDirector?.selectReliabilityBeat?.(scenario,index,{settings:readSettings(),recordCount:leads.length,score:67});
+  if(section&&state)section.dataset.storyState="inspecting";
+  return state;
+}
+function bindIncidentBeatInteractions(){
+  const beats=$$("#reliability .incident-beat-button");
+  beats.forEach((beat,index)=>{
+    beat.addEventListener("click",()=>selectIncidentBeat(index));
+    beat.addEventListener("keydown",event=>{
+      if(event.key==="Enter"||event.key===" "){
+        event.preventDefault();selectIncidentBeat(index);return;
+      }
+      let next=null;
+      if(event.key==="ArrowRight"||event.key==="ArrowDown")next=Math.min(beats.length-1,index+1);
+      if(event.key==="ArrowLeft"||event.key==="ArrowUp")next=Math.max(0,index-1);
+      if(event.key==="Home")next=0;
+      if(event.key==="End")next=beats.length-1;
+      if(next!==null){
+        event.preventDefault();
+        beats[next].focus();
+        selectIncidentBeat(next);
+      }
+    });
+  });
+}
 $$("[data-edge]").forEach(btn=>btn.addEventListener("click",()=>playReliabilityStory(btn.dataset.edge)));
+bindIncidentBeatInteractions();
 let opsActivity=[];
 function nextActionLabel(lead){
   const raw=String(lead?.action||"");
@@ -89,7 +122,7 @@ function activitySentence(lead){
   if(lead?.status==="hot")return name+" qualified as high priority";
   if(lead?.status==="review")return name+" routed to human review";
   if(lead?.status==="nurture")return name+" moved to nurture";
-  return name+" updated in the demo CRM";
+  return name+" updated in the browser-local CRM";
 }
 function pushOpsActivity(code,message,state="ok"){
   opsActivity.unshift({code,message,state,time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});
@@ -101,12 +134,12 @@ function renderOpsActivity(activityLeads=leads){
   if(!human||!technical)return;
   const recent=activityLeads.slice(0,4);
   if(!recent.length){
-    human.innerHTML='<div class="ops-empty-state">Run the interactive demo to create the first local record.</div>';
+    human.innerHTML='<div class="ops-empty-state">Run the workflow to create the first local record.</div>';
     technical.innerHTML='<div class="ops-empty-state">No technical events yet.</div>';
     return;
   }
-  human.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Demo data")+'</em></div>').join("");
-  const technicalRows=opsActivity.length?opsActivity:recent.map(l=>({code:"demo.record",message:(l.name||"Lead")+" · "+(l.score||0)+"/100",state:l.status||"other",time:"demo"}));
+  human.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Existing record")+'</em></div>').join("");
+  const technicalRows=opsActivity.length?opsActivity:recent.map(l=>({code:"crm.record",message:(l.name||"Lead")+" · "+(l.score||0)+"/100",state:l.status||"other",time:"local"}));
   technical.innerHTML=technicalRows.map(r=>'<div class="ops-activity-row '+escapeHtml(r.state||"other")+'"><span class="ops-activity-pulse"></span><time>'+escapeHtml(r.time)+'</time><code>'+escapeHtml(r.code)+'</code><b>'+escapeHtml(r.message)+'</b></div>').join("");
 }
 function sourceForLead(l){return String(l?.source||"Unspecified").trim()||"Unspecified"}
@@ -127,13 +160,13 @@ function renderDistribution(model,boxSelector="#opsDistribution",legendSelector=
   }
   let offset=0;
   const segments=items.map(([key,,percent])=>{
-    const circle='<circle class="ops-donut-segment '+key+'" cx="65" cy="65" r="50" pathLength="100" stroke-dasharray="'+percent+' '+(100-percent)+'" stroke-dashoffset="'+(-offset)+'"></circle>';
+    const circle='<circle class="ops-donut-segment '+key+'" data-ops-filter="status" data-ops-value="'+key+'" cx="65" cy="65" r="50" pathLength="100" stroke-dasharray="'+percent+' '+(100-percent)+'" stroke-dashoffset="'+(-offset)+'"></circle>';
     offset+=percent;
     return circle;
   }).join("");
   box.innerHTML='<svg viewBox="0 0 130 130" aria-hidden="true"><circle class="ops-donut-track" cx="65" cy="65" r="50"></circle>'+segments+'<text class="ops-donut-number" x="65" y="61" text-anchor="middle">'+model.total+'</text><text class="ops-donut-caption" x="65" y="79" text-anchor="middle">leads</text></svg>';
   box.setAttribute("aria-label","Qualification distribution: "+items.map(([key,count,p])=>dashboardStatusLabel(key)+" "+count+" ("+p+"%)").join(", "));
-  legend.innerHTML=items.map(([key,count,percent])=>'<div class="ops-legend-row"><span class="ops-legend-dot '+key+'"></span><div><b>'+dashboardStatusLabel(key)+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+percent+'%</strong></div>').join("");
+  legend.innerHTML=items.map(([key,count,percent])=>'<div class="ops-legend-row" data-ops-filter="status" data-ops-value="'+key+'" tabindex="0" role="button" aria-label="Highlight '+dashboardStatusLabel(key)+' leads"><span class="ops-legend-dot '+key+'"></span><div><b>'+dashboardStatusLabel(key)+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+percent+'%</strong></div>').join("");
 }
 function renderScoreTrend(model,boxSelector="#opsScoreTrend"){
   const box=$(boxSelector);if(!box)return;
@@ -146,7 +179,7 @@ function renderScoreTrend(model,boxSelector="#opsScoreTrend"){
   const bars=rows.map((lead,i)=>{
     const x=left+gap*i+(gap-barW)/2,barY=y(lead.score),barH=top+plotH-barY;
     const first=escapeHtml((lead.name||"Lead").split(/\s+/)[0]);
-    return '<g class="ops-trend-bar '+lead.status+'"><rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4"></rect><text class="score" x="'+(x+barW/2)+'" y="'+(barY-7)+'" text-anchor="middle">'+lead.score+'</text><text class="name" x="'+(x+barW/2)+'" y="'+(h-19)+'" text-anchor="middle">'+first+'</text></g>';
+    return '<g class="ops-trend-bar '+lead.status+'" data-ops-filter="status" data-ops-value="'+escapeHtml(lead.status)+'" tabindex="0" role="button" aria-label="'+first+' score '+lead.score+'"><rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4"></rect><text class="score" x="'+(x+barW/2)+'" y="'+(barY-7)+'" text-anchor="middle">'+lead.score+'</text><text class="name" x="'+(x+barW/2)+'" y="'+(h-19)+'" text-anchor="middle">'+first+'</text></g>';
   }).join("");
   box.innerHTML='<svg viewBox="0 0 720 220" role="img" aria-label="Recent lead qualification scores">'+guides+bars+'</svg>';
 }
@@ -159,18 +192,18 @@ function renderActionQueue(model,boxSelector="#opsActionQueue"){
     ["other","Other",model.actions.other,"other"]
   ].filter(([, ,count])=>count>0);
   if(!rows.length){box.innerHTML='<div class="ops-empty-state">No queued actions yet.</div>';return}
-  box.innerHTML=rows.map(([,label,count,state])=>'<div class="ops-queue-row"><span class="ops-queue-icon '+state+'"></span><div><b>'+label+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+count+'</strong></div>').join("");
+  box.innerHTML=rows.map(([,label,count,state])=>'<div class="ops-queue-row" data-ops-filter="status" data-ops-value="'+state+'" tabindex="0"><span class="ops-queue-icon '+state+'"></span><div><b>'+label+'</b><small>'+count+' lead'+(count===1?"":"s")+'</small></div><strong>'+count+'</strong></div>').join("");
 }
 function renderSourceQuality(model,boxSelector="#opsSourceQuality"){
   const box=$(boxSelector);if(!box)return;
   if(!model.sources.length){box.innerHTML='<div class="ops-empty-state">No source data yet.</div>';return}
-  box.innerHTML=model.sources.map(source=>'<div class="ops-quality-row"><div><b>'+escapeHtml(source.name)+'</b><span>'+source.count+' lead'+(source.count===1?"":"s")+'</span></div><div class="ops-quality-track" aria-label="Average score '+source.averageScore+' out of 100"><i style="width:'+source.averageScore+'%"></i></div><strong>'+source.averageScore+'<small>/100 avg</small></strong></div>').join("");
+  box.innerHTML=model.sources.map(source=>'<div class="ops-quality-row" data-ops-filter="source" data-ops-value="'+escapeHtml(source.name)+'" tabindex="0" role="button" aria-label="Highlight '+escapeHtml(source.name)+' source performance"><div><b>'+escapeHtml(source.name)+'</b><span>'+source.count+' lead'+(source.count===1?"":"s")+'</span></div><div class="ops-quality-track" aria-label="Average score '+source.averageScore+' out of 100"><i style="width:'+source.averageScore+'%"></i></div><strong>'+source.averageScore+'<small>/100 avg</small></strong></div>').join("");
 }
 function renderUrgency(model,boxSelector="#opsUrgencyMix"){
   const box=$(boxSelector);if(!box)return;
   const active=model.urgency.filter(i=>i.count>0);
   if(!active.length){box.innerHTML='<div class="ops-empty-state">No timeline data yet.</div>';return}
-  box.innerHTML='<div class="ops-urgency-bar">'+active.map(item=>'<span class="'+item.key+'" style="width:'+item.pct+'%" title="'+escapeHtml(item.label)+' '+item.pct+'%"></span>').join("")+'</div><div class="ops-urgency-list">'+active.map(item=>'<div><span class="ops-urgency-dot '+item.key+'"></span><b>'+escapeHtml(item.label)+'</b><strong>'+item.count+'</strong><small>'+item.pct+'%</small></div>').join("")+'</div>';
+  box.innerHTML='<div class="ops-urgency-bar">'+active.map(item=>'<span class="'+item.key+'" data-ops-filter="urgency" data-ops-value="'+item.key+'" style="width:'+item.pct+'%" title="'+escapeHtml(item.label)+' '+item.pct+'%"></span>').join("")+'</div><div class="ops-urgency-list">'+active.map(item=>'<div data-ops-filter="urgency" data-ops-value="'+item.key+'" tabindex="0" role="button" aria-label="Highlight '+escapeHtml(item.label)+' timeline"><span class="ops-urgency-dot '+item.key+'"></span><b>'+escapeHtml(item.label)+'</b><strong>'+item.count+'</strong><small>'+item.pct+'%</small></div>').join("")+'</div>';
 }
 
 function animateDashboardNumber(el,to){
@@ -181,13 +214,59 @@ function animateDashboardNumber(el,to){
   const tick=now=>{const p=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-p,3);el.textContent=String(Math.round(from+(target-from)*eased));if(p<1)requestAnimationFrame(tick);else el.dataset.value=String(target)};
   requestAnimationFrame(tick);
 }
+function animateOpsDistribution(dashboard=$(".ops-dashboard")){
+  $$(".ops-donut-segment",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(i*90)+"ms"));
+  $$(".ops-legend-row",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(140+i*70)+"ms"));
+}
+function animateOpsScoreTrend(dashboard=$(".ops-dashboard")){
+  $$(".ops-trend-bar",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(i*80)+"ms"));
+}
+function animateOpsSourceQuality(dashboard=$(".ops-dashboard")){
+  $$(".ops-quality-row",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(i*90)+"ms"));
+}
+function animateOpsUrgencyMix(dashboard=$(".ops-dashboard")){
+  $$(".ops-urgency-bar>span",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(i*75)+"ms"));
+  $$(".ops-urgency-list>div",dashboard).forEach((el,i)=>el.style.setProperty("--ops-delay",(120+i*65)+"ms"));
+}
+function clearOpsInfographicEmphasis(dashboard=$(".ops-dashboard")){
+  $$("[data-ops-filter]",dashboard).forEach(el=>el.classList.remove("ops-infographic-focus","ops-infographic-dim"));
+}
+function emphasizeOpsInfographic(group,value,dashboard=$(".ops-dashboard")){
+  $$("[data-ops-filter='"+group+"']",dashboard).forEach(el=>{
+    const match=el.dataset.opsValue===value;
+    el.classList.toggle("ops-infographic-focus",match);
+    el.classList.toggle("ops-infographic-dim",!match);
+  });
+}
+function bindOpsInfographicInteractions(){
+  const dashboard=$(".ops-dashboard");if(!dashboard||dashboard.dataset.infographicInteractions==="bound")return;
+  dashboard.dataset.infographicInteractions="bound";
+  const activate=event=>{
+    const target=event.target.closest?.("[data-ops-filter]");if(!target||!dashboard.contains(target))return;
+    emphasizeOpsInfographic(target.dataset.opsFilter,target.dataset.opsValue,dashboard);
+  };
+  const release=event=>{
+    const target=event.target.closest?.("[data-ops-filter]");if(!target)return;
+    const related=event.relatedTarget?.closest?.("[data-ops-filter]");
+    if(related&&related.dataset.opsFilter===target.dataset.opsFilter&&related.dataset.opsValue===target.dataset.opsValue)return;
+    clearOpsInfographicEmphasis(dashboard);
+  };
+  dashboard.addEventListener("pointerover",activate);
+  dashboard.addEventListener("pointerout",release);
+  dashboard.addEventListener("focus",activate,true);
+  dashboard.addEventListener("blur",release,true);
+}
 function replayDashboardMotion(){
   const dashboard=$(".ops-dashboard");if(!dashboard)return;
+  animateOpsDistribution(dashboard);
+  animateOpsScoreTrend(dashboard);
+  animateOpsSourceQuality(dashboard);
+  animateOpsUrgencyMix(dashboard);
   dashboard.classList.remove("ops-animate");void dashboard.offsetWidth;dashboard.classList.add("ops-animate");
 }
 function renderOpsRows(rowLeads,model){
   $("#opsPipelineCount").textContent=Math.min(5,model.total)+" records";
-  $("#opsPipelineRows").innerHTML=rowLeads.length?rowLeads.slice(0,5).map(l=>'<tr data-story-lead-id="'+escapeHtml(l.id)+'"><td data-label="Lead"><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td data-label="Source">'+escapeHtml(sourceForLead(l))+'</td><td data-label="Score"><strong class="ops-score-cell">'+l.score+'</strong></td><td data-label="Status"><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td data-label="Timeline">'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td data-label="Next action"><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the interactive demo to add the first record.</div></td></tr>';
+  $("#opsPipelineRows").innerHTML=rowLeads.length?rowLeads.slice(0,5).map(l=>'<tr data-story-lead-id="'+escapeHtml(l.id)+'"><td data-label="Lead"><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.company)+'</small></td><td data-label="Source">'+escapeHtml(sourceForLead(l))+'</td><td data-label="Score"><strong class="ops-score-cell">'+l.score+'</strong></td><td data-label="Status"><span class="ops-status '+escapeHtml(l.status)+'">'+(l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE")+'</span></td><td data-label="Timeline">'+escapeHtml(l.timelineLabel||"Unspecified")+'</td><td data-label="Next action"><b class="ops-next-action">'+escapeHtml(nextActionLabel(l))+'</b></td></tr>').join(""):'<tr><td colspan="6"><div class="ops-empty-state">No qualified leads yet. Run the workflow to add the first record.</div></td></tr>';
 }
 function setOpsNumber(el,value,motion=true){if(!el)return;if(motion)animateDashboardNumber(el,value);else{el.textContent=String(Math.round(Number(value)||0));el.dataset.value=String(Number(value)||0)}}
 function renderOpsModel(model,rowLeads=leads,{motion=true,activity=true}={}){
@@ -198,6 +277,7 @@ function renderOpsModel(model,rowLeads=leads,{motion=true,activity=true}={}){
   setOpsNumber($("#opsImmediate"),model.immediate.count,motion);
   $("#opsImmediateRate").textContent=model.immediate.pct+"% ASAP";
   renderDistribution(model);renderScoreTrend(model);renderActionQueue(model);renderSourceQuality(model);renderUrgency(model);
+  bindOpsInfographicInteractions();
   renderOpsRows(rowLeads,model);
   $("#opsLastSync").textContent="Synced now";
   if(activity)renderOpsActivity(rowLeads);
@@ -264,8 +344,8 @@ if("IntersectionObserver" in window){
 function renderCrmOverviewActivity(){
   const box=$("#crmOverviewActivity");if(!box)return;
   const recent=leads.slice(0,5);
-  if(!recent.length){box.innerHTML='<div class="crm-overview-empty">Run the interactive demo to create the first CRM activity record.</div>';return}
-  box.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Demo data")+'</em></div>').join("");
+  if(!recent.length){box.innerHTML='<div class="crm-overview-empty">Run the workflow to create the first CRM activity record.</div>';return}
+  box.innerHTML=recent.map(l=>'<div class="ops-human-activity '+escapeHtml(l.status||"other")+'"><span class="ops-activity-pulse"></span><div><b>'+escapeHtml(activitySentence(l))+'</b><small>'+escapeHtml(l.company||"")+" · "+escapeHtml(nextActionLabel(l))+'</small></div><em>'+escapeHtml(l.created||"Existing record")+'</em></div>').join("");
 }
 function replayCrmOverviewMotion(){
   const panel=document.querySelector('[data-crm-panel="leads"]');if(!panel)return;
@@ -291,7 +371,7 @@ function renderCRM(){
   renderUrgency(model,"#crmOverviewUrgencyMix");
   renderCrmOverviewActivity();
 
-  $("#crmRows").innerHTML=filtered.map(l=>`<tr data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(l.name)} at ${escapeHtml(l.company)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}"><td><b>${escapeHtml(l.name)}</b><small>${escapeHtml(l.company)}</small></td><td>${escapeHtml(sourceForLead(l))}</td><td><span class="crm-score">${l.score}</span></td><td><span class="crm-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.timelineLabel||"Unspecified")}</td><td><span class="crm-next-action">${escapeHtml(nextActionLabel(l))}</span></td><td>${escapeHtml(l.created||"Demo data")}</td></tr>`).join("");
+  $("#crmRows").innerHTML=filtered.map(l=>`<tr data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(l.name)} at ${escapeHtml(l.company)}" class="${lastCrmEvent?.id===l.id?"crm-new-row":""}"><td><b>${escapeHtml(l.name)}</b><small>${escapeHtml(l.company)}</small></td><td>${escapeHtml(sourceForLead(l))}</td><td><span class="crm-score">${l.score}</span></td><td><span class="crm-status ${l.status}">${l.status==="hot"?"HIGH":l.status==="review"?"REVIEW":"NURTURE"}</span></td><td>${escapeHtml(l.timelineLabel||"Unspecified")}</td><td><span class="crm-next-action">${escapeHtml(nextActionLabel(l))}</span></td><td>${escapeHtml(l.created||"Existing record")}</td></tr>`).join("");
   $("#crmEmpty").style.display=filtered.length?"none":"block";
   $("#crmPipelineSummary").textContent=filtered.length+" shown · "+model.total+" total";
   $$('#crmRows tr').forEach(row=>{const open=()=>openLead(row.dataset.id);row.addEventListener("click",open);row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open()}})});
@@ -321,7 +401,7 @@ function renderAnalytics(){
         ?"The pipeline average sits in the review range. Prioritize the human-review queue while high-score leads move to sales review."
         :"The current pipeline is weighted toward nurture. Focus on intent and urgency before escalating sales follow-up.";
 }
-function renderHistory(){const rows=leads.slice(0,5).map(l=>`<div class="run-history-row"><span class="run-dot ${l.status}"></span><div><b>${escapeHtml(l.name)} · ${escapeHtml(l.company)}</b><small>Qualification → demo CRM → ${l.status==="hot"?"sales review":"routing prepared"}</small></div><em>${escapeHtml(l.created)}</em></div>`).join("");$("#runHistoryRows").innerHTML=rows||'<div class="crm-empty" style="display:block">No workflow runs yet.</div>';$("#runHistoryCount").textContent=leads.length+" run"+(leads.length===1?"":"s")}
+function renderHistory(){const rows=leads.slice(0,5).map(l=>`<div class="run-history-row"><span class="run-dot ${l.status}"></span><div><b>${escapeHtml(l.name)} · ${escapeHtml(l.company)}</b><small>Qualification → CRM record → ${l.status==="hot"?"sales review":"routing prepared"}</small></div><em>${escapeHtml(l.created)}</em></div>`).join("");$("#runHistoryRows").innerHTML=rows||'<div class="crm-empty" style="display:block">No workflow runs yet.</div>';$("#runHistoryCount").textContent=leads.length+" run"+(leads.length===1?"":"s")}
 function renderAll(){renderCRM();renderAnalytics();renderHistory();renderOps()}
 const crmTitles={leads:"Lead Operations",analytics:"Pipeline Analytics",automations:"Automation Control",settings:"Workspace Settings"};function switchCrmView(view){const next=crmTitles[view]?view:"leads";$$('.crm-nav-btn').forEach(b=>b.classList.toggle("active",b.dataset.crmView===next));$$('.crm-view').forEach(p=>p.classList.toggle("active",p.dataset.crmPanel===next));$("#crmViewTitle").textContent=crmTitles[next];$("#leadDrawer").classList.remove("open");if(next==="analytics")renderAnalytics();if(next==="automations")renderHistory();if(next==="leads"){const main=$(".crm-main");if(main)main.scrollTop=0;setTimeout(()=>$("#crmSearch").focus({preventScroll:true}),60)}}
 $$('.crm-nav-btn').forEach(btn=>btn.addEventListener("click",()=>switchCrmView(btn.dataset.crmView)));
@@ -333,10 +413,10 @@ $("#showFollowup").addEventListener("click",()=>{if(!currentLead)return;followup
 let guided=false,cancelled=false;
 const tourChapters=[
   ["FOLLOW THE LEAD","See one lead move through the workflow."],
-  ["RUN IT FOR REAL","Execute the real six-stage demo workflow."],
+  ["RUN IT FOR REAL","Execute the six-stage qualification workflow."],
   ["WHY 92?","Read the score, rationale, and prepared next action."],
   ["OPERATIONS","Watch one lead change the operational dashboard."],
-  ["SAFETY","See a simulated timeout without pretending a retry ran."],
+  ["SAFETY","See how a connection timeout becomes a visible recovery requirement."],
   ["UNDER THE HOOD","Trace the same lead through the implementation."]
 ];
 function updateTourProgress(index,total,{fraction=0,beat=""}={}){

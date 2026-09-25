@@ -77,21 +77,31 @@
 
     async function animateElement(el,keyframes,timing,context){
       if(!el||context.cancelled())return;
-      if(context.reducedMotion||typeof el.animate!=="function"){
-        const final=Array.isArray(keyframes)?keyframes[keyframes.length-1]:keyframes;
-        if(final&&el.style){
-          for(const [key,value] of Object.entries(final)){
-            if(["offset","easing","composite"].includes(key))continue;
-            try{el.style[key]=value}catch{}
-          }
+      const final=Array.isArray(keyframes)?keyframes[keyframes.length-1]:keyframes;
+      const applyFinalFrame=()=>{
+        if(!final||!el.style)return;
+        for(const [key,value] of Object.entries(final)){
+          if(["offset","easing","composite"].includes(key))continue;
+          try{el.style[key]=value}catch{}
         }
+      };
+      if(context.reducedMotion||typeof el.animate!=="function"){
+        applyFinalFrame();
         await wait(1,context);
         return;
       }
       const animation=el.animate(keyframes,timing);
       animations.set(animation,context.story);
-      try{await animation.finished}catch{}
+      let completed=false;
+      try{
+        await animation.finished;
+        completed=!context.cancelled();
+      }catch{}
       animations.delete(animation);
+      if(completed){
+        applyFinalFrame();
+        try{animation.cancel()}catch{}
+      }
     }
 
     async function genericDirector(context,storyOptions){
@@ -120,6 +130,15 @@
       return "Nurture";
     }
 
+    function setWorkflowPacketState(packet,label,tone){
+      if(!packet)return;
+      packet.classList.remove("incoming","verified","priority","review","nurture","ready");
+      packet.classList.add(tone);
+      const text=packet.querySelector?.("b");
+      if(text)text.textContent=label;
+      packet.dataset.tone=tone;
+    }
+
     async function workflowDirector(context,storyOptions){
       const section=q("#workflow"),packet=q("#workflowStoryPacket"),caption=q("#workflowStoryCaption"),detail=q("#workflowStoryDetail");
       const stages=qa("#workflow .workflow-stage"),connectors=qa("#workflow .workflow-story-connector");
@@ -127,8 +146,9 @@
       const lead=storyOptions.lead||{name:"Sarah",company:"Acme Dental",score:92,status:"hot",action:"Sales review"};
       section.dataset.storyState="playing";
       stages.forEach(stage=>stage.classList.remove("story-focus","story-stage-complete"));
-      connectors.forEach(connector=>connector.classList.remove("story-connector-complete"));
+      connectors.forEach(connector=>connector.className="connector workflow-story-connector");
       packet.style.opacity="1";
+      setWorkflowPacketState(packet,"NEW INQUIRY","incoming");
 
       const track=q("#workflow .workflow-story-track");
       const positionFor=stage=>{
@@ -138,10 +158,16 @@
       let x=positionFor(stages[0]);
       packet.style.transform="translate3d("+x+"px,0,0)";
 
-      async function setBeat(index,title,copy,hold=620){
+      const qualifyTone=lead.status==="hot"?"priority":lead.status==="review"?"review":"nurture";
+      const scoreToken=(lead.score??92)+" / 100";
+      const finalToken=lead.status==="hot"?"SALES REVIEW":lead.status==="review"?"HUMAN REVIEW":"NURTURE";
+
+      async function setBeat(index,title,copy,label,tone,hold=620){
         if(context.cancelled())return false;
+        setWorkflowPacketState(packet,label,tone);
         storyOptions.onProgress?.({story:"workflow",fraction:(index+1)/4,beat:title});
         stages.forEach((stage,i)=>stage.classList.toggle("story-focus",i===index));
+        stages[index].dataset.storyTone=tone;
         if(caption)caption.textContent=title;
         if(detail)detail.textContent=copy;
         await context.wait(hold);
@@ -150,26 +176,28 @@
         return true;
       }
 
-      async function travel(toIndex){
-        const next=positionFor(stages[toIndex]);
-        connectors[toIndex-1]?.classList.add("story-connector-complete");
+      async function travel(toIndex,tone){
+        const next=positionFor(stages[toIndex]),connector=connectors[toIndex-1];
+        if(connector){
+          connector.classList.add("story-connector-complete","tone-"+tone);
+        }
         await context.animate(packet,[{transform:"translate3d("+x+"px,0,0)"},{transform:"translate3d("+next+"px,0,0)"}],{duration:context.reducedMotion?1:560,easing:"cubic-bezier(.22,.75,.2,1)",fill:"forwards"});
         x=next;
         packet.style.transform="translate3d("+x+"px,0,0)";
       }
 
-      if(!await setBeat(0,"Lead received",(lead.name||"Lead")+" · "+(lead.company||"Incoming inquiry"),650))return;
-      await travel(1);
-      if(!await setBeat(1,"Required fields valid","Name, company, budget, timeline and need are ready for scoring.",650))return;
-      await travel(2);
-      if(!await setBeat(2,(lead.score??92)+" / 100 · "+priorityLabel(lead),"Budget, urgency and intent resolve to a transparent qualification state.",760))return;
-      await travel(3);
-      if(!await setBeat(3,routeLabel(lead)+" prepared","The CRM state and next-action path are ready for review.",760))return;
+      if(!await setBeat(0,"Inquiry received",(lead.name||"Lead")+" · "+(lead.company||"Incoming inquiry"),"NEW INQUIRY","incoming",650))return;
+      await travel(1,"verified");
+      if(!await setBeat(1,"Input verified","Required fields are normalized and ready for qualification.","VERIFIED","verified",650))return;
+      await travel(2,qualifyTone);
+      if(!await setBeat(2,(lead.score??92)+" / 100 · "+priorityLabel(lead),"Budget, urgency and intent resolve to a transparent qualification state.",scoreToken,qualifyTone,760))return;
+      await travel(3,"ready");
+      if(!await setBeat(3,routeLabel(lead)+" ready","CRM state updated · next action assigned.",finalToken,"ready",760))return;
 
       stages.forEach(stage=>stage.classList.remove("story-focus"));
       stages[3].classList.add("story-focus");
       section.dataset.storyState="complete";
-      if(caption)caption.textContent=routeLabel(lead)+" prepared";
+      if(caption)caption.textContent=routeLabel(lead)+" ready";
       if(detail)detail.textContent=(lead.name||"Lead")+" completes the workflow with a visible, inspectable next action.";
     }
 
@@ -187,68 +215,79 @@
         ["Safe visible state","No model-confidence claim is used to make this routing decision."]
       ]},
       timeout:{beats:[
-        ["External CRM request","The public demo starts a simulated external-CRM failure story."],
-        ["Timeout detected","The simulated outbound request does not complete."],
-        ["Retry plan prepared","An illustrative bounded retry path is shown, but no retry job runs."],
-        ["RETRY NOT EXECUTED IN THIS PUBLIC DEMO","Production requires durable retry state and idempotent delivery."]
+        ["External CRM request","A connection-timeout scenario shows how the workflow surfaces an external CRM failure."],
+        ["Timeout detected","The external delivery path does not complete in the timeout scenario."],
+        ["Retry plan prepared","A bounded retry plan appears as the required recovery path; execution requires a connected CRM."],
+        ["DELIVERY RETRY REQUIRES A CONNECTED CRM","Connected CRM delivery requires durable retry state and idempotent delivery."]
       ]}
     };
 
-    async function reliabilityDirector(context,storyOptions){
-      const incidentScenario=storyOptions.scenario||"duplicate";
+    function selectReliabilityBeat(incidentScenario,index,storyOptions={}){
       const config=reliabilityStories[incidentScenario]||reliabilityStories.duplicate;
       const section=q("#reliability"),beats=qa("#reliability [data-incident-beat]"),scenes=qa("#reliability [data-incident-scene]");
-      if(!section||beats.length!==4)return;
-      section.dataset.storyState="playing";
+      if(!section||beats.length!==4)return null;
+      const safeIndex=Math.max(0,Math.min(3,Number(index)||0));
       section.dataset.incidentScenario=incidentScenario;
+      section.dataset.incidentBeat=String(safeIndex);
       scenes.forEach(scene=>scene.classList.toggle("active",scene.dataset.incidentScene===incidentScenario));
-      beats.forEach(beat=>beat.classList.remove("incident-focus","incident-complete"));
+      beats.forEach((beat,i)=>{
+        const title=q("#incidentBeatTitle"+i),copy=q("#incidentBeatCopy"+i);
+        if(title)title.textContent=config.beats[i][0];
+        if(copy)copy.textContent=config.beats[i][1];
+        beat.classList.toggle("incident-focus",i===safeIndex);
+        beat.classList.toggle("incident-complete",i<safeIndex);
+        if(i===safeIndex)beat.setAttribute("aria-current","step");else beat.removeAttribute?.("aria-current");
+      });
 
       const boundary=q("#incidentBoundary");
-      if(boundary)boundary.classList.toggle("visible",incidentScenario==="timeout");
+      if(boundary)boundary.classList.toggle("visible",incidentScenario==="timeout"&&safeIndex>=3);
+
+      const incoming=q("#incidentDuplicateIncoming"),existing=q("#incidentDuplicateExisting");
+      incoming?.classList.remove("merged");
+      existing?.classList.remove("matched");
+      q("#incidentTimeoutRequest")?.classList.remove("failed");
+      q("#reliability .timeout-link")?.classList.remove("failed");
+      q("#incidentRetryPlan")?.classList.remove("visible");
+      q("#reliability .sales-route")?.classList.remove("dimmed");
+      q("#reliability .human-route")?.classList.remove("selected");
 
       if(incidentScenario==="duplicate"){
-        const incoming=q("#incidentDuplicateIncoming"),existing=q("#incidentDuplicateExisting"),count=q("#incidentDuplicateCount");
-        if(count){const n=Number(storyOptions.recordCount)||3;count.textContent=n+" → "+n+" records"}
-        incoming?.classList.remove("merged");
-        existing?.classList.remove("matched");
+        const count=q("#incidentDuplicateCount"),n=Number(storyOptions.recordCount)||3;
+        if(count)count.textContent=n+" → "+n+" records";
+        if(safeIndex>=1)existing?.classList.add("matched");
+        if(safeIndex>=2)incoming?.classList.add("merged");
       }
       if(incidentScenario==="review"){
         const marker=q("#incidentReviewMarker"),settings=storyOptions.settings||{review:55,hot:80};
         const score=Number(storyOptions.score)||Math.min(settings.hot-1,Math.max(settings.review,67));
         if(marker){marker.style.left=score+"%";marker.setAttribute("aria-label",score+" score")}
-        q("#reliability .sales-route")?.classList.remove("dimmed");
-        q("#reliability .human-route")?.classList.remove("selected");
+        if(safeIndex>=1)q("#reliability .sales-route")?.classList.add("dimmed");
+        if(safeIndex>=2)q("#reliability .human-route")?.classList.add("selected");
       }
       if(incidentScenario==="timeout"){
-        q("#incidentTimeoutRequest")?.classList.remove("failed");
-        q("#reliability .timeout-link")?.classList.remove("failed");
-        q("#incidentRetryPlan")?.classList.remove("visible");
+        if(safeIndex>=1){
+          q("#incidentTimeoutRequest")?.classList.add("failed");
+          q("#reliability .timeout-link")?.classList.add("failed");
+        }
+        if(safeIndex>=2)q("#incidentRetryPlan")?.classList.add("visible");
       }
+      return {scenario:incidentScenario,index:safeIndex,title:config.beats[safeIndex][0],copy:config.beats[safeIndex][1]};
+    }
+
+    async function reliabilityDirector(context,storyOptions){
+      const incidentScenario=storyOptions.scenario||"duplicate";
+      const config=reliabilityStories[incidentScenario]||reliabilityStories.duplicate;
+      const section=q("#reliability"),beats=qa("#reliability [data-incident-beat]");
+      if(!section||beats.length!==4)return;
+      section.dataset.storyState="playing";
 
       for(let index=0;index<4;index++){
         if(context.cancelled())return;
+        selectReliabilityBeat(incidentScenario,index,storyOptions);
         storyOptions.onProgress?.({story:"reliability",fraction:(index+1)/4,beat:config.beats[index][0]});
-        beats.forEach((beat,i)=>beat.classList.toggle("incident-focus",i===index));
-        const title=q("#incidentBeatTitle"+index),copy=q("#incidentBeatCopy"+index);
-        if(title)title.textContent=config.beats[index][0];
-        if(copy)copy.textContent=config.beats[index][1];
 
-        if(incidentScenario==="duplicate"){
-          if(index===0)await context.animate(q("#incidentDuplicateIncoming"),[{transform:"translateX(-14px)",opacity:.35},{transform:"translateX(0)",opacity:1}],{duration:420,easing:"ease-out",fill:"forwards"});
-          if(index===1)q("#incidentDuplicateExisting")?.classList.add("matched");
-          if(index===2)q("#incidentDuplicateIncoming")?.classList.add("merged");
-        }
-        if(incidentScenario==="review"){
-          if(index===1)q("#reliability .sales-route")?.classList.add("dimmed");
-          if(index===2)q("#reliability .human-route")?.classList.add("selected");
-        }
-        if(incidentScenario==="timeout"){
-          if(index===1){
-            q("#incidentTimeoutRequest")?.classList.add("failed");
-            q("#reliability .timeout-link")?.classList.add("failed");
-          }
-          if(index===2)q("#incidentRetryPlan")?.classList.add("visible");
+        if(incidentScenario==="duplicate"&&index===0){
+          await context.animate(q("#incidentDuplicateIncoming"),[{transform:"translateX(-14px)",opacity:.35},{transform:"translateX(0)",opacity:1}],{duration:420,easing:"ease-out",fill:"forwards"});
         }
 
         await context.wait(index===3?760:620);
@@ -257,7 +296,9 @@
       }
 
       beats.forEach(beat=>beat.classList.remove("incident-focus"));
+      beats.forEach(beat=>beat.classList.add("incident-complete"));
       section.dataset.storyState="complete";
+      section.dataset.incidentBeat="3";
     }
 
     async function operationsDirector(context,storyOptions){
@@ -315,6 +356,14 @@
       if(token)token.classList.add("settled");
     }
 
+    function setArchitectureTone(el,label,tone){
+      if(!el)return;
+      el.classList.remove("arch-tone-request","arch-tone-valid","arch-tone-score","arch-tone-crm-state","arch-tone-ready");
+      el.classList.add("arch-tone-"+tone);
+      el.textContent=label;
+      el.dataset.tone=tone;
+    }
+
     async function architectureDirector(context,storyOptions){
       const section=q("#architecture"),stage=q("#architecture .architecture-story-stage"),layout=q("#architecture .architecture");
       const caption=q("#architectureStoryCaption"),detail=q("#architectureStoryDetail"),main=q("#architecturePayload");
@@ -328,14 +377,22 @@
       };
       if(!section||!stage||!layout||Object.values(nodes).some(x=>!x))return;
       section.dataset.storyState="playing";
-      layout.classList.remove("arch-branch-active","arch-reconverged");
+      layout.classList.remove("arch-branch-active","arch-reconverged","arch-phase-request","arch-phase-valid","arch-phase-ready");
       qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus","arch-story-complete"));
-      [main,rulesToken,crmToken].forEach(el=>{if(el){el.classList.remove("visible","settled");el.style.opacity="0"}});
+      [main,rulesToken,crmToken].forEach(el=>{if(el){el.classList.remove("visible","settled","merged","arch-tone-request","arch-tone-valid","arch-tone-score","arch-tone-crm-state","arch-tone-ready");el.style.opacity="0"}});
+      setArchitectureTone(main,"REQUEST","request");
+      setArchitectureTone(rulesToken,"SCORE","score");
+      setArchitectureTone(crmToken,"CRM STATE","crm-state");
+      layout.classList.add("arch-phase-request");
 
       const center=node=>{
         const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
         return {x:nr.left-sr.left+nr.width/2,y:nr.top-sr.top+nr.height/2};
       };
+      function badgeAbove(node){
+        const sr=stage.getBoundingClientRect(),nr=node.getBoundingClientRect();
+        return {x:nr.left-sr.left+nr.width/2,y:nr.top-sr.top-20};
+      }
       const move=async(el,from,to,duration=540)=>{
         if(!el)return;
         el.classList.add("visible");el.style.opacity="1";
@@ -359,15 +416,20 @@
         return !context.cancelled();
       };
 
-      const input=center(nodes.input),api=center(nodes.api),rules=center(nodes.rules),crm=center(nodes.crm),next=center(nodes.next);
+      const input=center(nodes.input),api=center(nodes.api),rules=center(nodes.rules),crm=center(nodes.crm),next=center(nodes.next),nextBadge=badgeAbove(nodes.next);
       if(main){main.style.opacity="1";main.style.transform="translate3d("+(input.x-28)+"px,"+(input.y-14)+"px,0)"}
       if(!await focus(nodes.input,"Lead enters the system","Structured browser input becomes the payload for the qualification request.",520))return;
       if(caption)caption.textContent="Validate request";
       if(detail)detail.textContent="POST /api/qualify reaches the Cloudflare Pages Function.";
       await move(main,input,api,560);
+      setArchitectureTone(main,"VALID","valid");
+      layout.classList.remove("arch-phase-request");
+      layout.classList.add("arch-phase-valid");
       if(!await focus(nodes.api,"Validate request","Required fields are validated and the API returns a traceable, no-store response.",620))return;
 
       layout.classList.add("arch-branch-active");
+      setArchitectureTone(rulesToken,"SCORE","score");
+      setArchitectureTone(crmToken,"CRM STATE","crm-state");
       if(rulesToken){rulesToken.style.opacity="1";rulesToken.style.transform=main?.style.transform||""}
       if(crmToken){crmToken.style.opacity="1";crmToken.style.transform=main?.style.transform||""}
       if(main)main.style.opacity="0";
@@ -375,16 +437,19 @@
       if(detail)detail.textContent="The same validated lead feeds deterministic rules and browser-local CRM state.";
       await Promise.all([move(rulesToken,api,rules,520),move(crmToken,api,crm,520)]);
       if(!await focus(nodes.rules,"Score intent + budget + urgency","Qualification Rules resolve score, status, and routing category.",560))return;
-      if(!await focus(nodes.crm,"Persist browser-local state","Demo CRM stores or updates the record locally; no external CRM message is sent.",560))return;
+      if(!await focus(nodes.crm,"Persist browser-local state","Browser-local CRM stores or updates the record; external CRM delivery is not connected.",560))return;
 
       layout.classList.add("arch-reconverged");
       if(caption)caption.textContent="Reconverge score + CRM state";
       if(detail)detail.textContent="Qualification result and CRM state meet before the next action is prepared.";
       await Promise.all([move(rulesToken,rules,next,520),move(crmToken,crm,next,520)]);
-      if(rulesToken)rulesToken.style.opacity=".25";
-      if(crmToken)crmToken.style.opacity=".25";
-      if(main){main.style.opacity="1";await move(main,api,next,360)}
-      if(!await focus(nodes.next,"Prepare next action","Draft, review, or nurture state is prepared in the demo with no outbound delivery.",700))return;
+      if(rulesToken){rulesToken.classList.add("merged");rulesToken.style.opacity="0"}
+      if(crmToken){crmToken.classList.add("merged");crmToken.style.opacity="0"}
+      setArchitectureTone(main,"READY","ready");
+      layout.classList.remove("arch-phase-valid");
+      layout.classList.add("arch-phase-ready");
+      if(main){main.style.opacity="1";await move(main,api,nextBadge,360)}
+      if(!await focus(nodes.next,"Prepare next action","Draft, review, or nurture state is prepared locally; outbound delivery is not connected.",700))return;
 
       qa("#architecture [data-arch-node]").forEach(el=>el.classList.remove("arch-story-focus"));
       nodes.next.classList.add("arch-story-focus");
@@ -428,6 +493,11 @@
       playWorkflowStory:options=>run("workflow",options),
       playLeadOperationsStory:options=>run("operations",options),
       playReliabilityStory:(scenario,options={})=>run("reliability",{...options,scenario}),
+      selectReliabilityBeat:(scenario,index,options={})=>{
+        cancelAnimations("reliability");
+        nextStoryEpoch("reliability");
+        return selectReliabilityBeat(scenario,index,options);
+      },
       playArchitectureStory:options=>run("architecture",options),
       cancelAll,
       get reducedMotion(){return prefersReducedMotion()}

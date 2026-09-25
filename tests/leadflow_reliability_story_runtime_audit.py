@@ -60,7 +60,7 @@ def run(width,height):
             if scenario=="review":
                 assert out["human"] and out["salesDim"],out
             if scenario=="timeout":
-                assert out["boundary"]=="RETRY NOT EXECUTED IN THIS PUBLIC DEMO" and out["boundaryVisible"],out
+                assert out["boundary"]=="DELIVERY RETRY REQUIRES A CONNECTED CRM" and out["boundaryVisible"],out
                 assert out["retryVisible"] and out["timeoutFailed"],out
         # Re-entrancy: timeout should win after rapid scenario changes.
         e("document.querySelector('[data-edge=\"duplicate\"]').click();document.querySelector('[data-edge=\"timeout\"]').click()")

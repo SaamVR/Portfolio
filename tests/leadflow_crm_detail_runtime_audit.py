@@ -143,7 +143,7 @@ setTimeout(()=>{
 empty=run_case(empty_js,empty=True,reduce=True)
 assert empty["total"]=="0" and empty["avg"]=="0" and empty["rows"]==0,empty
 assert empty["donut"] and "Run a lead" in empty["trend"] and "No queued actions" in empty["queue"],empty
-assert "No source data" in empty["source"] and "No timeline data" in empty["urgency"] and "Run the interactive demo" in empty["activity"],empty
+assert "No source data" in empty["source"] and "No timeline data" in empty["urgency"] and "Run the workflow" in empty["activity"],empty
 assert empty["animation"]=="none" and not empty["errors"],empty
 print("empty",empty)
 print("CRM_DETAIL_RUNTIME_AUDIT=PASS")

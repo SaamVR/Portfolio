@@ -36,7 +36,7 @@ def audit(width,height):
         out=e("""(()=>{const s=document.querySelector('#workflow'),packet=document.querySelector('#workflowStoryPacket');return{state:s.dataset.storyState,caption:document.querySelector('#workflowStoryCaption').textContent.trim(),detail:document.querySelector('#workflowStoryDetail').textContent.trim(),stages:[...s.querySelectorAll('.workflow-stage')].map(x=>({done:x.classList.contains('story-stage-complete'),focus:x.classList.contains('story-focus')})),connectors:[...s.querySelectorAll('.workflow-story-connector')].map(x=>x.classList.contains('story-connector-complete')),packetAnimation:getComputedStyle(packet).animationName,replayH:document.querySelector('#workflowReplay').getBoundingClientRect().height,docW:document.documentElement.scrollWidth,viewport:innerWidth}})()""")
         print(width,out)
         assert out["state"]=="complete",out
-        assert "prepared" in out["caption"].lower(),out
+        assert "ready" in out["caption"].lower(),out
         assert all(x["done"] for x in out["stages"]),out
         assert all(out["connectors"]),out
         assert out["packetAnimation"]=="none",out

@@ -17,10 +17,10 @@ test("workflow story exposes packet captions stages and replay",()=>{
 });
 
 test("workflow director has meaningful stage captions and settles",()=>{
-  for(const text of ["Lead received","Required fields valid","High priority"]){
+  for(const text of ["Inquiry received","Input verified","High priority"]){
     assert.ok(story.toLowerCase().includes(text.toLowerCase()),text);
   }
-  assert.match(story,/routeLabel\(lead\)\+" prepared"/);
+  assert.match(story,/routeLabel\(lead\)\+" ready"/);
   assert.match(story,/section\.dataset\.storyState/);
   assert.match(story,/story-connector-complete/);
 });

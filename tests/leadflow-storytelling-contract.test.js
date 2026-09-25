@@ -38,7 +38,7 @@ function makeSandbox(){
       return [];
     }
   };
-  return {window:{},setTimeout,clearTimeout,matchMedia:()=>({matches:true}),document};
+  return {window:{},setTimeout,clearTimeout,matchMedia:()=>({matches:true}),document,packet};
 }
 
 test("root loads storytelling before app",()=>{
@@ -134,4 +134,29 @@ test("replaying the same story cancels its in-flight Web Animation",async()=>{
   assert.ok(cancelCount>=1,"second run must cancel the previous in-flight animation");
   c.cancelAll();
   await Promise.all([first,second]);
+});
+
+
+test("completed Web Animations commit the final frame and release fill-forward effects",async()=>{
+  const code=fs.readFileSync(path.join(root,"storytelling.js"),"utf8");
+  const sandbox=makeSandbox();
+  let animationCount=0,cancelCount=0;
+  sandbox.setTimeout=fn=>{fn();return 0};
+  sandbox.clearTimeout=()=>{};
+  sandbox.matchMedia=()=>({matches:false});
+  sandbox.packet.animate=(keyframes)=>{
+    animationCount+=1;
+    return {finished:Promise.resolve(),cancel(){cancelCount+=1}};
+  };
+  sandbox.window.window=sandbox.window;
+  vm.runInNewContext(code,sandbox);
+  const c=sandbox.window.LeadFlowStorytelling.createController({root:sandbox.document});
+  const result=await c.playWorkflowStory({
+    reducedMotion:false,
+    lead:{name:"Sarah",company:"Acme Dental",score:92,status:"hot",action:"Sales review"}
+  });
+  assert.equal(result.status,"complete");
+  assert.ok(animationCount>=3,"workflow should animate between stages");
+  assert.equal(cancelCount,animationCount,"every completed animation should release its fill-forward effect");
+  assert.match(String(sandbox.packet.style.transform||""),/translate3d/);
 });

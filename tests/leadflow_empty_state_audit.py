@@ -20,8 +20,8 @@ with sync_playwright() as p:
       'queue':'No queued actions yet.',
       'sources':'No source data yet.',
       'urgency':'No timeline data yet.',
-      'table':'No qualified leads yet. Run the interactive demo to add the first record.',
-      'activity':'Run the interactive demo to create the first local record.',
+      'table':'No qualified leads yet. Run the workflow to add the first record.',
+      'activity':'Run the workflow to create the first local record.',
       'total':'0','errors':0
     }
     assert out==expected,(out,expected)
