@@ -105,3 +105,42 @@ for(const variant of variants){
     for(const selector of required)assert.ok(css.includes(selector),variant.slug+" missing environment override "+selector);
   });
 }
+
+
+test("refine variants use a shared neutral canvas instead of tinted page backgrounds",()=>{
+  for(const slug of ["refine-brown","refine-navy"]){
+    const css=read(slug+"/theme.css");
+    assert.match(css,/LEADFLOW REFINE — NEUTRAL CANVAS/);
+    assert.match(css,/--bg:#111315;/);
+    assert.match(css,/--bg2:#181A1C;/);
+    assert.match(css,/--card:#1D2022;/);
+    assert.match(css,/--surface-1:#1D2022;/);
+    assert.match(css,/html\[data-theme=light\][\s\S]*--bg:#F6F7F7;/);
+    assert.match(css,/html\[data-theme=light\][\s\S]*--bg2:#EEF0F0;/);
+    assert.match(css,/html\[data-theme=light\][\s\S]*--card:#FFFFFF;/);
+    assert.match(css,/html\[data-theme=light\][\s\S]*--surface-1:#FFFFFF;/);
+    assert.doesNotMatch(css,/radial-gradient\(circle at 8[89]% 3%,rgba\((?:185,134,103|118,169,218)/);
+  }
+});
+
+test("refine variants are light-first on a fresh visit",()=>{
+  for(const slug of ["refine-brown","refine-navy"]){
+    const html=read(slug+"/index.html");
+    assert.match(html,/localStorage\.getItem\('leadflow-theme'\).*\|\|'light'/s);
+  }
+});
+
+test("neutral-canvas refinement keeps brown and navy identity in accents, not surfaces",()=>{
+  const brown=read("refine-brown/theme.css");
+  const navy=read("refine-navy/theme.css");
+  assert.match(brown,/--accent:#B98667;/);
+  assert.match(brown,/html\[data-theme=light\][\s\S]*--accent:#7A4F36;/);
+  assert.match(navy,/--accent:#76A9DA;/);
+  assert.match(navy,/html\[data-theme=light\][\s\S]*--accent:#285F93;/);
+  for(const css of [brown,navy]){
+    assert.match(css,/\.band\{background:#181A1C!important\}/);
+    assert.match(css,/html\[data-theme=light\] \.band\{background:#EEF0F0!important\}/);
+    assert.match(css,/html\[data-theme=light\] \.case-section\{[\s\S]*#F8F9F9/);
+    assert.match(css,/html\[data-theme=light\] \.crm-shell[\s\S]*background:#F8F9F9!important/);
+  }
+});
