@@ -226,7 +226,7 @@ const easingAdapter=createRenderAdapter({
   clipDuration:10,renderer:easingRenderer,lights:easingLights,environment:{apply(){}},orientationX:-Math.PI/2
 });
 const poseA=sampleTimeline(.16,'desktop');
-const poseB=sampleTimeline(.28,'desktop');
+const poseB=sampleTimeline(.36,'desktop');
 easingAdapter.apply(poseA,.016);
 const firstDisplayed=easingAdapter.getAnimationPose();
 easingAdapter.apply(poseB,.016);
