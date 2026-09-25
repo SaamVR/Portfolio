@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#eee8dc" />
   <title>NOVA — Hear beyond.</title>
-  <meta name="description" content="NOVA is a fictional premium wireless headphone concept presented as an interactive 3D product experience." />
+  <meta name="description" content="NOVA is an independent interactive 3D headphone launch study using Sony WH-1000XM6 official specifications as a real-world hardware benchmark." />
   <meta property="og:title" content="NOVA — Hear beyond." />
-  <meta property="og:description" content="A fictional premium headphone launch built as a responsive real-time 3D product experience." />
+  <meta property="og:description" content="A responsive real-time 3D headphone launch study grounded in a disclosed real-world hardware benchmark." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://nova-interactive-portfolio.pages.dev/" />
   <meta name="twitter:card" content="summary" />
@@ -50,7 +50,7 @@
 
   <div class="hotspot-layer" aria-label="Product detail hotspots">
     <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
-    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="headband" aria-label="Explore articulated headband design"><i></i><span>Articulated fit</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="headband" aria-label="Explore folding hinge design"><i></i><span>Fold hinge</span></button>
     <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
   </div>
 
@@ -72,10 +72,15 @@
 
     <section id="design" class="stage stage--design" data-range-anchor="design">
       <div class="stage-inner copy copy--left">
-        <p class="eyebrow">Sculpted comfort</p>
+        <p class="eyebrow">Fit / fold / control</p>
         <h2>Made to <em>disappear.</em></h2>
-        <p>Soft-touch contact surfaces and articulated geometry are shaped to feel considered from every angle—quietly present when you wear them, unmistakable when you look closer.</p>
-        <p class="interaction-note">Select a point on the product to inspect the detail.</p>
+        <p>Over-ear cushion geometry, a folding hinge and an earcup control zone are presented as three separate engineering details instead of competing callouts.</p>
+        <p class="interaction-note">Explore cushion, hinge and controls one detail at a time.</p>
+        <div id="designDetailSequence" class="design-detail-sequence" aria-label="Design detail sequence">
+          <button type="button" data-detail-id="cushion" data-detail-target="cushion" aria-pressed="true"><span>01</span><strong>Cushion</strong><small>Over-ear contact surface and pad depth.</small></button>
+          <button type="button" data-detail-id="hinge" data-detail-target="headband" aria-pressed="false"><span>02</span><strong>Hinge</strong><small>Swivel and fold joint for compact storage.</small></button>
+          <button type="button" data-detail-id="controls" data-detail-target="controls" aria-pressed="false"><span>03</span><strong>Controls</strong><small>Earcup access for playback and noise control.</small></button>
+        </div>
       </div>
       <div class="section-marker" aria-hidden="true"><span>DESIGN</span><i></i></div>
     </section>
@@ -83,28 +88,28 @@
     <section id="sound" class="stage stage--sound" data-range-anchor="spatial">
       <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div class="stage-inner copy copy--center">
-        <p class="eyebrow">Immersive audio</p>
-        <h2>Your space becomes<br /><em>the soundstage.</em></h2>
-        <p>These concept listening profiles demonstrate how the interface could communicate different listening intentions without inventing measured acoustic performance.</p>
-        <div class="segmented" role="group" aria-label="Concept listening profile">
-          <button type="button" data-listening-mode="spatial" aria-pressed="true">Spatial</button>
-          <button type="button" data-listening-mode="focus" aria-pressed="false">Focus</button>
-          <button type="button" data-listening-mode="ambient" aria-pressed="false">Ambient</button>
+        <p class="eyebrow">Wireless audio / codec support</p>
+        <h2>Choose the<br /><em>wireless link.</em></h2>
+        <p>The reference hardware benchmark supports SBC, AAC, LDAC and LC3 over Bluetooth 5.3, giving the product story a practical compatibility layer instead of invented listening modes.</p>
+        <div class="segmented" role="group" aria-label="Wireless codec reference">
+          <button type="button" data-listening-mode="spatial" aria-pressed="true">LDAC</button>
+          <button type="button" data-listening-mode="focus" aria-pressed="false">AAC</button>
+          <button type="button" data-listening-mode="ambient" aria-pressed="false">LC3</button>
         </div>
-        <p class="mode-description" id="listeningModeDescription" aria-live="polite">Spatial opens the presentation for a wider, more immersive listening feel. Focus reduces surrounding motion. Ambient keeps the visual field open to the world around you.</p>
+        <p class="mode-description" id="listeningModeDescription" aria-live="polite"><strong>LDAC</strong> is included in the reference codec set alongside AAC, SBC and LC3 for compatible source devices.</p>
       </div>
     </section>
 
     <section id="control" class="stage stage--control" data-range-anchor="adaptive">
       <div class="stage-inner copy copy--right">
-        <p class="eyebrow">Adaptive listening</p>
-        <h2>Silence,<br /><em>on your terms.</em></h2>
-        <p>Move between two conceptual noise-control behaviors: one prioritizes isolation, while the other keeps awareness of the surrounding space.</p>
-        <div class="segmented segmented--light" role="group" aria-label="Concept noise control mode">
-          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Adaptive</button>
-          <button type="button" data-noise-mode="transparency" aria-pressed="false">Transparency</button>
+        <p class="eyebrow">Noise control / awareness</p>
+        <h2>Quiet when<br /><em>you need it.</em></h2>
+        <p>Use active noise canceling for travel or focused work, then switch to Ambient Sound when voices, announcements or traffic need to remain audible.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Noise control mode">
+          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Noise Canceling</button>
+          <button type="button" data-noise-mode="transparency" aria-pressed="false">Ambient Sound</button>
         </div>
-        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite">Adaptive represents focused isolation. Transparency represents awareness and a more open connection to the environment.</p>
+        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite"><strong>Noise Canceling</strong> pairs with the 30-hour NC-on reference battery target. Ambient Sound keeps useful surroundings in the mix.</p>
       </div>
       <div class="control-field" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
@@ -113,7 +118,7 @@
       <div class="stage-inner copy copy--left copy--compact">
         <p class="eyebrow">Articulated form</p>
         <h2>Made to <em>move.</em></h2>
-        <p>Fold the earcups inward for a more compact carry shape, then open NOVA back into its listening form without losing the product's sculpted silhouette.</p>
+        <p>Fold the earcups inward for a compact travel profile. The reference hardware includes a carrying case, so the movement is presented as a practical pack-and-go action rather than a decorative transform.</p>
         <p class="interaction-note">Hold the folded pose long enough to read the hinge, then reopen it when you are ready.</p>
         <div class="segmented segmented--light" role="group" aria-label="Headphone form">
           <button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button>
@@ -126,7 +131,7 @@
       <div class="stage-inner inspect-copy">
         <p class="eyebrow">Direct inspection</p>
         <h2>Look closer.</h2>
-        <p>Explore the cushions, hinge and earcup controls. Drag for a curated view, or jump to a named angle when you want to understand the whole form.</p>
+        <p>Explore cushion, hinge and controls one detail at a time, then use Front, Side and Rear views to understand the complete over-ear form.</p>
         <div class="inspection-views" role="group" aria-label="Inspection view">
           <button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button>
           <button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button>
@@ -144,17 +149,17 @@
       <div class="stage-inner resolution-copy">
         <p class="eyebrow">NOVA / Spatial wireless headphones</p>
         <h2>Hear beyond.</h2>
-        <p>Designed for immersive listening, adaptive awareness and a form that moves with you.</p>
-        <div class="feature-strip" aria-label="NOVA feature summary">
-          <span>Spatial Audio</span>
-          <span>Adaptive Noise Control</span>
-          <span>Transparency</span>
+        <p>A 30-hour NC-on reference, Bluetooth 5.3, multipoint device switching and wired passive playback give the launch story the practical details buyers actually compare.</p>
+        <div class="feature-strip" aria-label="NOVA reference specification summary">
+          <span>30 hrs NC on</span>
+          <span>40 hrs NC off</span>
+          <span>Bluetooth 5.3</span>
           <span>Multipoint</span>
-          <span>Articulated Form</span>
+          <span>8.96 oz</span>
         </div>
         <div class="resolution-actions">
-          <button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Product facts</button>
-          <button type="button" class="button button--ghost" id="notifyConcept" aria-controls="notifyPanel" aria-expanded="false">Preview notify flow</button>
+          <button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Specifications</button>
+          <a class="button button--ghost" href="#case-study">Behind the build <span>↘</span></a>
         </div>
       </div>
     </section>
@@ -291,56 +296,32 @@
   </div>
 
   <div class="facts-shell" aria-hidden="true">
-    <button class="facts-backdrop" type="button" data-facts-close aria-label="Close product facts"></button>
+    <button class="facts-backdrop" type="button" data-facts-close aria-label="Close specifications"></button>
     <aside id="productFactsPanel" class="facts-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="productFactsTitle" tabindex="-1">
       <div class="interest-panel__meta">
-        <span>NOVA / CONCEPT PRODUCT FACTS</span>
-        <button type="button" data-facts-close aria-label="Close product facts">Close ×</button>
+        <span>NOVA / REFERENCE SPECIFICATIONS</span>
+        <button type="button" data-facts-close aria-label="Close specifications">Close ×</button>
       </div>
       <div class="facts-panel__body">
-        <p class="eyebrow">Concept product facts</p>
-        <h2 id="productFactsTitle">What the demo<br /><em>actually represents.</em></h2>
+        <p class="eyebrow">Reference hardware benchmark</p>
+        <h2 id="productFactsTitle">Real-world specs,<br /><em>source disclosed.</em></h2>
+        <p class="reference-disclosure">Hardware benchmark: <strong>Sony WH-1000XM6</strong>. NOVA is an independent portfolio launch study using the official specification envelope as a realistic product-content reference; it is not affiliated with Sony.</p>
         <dl class="concept-facts">
-          <div><dt>Format</dt><dd>Over-ear wireless headphone concept with an articulated folding form.</dd></div>
-          <div><dt>Listening profiles</dt><dd>Spatial, Focus and Ambient are visual concept profiles—not measured acoustic claims.</dd></div>
-          <div><dt>Noise control</dt><dd>Adaptive and Transparency are conceptual interaction states demonstrated through the environment.</dd></div>
-          <div><dt>Controls</dt><dd>The 3D model exposes a physical earcup control surface through a product hotspot.</dd></div>
-          <div><dt>Multipoint</dt><dd>Multipoint is part of the concept feature set; protocol, compatibility and implementation are not specified.</dd></div>
-          <div><dt>Dimensions / weight / battery</dt><dd>Not specified in this fictional concept. No invented performance numbers are presented.</dd></div>
+          <div><dt>Weight</dt><dd>8.96 oz</dd></div>
+          <div><dt>Driver</dt><dd>1.18 in driver / closed over-ear format</dd></div>
+          <div><dt>Wireless</dt><dd>Bluetooth 5.3 / effective range approx. 32.81 ft</dd></div>
+          <div><dt>Codecs</dt><dd>SBC / AAC / LDAC / LC3</dd></div>
+          <div><dt>Battery</dt><dd>30 hrs with noise canceling on / 40 hrs with noise canceling off</dd></div>
+          <div><dt>Charge time</dt><dd>Approx. 3.5 hrs via USB</dd></div>
+          <div><dt>Connections</dt><dd>Multipoint / Stereo Mini Jack / passive operation supported</dd></div>
+          <div><dt>Included</dt><dd>Carrying case, connection cable and USB cable in the reference package</dd></div>
         </dl>
         <div class="concept-faq">
-          <details><summary>Is NOVA a real product?</summary><p>No. NOVA is a fictional product used to demonstrate an interactive product-launch experience.</p></details>
-          <details><summary>Are the acoustic claims measured?</summary><p>No. The site demonstrates interface and storytelling concepts, not verified acoustic or laboratory performance.</p></details>
-          <details><summary>What is genuinely interactive?</summary><p>The live 3D model, authored camera and lighting, folding state, named inspection views, hotspots and responsive choreography run in the browser.</p></details>
+          <details open><summary>How does multipoint help day to day?</summary><p>Multipoint lets the reference headset stay connected to two devices, so you can switch between a phone and laptop without repeating pairing each time.</p></details>
+          <details><summary>Can it be used when wireless is inconvenient?</summary><p>Yes. The reference specification includes a Stereo Mini Jack and passive operation for wired passive playback.</p></details>
+          <details><summary>What battery figure is being used?</summary><p>The real reference lists up to 30 hrs with noise canceling on and 40 hrs with noise canceling off.</p></details>
         </div>
-      </div>
-    </aside>
-  </div>
-
-  <div class="interest-shell" aria-hidden="true">
-    <button class="interest-backdrop" type="button" data-notify-close aria-label="Close early access panel"></button>
-    <aside id="notifyPanel" class="interest-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notifyTitle" tabindex="-1">
-      <div class="interest-panel__meta">
-        <span>NOVA / CONCEPT PREVIEW</span>
-        <button type="button" id="notifyClose" data-notify-close aria-label="Close early access panel">Close ×</button>
-      </div>
-      <div class="interest-panel__body">
-        <p class="eyebrow">Early access</p>
-        <h2 id="notifyTitle">Stay close to<br /><em>what comes next.</em></h2>
-        <p>NOVA is a fictional product created for this interactive portfolio experience. Use the field below to preview a launch-interest interaction. Nothing is transmitted or stored.</p>
-        <form id="notifyDemoForm" class="interest-form">
-          <label for="notifyEmail">Email preview</label>
-          <div class="interest-form__row">
-            <input id="notifyEmail" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required />
-            <button type="submit" class="button button--solid">Preview notification</button>
-          </div>
-          <p id="notifyDemoStatus" class="interest-form__status" aria-live="polite">Demo only / no data leaves this browser</p>
-        </form>
-        <div class="interest-panel__status">
-          <i aria-hidden="true"></i>
-          <span>Concept preview / local interaction only</span>
-        </div>
-        <button type="button" class="button button--ghost" data-notify-close>Continue exploring</button>
+        <p class="reference-source"><strong>Official source</strong><br /><a href="https://www.sony.com/electronics/support/wireless-headphones-bluetooth-headphones/wh-1000xm6/specifications" target="_blank" rel="noreferrer">Sony WH-1000XM6 specifications ↗</a></p>
       </div>
     </aside>
   </div>
