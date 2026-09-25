@@ -1,0 +1,27 @@
+name: LeadFlow V4.1 Runtime Bundle
+
+on:
+  push:
+    branches:
+      - leadflow/v4.1-motion-fluidity
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload runtime source
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-v41-runtime-source
+          path: |
+            .
+            !.git
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
