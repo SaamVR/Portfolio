@@ -4,6 +4,7 @@ import { createInspectionController } from '../site/interactions/inspection-cont
 import { createModeController } from '../site/interactions/mode-controller.js';
 import { createHotspotController } from '../site/interactions/hotspot-controller.js';
 import { normalizeEnvironmentState, createEnvironment } from '../site/runtime/environment.js';
+import { detailStepForProgress, detailProgressForStep } from '../site/interactions/detail-controller.js';
 
 const fold = createFoldController({ openPose:.20, foldedPose:.40, duration:.7 });
 fold.begin('fold', .24);
@@ -169,3 +170,11 @@ inspect.update(.5);
 i=inspect.getInfluence();
 assert.equal(i.view,'front');
 assert.ok(Math.abs(i.modelYaw)<.2,'front inspection view must return toward the authored front');
+
+
+assert.equal(detailStepForProgress(.10),'cushion');
+assert.equal(detailStepForProgress(.40),'headband');
+assert.equal(detailStepForProgress(.82),'controls');
+assert.ok(detailProgressForStep('cushion') < detailProgressForStep('headband'));
+assert.ok(detailProgressForStep('headband') < detailProgressForStep('controls'));
+assert.equal(detailProgressForStep('invalid'), detailProgressForStep('cushion'));
