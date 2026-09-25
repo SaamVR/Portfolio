@@ -532,19 +532,19 @@ jobs:
             await page.waitForFunction(()=>document.body.dataset.modelState==='fallback' && document.body.dataset.uiReady==='true');
             const focus=page.getByRole('button',{name:/focus/i});
             await focus.click();
-            const facts=page.getByRole('button',{name:/product facts/i});
-            await facts.click();
-            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            const specs=page.getByRole('button',{name:/project specs/i});
+            await specs.click();
+            await page.waitForFunction(()=>document.body.dataset.benchmarkPanel==='open');
             const result=await page.evaluate(()=>({
               state:document.body.dataset.modelState,
               runtime:document.querySelector('#runtimeState')?.textContent||'',
               posterOpacity:Number(getComputedStyle(document.querySelector('.product-poster')).opacity),
               focusPressed:document.querySelector('[data-listening-mode="focus"]')?.getAttribute('aria-pressed'),
               foldDisabled:Boolean(document.querySelector('[data-fold-state="fold"]')?.disabled),
-              factsOpen:document.body.dataset.productFacts,
+              specsOpen:document.body.dataset.benchmarkPanel,
               headline:document.body.innerText.includes('Hear beyond')
             }));
-            if(result.state!=='fallback'||!result.runtime.includes('STATIC MODE / 3D UNAVAILABLE')||result.posterOpacity<.9||result.focusPressed!=='true'||!result.foldDisabled||result.factsOpen!=='open'||!result.headline){
+            if(result.state!=='fallback'||!result.runtime.includes('STATIC MODE / 3D UNAVAILABLE')||result.posterOpacity<.9||result.focusPressed!=='true'||!result.foldDisabled||result.specsOpen!=='open'||!result.headline){
               throw new Error('renderer fallback incomplete '+JSON.stringify(result));
             }
             if(errors.length) throw new Error('renderer fallback pageerror '+errors.join(' | '));
