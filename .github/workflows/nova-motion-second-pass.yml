@@ -14,8 +14,14 @@ permissions:
 
 jobs:
   motion-audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [desktop, mobile]
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 12
+    env:
+      NOVA_MOTION_PHASE: ${{ matrix.phase }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +61,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: nova-motion-second-pass
+          name: nova-motion-second-pass-${{ matrix.phase }}
           path: nova-motion-audit
           retention-days: 7
