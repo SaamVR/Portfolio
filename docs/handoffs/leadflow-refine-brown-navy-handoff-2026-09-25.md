@@ -194,3 +194,61 @@ Verification:
 
 For future palette work, treat immutable deployment `d75eb77f` and product commit `3fc85ff2a2a6ca438a1ec65e8411b52526cdabd1` as the current brown/navy baseline.
 
+## Strict achromatic refinement — 2026-09-25
+
+The neutral canvas was refined again after visual review because the earlier near-neutral values still carried a perceptible cool cast and the Operations workspace retained inherited green-tinted chrome.
+
+Authoritative refinement:
+- PR #32 — Make LeadFlow refinement canvases strictly achromatic
+- reviewed branch head: `e387c19ef31681e644c937ced187111db9dac0d7`
+- squash merge: `f6b177cd513a82143a26c123c71f62adb52c72b9`
+- preservation branch: `preserve/leadflow-achromatic-c6c98fd8-20260925`
+- immutable deployment: https://c6c98fd8.leadflow-ai-bhy.pages.dev/
+- canonical deployment: https://leadflow-ai-bhy.pages.dev/
+
+Current shared grayscale ladder:
+- light page: `#F7F7F7`
+- light bands: `#EFEFEF`
+- light cards: `#FFFFFF`
+- light secondary surfaces: `#F3F3F3` / `#EAEAEA`
+- light borders: `#D2D2D2` / `#B8B8B8`
+- light primary text: `#242424`
+- light secondary text: `#444444`
+- light muted text: `#666666`
+- dark page: `#111111`
+- dark bands: `#181818`
+- dark cards: `#202020`
+- dark secondary surfaces: `#262626` / `#282828`
+
+All neutral palette values use equal RGB channels. Brown/navy are retained only for deliberate identity accents and selected/story states. Yellow remains review/attention and brick red remains urgency/failure.
+
+Additional inherited tint cleanup covers:
+- hero product panel and float cards
+- theme-toggle chrome
+- Operations dashboard and table
+- Operations chart tracks / metadata / story ribbon
+- CRM pipeline and tables
+- Analytics v2 surfaces
+- guided-tour chrome
+- modal chrome
+- ROI / blueprint / case / footer neutral surfaces
+
+Final QA:
+- GitHub Actions run https://github.com/SaamVR/Portfolio/actions/runs/36187432210 PASS
+- strict achromatic contract PASS
+- full Node regression PASS
+- brown + navy responsive interaction matrices PASS
+- brown + navy whole-page contrast audits PASS
+- brown + navy full guided motion audits PASS
+- visual capture PASS
+
+Pixel verification from the final navy Operations capture:
+- previous inherited table-header tint: RGB `(226,235,229)`
+- current table header: RGB `(239,239,239)` = `#EFEFEF`
+- current page background: RGB `(247,247,247)` = `#F7F7F7`
+- primary cards: `#FFFFFF`
+
+Live immutable and canonical byte/source verification passed, and V1/V2/V3 plus their qualification engine versions remain intact.
+
+Treat product commit `f6b177cd513a82143a26c123c71f62adb52c72b9` and immutable deployment `c6c98fd8` as the current brown/navy refinement baseline.
+
