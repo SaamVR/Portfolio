@@ -107,19 +107,39 @@ for(const variant of variants){
 }
 
 
-test("refine variants use a shared neutral canvas instead of tinted page backgrounds",()=>{
+test("refine variants use a strict achromatic canvas",()=>{
+  const expectedDark={
+    "--bg":"#111111","--bg2":"#181818","--card":"#202020","--card2":"#262626",
+    "--surface-1":"#202020","--surface-2":"#161616","--surface-3":"#282828",
+    "--text":"#F2F2F2","--text-soft":"#D8D8D8","--muted":"#A8A8A8",
+    "--meta-readable":"#B0B0B0","--line":"#383838","--line2":"#505050"
+  };
+  const expectedLight={
+    "--bg":"#F7F7F7","--bg2":"#EFEFEF","--card":"#FFFFFF","--card2":"#F3F3F3",
+    "--surface-1":"#FFFFFF","--surface-2":"#F3F3F3","--surface-3":"#EAEAEA",
+    "--text":"#242424","--text-soft":"#444444","--muted":"#666666",
+    "--meta-readable":"#686868","--line":"#D2D2D2","--line2":"#B8B8B8"
+  };
+  const achromatic=hex=>{
+    const m=hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    return !!m && m[1].toLowerCase()===m[2].toLowerCase() && m[2].toLowerCase()===m[3].toLowerCase();
+  };
   for(const slug of ["refine-brown","refine-navy"]){
     const css=read(slug+"/theme.css");
-    assert.match(css,/LEADFLOW REFINE — NEUTRAL CANVAS/);
-    assert.match(css,/--bg:#111315;/);
-    assert.match(css,/--bg2:#181A1C;/);
-    assert.match(css,/--card:#1D2022;/);
-    assert.match(css,/--surface-1:#1D2022;/);
-    assert.match(css,/html\[data-theme=light\][\s\S]*--bg:#F6F7F7;/);
-    assert.match(css,/html\[data-theme=light\][\s\S]*--bg2:#EEF0F0;/);
-    assert.match(css,/html\[data-theme=light\][\s\S]*--card:#FFFFFF;/);
-    assert.match(css,/html\[data-theme=light\][\s\S]*--surface-1:#FFFFFF;/);
-    assert.doesNotMatch(css,/radial-gradient\(circle at 8[89]% 3%,rgba\((?:185,134,103|118,169,218)/);
+    assert.match(css,/LEADFLOW REFINE — ACHROMATIC CANVAS/);
+    const block=css.slice(css.lastIndexOf("/* LEADFLOW REFINE — ACHROMATIC CANVAS"));
+    for(const [token,value] of Object.entries(expectedDark)){
+      assert.ok(block.includes(token+":"+value),slug+" missing dark "+token+" "+value);
+      assert.ok(achromatic(value),value+" must be grayscale");
+    }
+    const light=block.slice(block.indexOf("html[data-theme=light]{"));
+    for(const [token,value] of Object.entries(expectedLight)){
+      assert.ok(light.includes(token+":"+value),slug+" missing light "+token+" "+value);
+      assert.ok(achromatic(value),value+" must be grayscale");
+    }
+    assert.match(block,/body\{background:#111111!important\}/);
+    assert.match(block,/html\[data-theme=light\] body\{background:#F7F7F7!important\}/);
+    assert.doesNotMatch(block,/#F6F7F7|#EEF0F0|#CDD2D4|#C0CCD8|#E8EEF4|#F3F6F9/i);
   }
 });
 
@@ -130,7 +150,7 @@ test("refine variants are light-first on a fresh visit",()=>{
   }
 });
 
-test("neutral-canvas refinement keeps brown and navy identity in accents, not surfaces",()=>{
+test("achromatic refinement keeps brown and navy identity in accents, not neutral surfaces",()=>{
   const brown=read("refine-brown/theme.css");
   const navy=read("refine-navy/theme.css");
   assert.match(brown,/--accent:#B98667;/);
@@ -138,9 +158,10 @@ test("neutral-canvas refinement keeps brown and navy identity in accents, not su
   assert.match(navy,/--accent:#76A9DA;/);
   assert.match(navy,/html\[data-theme=light\][\s\S]*--accent:#285F93;/);
   for(const css of [brown,navy]){
-    assert.match(css,/\.band\{background:#181A1C!important\}/);
-    assert.match(css,/html\[data-theme=light\] \.band\{background:#EEF0F0!important\}/);
-    assert.match(css,/html\[data-theme=light\] \.case-section\{[\s\S]*#F8F9F9/);
-    assert.match(css,/html\[data-theme=light\] \.crm-shell[\s\S]*background:#F8F9F9!important/);
+    const block=css.slice(css.lastIndexOf("/* LEADFLOW REFINE — ACHROMATIC CANVAS"));
+    assert.match(block,/\.band\{background:#181818!important\}/);
+    assert.match(block,/html\[data-theme=light\] \.band\{background:#EFEFEF!important\}/);
+    assert.match(block,/html\[data-theme=light\] \.case-section\{[\s\S]*#F7F7F7/);
+    assert.match(block,/html\[data-theme=light\] \.crm-shell[\s\S]*background:#F7F7F7!important/);
   }
 });
