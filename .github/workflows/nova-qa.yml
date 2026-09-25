@@ -521,6 +521,10 @@ jobs:
             for(const check of checks){
               await scrollProgress(page,check.progress);
               await page.waitForFunction(detail=>document.body.dataset.designDetail===detail,check.detail);
+              await page.waitForFunction(hotspot=>{
+                const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                return el && Number(getComputedStyle(el).opacity)>=.8;
+              },check.hotspot);
               const state=await page.evaluate(({detail,hotspot})=>{
                 const active=document.querySelector('[data-detail-id="'+detail+'"]');
                 const activeHotspot=document.querySelector('[data-hotspot="'+hotspot+'"]');
