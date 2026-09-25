@@ -4,7 +4,7 @@ import { createRenderAdapter } from '../site/runtime/render-adapter.js';
 const damp=(current,target,lambda,dt)=>current+(target-current)*(1-Math.exp(-lambda*dt));
 const vec=(x=0,y=0,z=0)=>({x,y,z});
 const THREE={MathUtils:{damp}};
-const camera={position:vec(),fov:30,updateProjectionMatrix(){},lookAt(){}};
+const camera={position:vec(),fov:30,lookAts:[],updateProjectionMatrix(){},lookAt(...args){this.lookAts.push(args);}};
 const presentation={position:vec(),rotation:vec(),scale:vec(1,1,1)};
 const renderer={toneMappingExposure:1};
 const mixer={times:[],setTime(value){this.times.push(value);}};
@@ -29,3 +29,12 @@ assert.ok(Math.abs(mixer.times[0]-2)<.001,'initial source pose should initialize
 assert.ok(mixer.times[1]>mixer.times[0],'source pose should move toward the new target');
 assert.ok(mixer.times[1]<8,'source pose must be damped instead of snapping directly to target');
 console.log('render_adapter_contract: PASS');
+
+const targetShift={...base,camera:{...base.camera,target:[2,1,0]}};
+adapter.apply(targetShift,1/60);
+const latestLook=camera.lookAts.at(-1);
+assert.ok(latestLook[0]>0 && latestLook[0]<2,'camera lookAt target must damp instead of snapping');
+assert.ok(latestLook[1]>0 && latestLook[1]<1,'camera vertical target must damp instead of snapping');
+
+const poseStep=mixer.times[1]-mixer.times[0];
+assert.ok(poseStep<=.11,`source-pose velocity must be bounded per frame, got ${poseStep}`);
