@@ -249,7 +249,7 @@ jobs:
             await page.screenshot({path:'nova-qa/desktop_focus.png'});
 
             await scrollProgress(page,.52);
-            await page.getByRole('button',{name:/transparency/i}).click();
+            await page.locator('[data-noise-mode="transparency"]').click();
             await page.waitForTimeout(650);
             await page.screenshot({path:'nova-qa/desktop_transparency.png'});
 
@@ -308,7 +308,7 @@ jobs:
             await hotspot.tap();
 
             await scrollProgress(page,.36);
-            await page.getByRole('button',{name:/ambient/i}).tap();
+            await page.locator('[data-listening-mode="ambient"]').tap();
             await page.waitForTimeout(520);
             await page.screenshot({path:'nova-qa/mobile_ambient.png'});
 
