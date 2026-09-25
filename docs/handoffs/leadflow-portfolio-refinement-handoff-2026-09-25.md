@@ -597,3 +597,23 @@ Treat `5bdc2903...` plus the canonical production URL as the LeadFlow V3 source/
 - Public V1 API remains `deterministic-qualification-v1`, Sarah=92, missing-name=400.
 
 Treat `87a785c2...` / `226a19db...` as the current LeadFlow V3 professional-product-motion production freeze.
+
+### Final replay-observer hardening — 2026-09-25
+
+- Final deployed root-V3 source SHA: `8efe9aaf10cf8509453e82b72d5b1289c10cb20a`.
+- Replay hardening commit: `8efe9aaf10cf8509453e82b72d5b1289c10cb20a`.
+- Immutable deployment: https://237287ed.leadflow-ai-bhy.pages.dev/
+- Canonical production: https://leadflow-ai-bhy.pages.dev/
+- Manual Workflow Replay now marks the one-shot story as played and disconnects its IntersectionObserver before replaying.
+- Manual Architecture Replay now does the same, preventing the section from unexpectedly restarting at REQUEST when the user later scrolls back into view.
+- Focused regression coverage was added for both replay/observer paths.
+- Fresh post-fix Node suite: **66/66 PASS**.
+- Professional runtime audit: PASS.
+- Whole-page contrast: dark/light 1440 + 390, 0 failures.
+- Story accessibility: 0 sub-12px text, 0 measured contrast failures, 44px+ controls, no horizontal overflow.
+- Mobile script-ready verification: dark/light 390 PASS with zero browser exceptions.
+- Public immutable and canonical root assets match the local `8efe9aaf...` source byte-for-byte.
+- Public professional browser interaction audit: PASS for Workflow settled SALES REVIEW, Architecture settled READY after re-entry, Scenario timeout scrubbing, Operations infographic emphasis, and zero visible prototype/demo wording.
+- `/v1/`, `/v2/`, `functions/v1/`, `functions/v2/`, and root qualification API code remain unchanged.
+
+Treat `8efe9aaf...` / `237287ed...` as the current LeadFlow V3 professional-motion production freeze.
