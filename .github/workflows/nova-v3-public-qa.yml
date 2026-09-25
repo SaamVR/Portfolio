@@ -82,6 +82,10 @@ jobs:
             ]){
               await scrollProgress(page,check.p);
               await page.waitForFunction(detail=>document.body.dataset.designDetail===detail,check.detail);
+              await page.waitForFunction(hotspot=>{
+                const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                return el?.dataset.visible==='true' && Number(getComputedStyle(el).opacity)>=.8;
+              },check.hotspot,{timeout:5000});
               const state=await page.evaluate(({detail,hotspot})=>({
                 detail:document.body.dataset.designDetail,
                 pressed:document.querySelector('[data-detail-id="'+detail+'"]')?.getAttribute('aria-pressed'),
