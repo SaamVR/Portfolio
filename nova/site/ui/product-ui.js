@@ -115,7 +115,10 @@ export function bindProductUI(nextActions={}){
   document.querySelectorAll('[data-detail-id]').forEach(button=>{
     button.addEventListener('click',()=>{
       const target=button.dataset.detailTarget;
-      if(target) actions.focusHotspot?.(target);
+      const detail=button.dataset.detailId;
+      const hotspot=target?document.querySelector('[data-hotspot="'+target+'"]'):null;
+      if(hotspot?.getAttribute('aria-expanded')==='true') actions.clearHotspot?.();
+      else if(detail&&target) actions.selectDesignDetail?.(detail,target);
     });
   });
 
