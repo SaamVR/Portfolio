@@ -395,3 +395,9 @@ def test_v3_hero_leads_with_supported_physical_product_details_not_runtime_numbe
         assert phrase in hero
     for phrase in ["31.3K triangles","1.86 MB","36-joint rig"]:
         assert phrase not in hero
+
+
+def test_v3_customer_facing_copy_has_no_demo_or_fictional_disclaimers():
+    for phrase in ["fictional hardware datasheet","This control demonstrates","NOVA demonstrates a workflow"]:
+        assert phrase not in html
+    assert "measured directly from the production asset and verified browser build" in html
