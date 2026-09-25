@@ -20,11 +20,21 @@ export function createFoldController({openPose=.20, foldedPose=.40, duration=.7}
     },
     update(dt,{scrollActive=false,timelinePose=currentPose}={}){
       const step=Math.max(0,Number(dt)||0);
-      if(scrollActive && active) releasing=true;
+      if(scrollActive && active && !releasing){
+        releasing=true;
+        currentVelocity=0;
+        startVelocity=0;
+      }
       if(releasing){
         weight = Math.max(0, weight - step * 2.6);
-        currentPose = lerp(currentPose, timelinePose, clamp01(step*4));
-        if(weight<=.001){ weight=0; active=false; releasing=false; }
+        if(weight<=.001){
+          weight=0;
+          active=false;
+          releasing=false;
+          currentPose=timelinePose;
+          currentVelocity=0;
+          startVelocity=0;
+        }
         return;
       }
       if(active){
