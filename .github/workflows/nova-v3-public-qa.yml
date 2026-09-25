@@ -63,27 +63,52 @@ jobs:
           async function assertProductFraming(page,prefix,points){
             for(const progress of points){
               await scrollProgress(page,progress);
-              await page.waitForTimeout(700);
-              const state=await page.evaluate(p=>({
-                progress:p,
-                range:document.body.dataset.range,
-                frame:window.__NOVA_QA__?.productFrame?.()||null
-              }),progress);
+              const state=await page.evaluate(async p=>{
+                const read=()=>window.__NOVA_QA__?.productFrame?.()||null;
+                let previous=read();
+                let stableFrames=0;
+                let frames=0;
+                while(frames<240 && stableFrames<8){
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  const next=read();
+                  if(previous&&next){
+                    const ids=['cushion','headband','controls'];
+                    const maxDelta=Math.max(...ids.map(id=>{
+                      const a=previous.points?.[id], b=next.points?.[id];
+                      if(!a||!b||!Number.isFinite(a.x)||!Number.isFinite(a.y)||!Number.isFinite(b.x)||!Number.isFinite(b.y)) return Infinity;
+                      return Math.hypot(b.x-a.x,b.y-a.y);
+                    }));
+                    stableFrames=maxDelta<=.45 ? stableFrames+1 : 0;
+                  }else{
+                    stableFrames=0;
+                  }
+                  previous=next;
+                  frames++;
+                }
+                return {
+                  progress:p,
+                  range:document.body.dataset.range,
+                  frame:previous,
+                  settled:stableFrames>=8,
+                  settleFrames:frames
+                };
+              },progress);
               const minSpanX=prefix==='mobile'?50:100;
               const minSpanY=prefix==='mobile'?35:60;
+              await page.screenshot({path:'nova-v3-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
               const intentionalDesignCrop=state.range==='design';
-              const landmarksOk=state.frame && (intentionalDesignCrop
+              const landmarksOk=state.frame && state.settled && (intentionalDesignCrop
                 ? state.frame.nearViewport>=3 && state.frame.inViewport>=2 && state.frame.earcupsInViewport>=1
                 : state.frame.inViewport>=3 && state.frame.earcupsInViewport>=2);
               if(
                 !state.frame ||
+                !state.settled ||
                 !landmarksOk ||
                 state.frame.spanX<minSpanX ||
                 state.frame.spanY<minSpanY
               ){
                 throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minSpanX,minSpanY,intentionalDesignCrop,state}));
               }
-              await page.screenshot({path:'nova-v3-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
             }
           }
 
