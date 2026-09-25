@@ -1,5 +1,8 @@
 const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
 const VIEW_YAW={front:0,side:Math.PI*.48,rear:Math.PI};
+const VIEW_SPRING_STIFFNESS=85;
+const VIEW_SPRING_DAMPING=2*Math.sqrt(VIEW_SPRING_STIFFNESS);
+const MAX_SPRING_STEP=1/60;
 
 export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
   let active=false, dragging=false, pointerId=null, lastX=0,lastY=0,yaw=0,pitch=0,weight=0;
@@ -45,11 +48,14 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       const step=Math.max(0,Number(dt)||0);
       const target=active?1:0;
       weight += (target-weight)*Math.min(1,step*7);
-      const stiffness=60;
-      const damping=15.5;
-      const angularAcceleration=(targetModelYaw-modelYaw)*stiffness-modelYawVelocity*damping;
-      modelYawVelocity += angularAcceleration*step;
-      modelYaw += modelYawVelocity*step;
+      let remaining=step;
+      while(remaining>0){
+        const springStep=Math.min(MAX_SPRING_STEP,remaining);
+        const angularAcceleration=(targetModelYaw-modelYaw)*VIEW_SPRING_STIFFNESS-modelYawVelocity*VIEW_SPRING_DAMPING;
+        modelYawVelocity += angularAcceleration*springStep;
+        modelYaw += modelYawVelocity*springStep;
+        remaining -= springStep;
+      }
       if(Math.abs(targetModelYaw-modelYaw)<.0002 && Math.abs(modelYawVelocity)<.0005){
         modelYaw=targetModelYaw;
         modelYawVelocity=0;
