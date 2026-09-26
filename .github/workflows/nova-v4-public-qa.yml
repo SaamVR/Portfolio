@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  public-v3:
+  public-v4:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Audit deployed V4
         run: |
-          cat > nova/v3-public-qa.mjs <<'JS'
+          cat > nova/v4-public-qa.mjs <<'JS'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
 
@@ -227,7 +227,7 @@ jobs:
           await browser.close();
           if(errors.length) throw new Error('V4 public browser errors:\n'+errors.join('\n'));
           JS
-          node nova/v3-public-qa.mjs
+          node nova/v4-public-qa.mjs
 
       - uses: actions/upload-artifact@v4
         if: always()
