@@ -244,3 +244,50 @@ Final verification:
 - `/v3/`, `/v2/`, `/v1/` and versioned qualification APIs remain functional
 
 For future work, treat `a2a3d9e2a923f6fc47660b00c06fbf6bfc68fec8` plus immutable deployment `1f4caf2f` as the current LeadFlow V4 production motion baseline. Do not restore the earlier immediate-scroll story sequencing.
+
+
+## V4 mobile guided-camera settle refinement — 2026-09-26
+
+Production application source:
+- `168ee88b8c47150318bd16242b9dffbbc5b7dfbc` — `fix LeadFlow mobile guided camera settle`
+
+Production:
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Immutable verified deployment: https://b7aac3eb.leadflow-ai-bhy.pages.dev/
+- Wrangler: `4.141.0`
+- Deployment path: authenticated `samvr` CLI with isolated npm cache `/home/ubuntu/.cache/leadflow-wrangler-v4`
+
+Issue found during the final current-main audit:
+- At 390px, the first guided chapter could accept a premature native `scrollend` event before the new smooth camera move had actually begun.
+- The Workflow story could therefore begin about 248ms before the camera reached its settled position.
+
+Fix:
+- `waitForTourScrollSettle()` now ignores `scrollend` until real scroll movement is observed.
+- The `scrollend` listener is no longer one-shot, so an early event cannot remove the listener before the real guided move finishes.
+- `scrollTourTargetSettled()` now arms the settle monitor before calling `scrollIntoView()`.
+- V1/V2/V3 and their qualification Functions were not changed.
+
+Verification:
+- Fresh Node suite: **118/118 PASS**.
+- Source/syntax/diff checks: PASS.
+- Protected `/v1/`, `/v2/`, `/v3/` and versioned Functions unchanged.
+- V4 release matrix: dark/light × 390/768/1024/1440 PASS.
+- Visible audited text below 12px: **0**.
+- Primary audited controls remain >=44px.
+- Whole-page contrast: **0 failures** at dark/light 1440 and 390.
+- Qualification presets remain 92 / 64 / 33 with 16 events.
+- Professional story runtime: PASS.
+- Workflow semantics remain `NEW INQUIRY → VERIFIED → 92 / 100 → SALES REVIEW`.
+- Lead Operations infographic motion and pointer/keyboard emphasis: PASS.
+- Scenario Story direct pointer/keyboard scrubbing: PASS.
+- Architecture semantic state trace `REQUEST → VALID → SCORE + CRM STATE → READY`: PASS.
+- Full guided-motion audit: PASS on 1440 and 390.
+- Post-fix 390 guided chapter timing: `LEAD JOURNEY` begins after camera settle, approximately +77ms in the full local audit.
+- Public immutable 390 timing: Workflow begins +96.1ms after settle.
+- Public canonical 390 timing: Workflow begins +57.7ms after settle.
+- Public root application assets on canonical and immutable match source `168ee88b...` byte-for-byte for `index.html`, `app.js`, `dashboard.js`, `storytelling.js`, `styles.css`, and `favicon.svg`.
+- Public `/v3/`, `/v2/`, `/v1/`, `/refine-brown/`, and `/refine-navy/` routes: PASS.
+- Public root / V3 / V2 APIs remain `deterministic-qualification-v2`; V1 remains `deterministic-qualification-v1`.
+- Sarah=92 and missing-name HTTP 400 on every public API version.
+
+Treat `168ee88b... / b7aac3eb...` as the current LeadFlow V4 production application freeze. This later handoff commit is documentation-only and does not change deployed application bytes.
