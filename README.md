@@ -34,7 +34,7 @@ A Bangladesh-first commerce platform combining merchant administration, a page-b
 
 **What it demonstrates:** multi-tenant architecture, commerce product design, CMS systems, data isolation and production-aware platform engineering.
 
-🔒 **Private commercial repository**
+🔒 **Private commercial repository** · **[Read case study](./case-studies/ezcomo-ecomcms.md)**
 
 </td>
 <td width="50%" valign="top">
@@ -48,7 +48,7 @@ A Facebook Messenger commerce assistant for Bangladeshi f-commerce sellers. Cust
 
 **What it demonstrates:** conversational architecture, structured commerce actions, state management, operational tooling and failure-resistant AI boundaries.
 
-🔒 **Private commercial repository**
+🔒 **Private commercial repository** · **[Read case study](./case-studies/sm-manager.md)**
 
 </td>
 </tr>
@@ -64,7 +64,7 @@ A receptionist-first website agent that combines an interactive 3D avatar with g
 
 **What it demonstrates:** AI + 3D interaction design, embeddable runtimes, controlled agent actions and performance-aware frontend architecture.
 
-🔒 **Private product repository**
+🔒 **Private product repository** · **[Read case study](./case-studies/virtual-agent.md)**
 
 </td>
 <td width="50%" valign="top">
@@ -78,7 +78,7 @@ A multi-tenant booking and customer-growth platform for hotels, salons, clinics 
 
 **Architecture principle:** AI manages language and conversation; the deterministic reservation engine owns availability, pricing, inventory and booking mutations.
 
-🔒 **Private product repository**
+🔒 **Private product repository** · **[Read case study](./case-studies/booking-agent.md)**
 
 </td>
 </tr>
@@ -222,6 +222,14 @@ I use deterministic fallbacks, validation, idempotency, bounded retries, explici
 My background also covers visual design and interactive experiences, so product development includes information hierarchy, responsive behavior, motion, storytelling and usability alongside technical architecture.
 
 </details>
+
+---
+
+## Detailed Case Studies
+
+**[Browse the case-study library →](./case-studies/README.md)**
+
+Each case study documents the product problem, system boundary, architecture and engineering decisions while keeping private implementation private.
 
 ---
 
