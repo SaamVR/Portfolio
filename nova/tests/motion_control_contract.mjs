@@ -106,8 +106,8 @@ const DT=1/60;
   state.inspection={weight:.5,yaw:0,pitch:0,modelYaw:1,view:'rear',active:false};
   const composed=composeVisualState(base,state);
 
-  assert.ok(Math.abs(composed.product.inspectionYaw-.5)<1e-9,
-    'inspection rotation should keep linear ownership while exiting');
+  assert.ok(Math.abs(composed.product.inspectionYaw-1)<1e-9,
+    'preset view yaw should remain physically owned by the turntable spring while exiting');
   assert.ok(Math.abs(composed.camera.position[2]-(4+.18*.25))<1e-9,
     'inspection camera framing should release on squared ownership');
   assert.ok(Math.abs(composed.camera.target[1]-(.34*.25))<1e-9,
