@@ -81,9 +81,14 @@ export function createRenderAdapter({
       camera.updateProjectionMatrix();
       if(renderedTarget===null) renderedTarget=[...state.camera.target];
       else{
-        renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],3.00,step);
-        renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],3.00,step);
-        renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],3.00,step);
+        // Resolution must reclaim the headline field promptly after the
+        // inspection turntable. A slightly faster look-target convergence is
+        // still eased, but prevents the inspection framing tail from crossing
+        // the next chapter's copy during a normal scroll/jump handoff.
+        const targetLambda=state.range==='resolution' ? 5.0 : 3.0;
+        renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],targetLambda,step);
+        renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],targetLambda,step);
+        renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],targetLambda,step);
       }
       camera.lookAt(...renderedTarget);
 
