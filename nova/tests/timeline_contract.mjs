@@ -106,6 +106,10 @@ assert.ok(
   spatialMobile.camera.target[1] > -.30 && spatialMobile.camera.target[1] < -.04,
   'Mobile Spatial should preserve product/copy separation while keeping the product visibly framed'
 );
+assert.ok(
+  spatialMobile.camera.target[1] >= -.17,
+  `Mobile Spatial crown clearance should keep the top landmark inside frame; targetY=${spatialMobile.camera.target[1]}`
+);
 const behindMobile=sampleTimeline(.985,'mobile');
 assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the product secondary');
 
