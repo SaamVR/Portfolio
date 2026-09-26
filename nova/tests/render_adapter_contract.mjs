@@ -64,3 +64,28 @@ assert.ok(poseStep<=.07,`source-pose velocity must stay below 70ms of source ani
   assert.ok(Math.abs(inspectionTurntable.rotation.x-viewState.product.inspectionPitch)<1e-9,
     'inspection group must own manual fine-tune pitch');
 }
+
+{
+  const camera3={position:vec(),fov:30,lookAts:[],updateProjectionMatrix(){},lookAt(...args){this.lookAts.push(args);}};
+  const presentation3={position:vec(),rotation:vec(),scale:vec(1,1,1)};
+  const adapter3=createRenderAdapter({
+    THREE,camera:camera3,presentation:presentation3,
+    mixer:null,clipDuration:0,renderer:{toneMappingExposure:1},lights:{},environment,
+    orientationX:0
+  });
+  const inspectState={
+    ...base,
+    range:'inspect',
+    camera:{...base.camera,target:[0,.36,0]}
+  };
+  const resolutionState={
+    ...base,
+    range:'resolution',
+    camera:{...base.camera,target:[0,.02,0]}
+  };
+  adapter3.snap(inspectState);
+  for(let n=0;n<25;n++) adapter3.apply(resolutionState,1/60);
+  const resolutionLook=camera3.lookAts.at(-1);
+  assert.ok(resolutionLook[1] < .08,
+    `Resolution must clear the inspection look-target tail within ~420ms; y=${resolutionLook[1]}`);
+}
