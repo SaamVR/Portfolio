@@ -94,4 +94,24 @@ const DT=1/60;
     'manual fine-tune pitch should belong to the dedicated inspection turntable');
 }
 
+{
+  const base={
+    product:{position:[0,0,0],scale:1,yaw:0,pitch:0,pose:.72},
+    camera:{position:[0,0,4],target:[0,0,0],fov:26},
+    lighting:{exposure:1,hemi:1,key:1,fill:1,rim:1,warm:1,keyColor:0xffffff,rimColor:0xffffff,keyPosition:[1,1,1]},
+    environment:{tone:0,spatialAmount:0,spatialSpread:0,adaptiveAmount:0,openness:0,motion:0},
+    ui:{}
+  };
+  const state=createInteractionState();
+  state.inspection={weight:.5,yaw:0,pitch:0,modelYaw:1,view:'rear',active:false};
+  const composed=composeVisualState(base,state);
+
+  assert.ok(Math.abs(composed.product.inspectionYaw-.5)<1e-9,
+    'inspection rotation should keep linear ownership while exiting');
+  assert.ok(Math.abs(composed.camera.position[2]-(4+.18*.25))<1e-9,
+    'inspection camera framing should release on squared ownership');
+  assert.ok(Math.abs(composed.camera.target[1]-(.34*.25))<1e-9,
+    'inspection look-target framing should release faster than rotation');
+}
+
 console.log('motion_control_contract: PASS');
