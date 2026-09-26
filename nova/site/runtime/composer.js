@@ -31,6 +31,7 @@ export function composeVisualState(baseState, interactionState=createInteraction
 
   const inspection = interactionState.inspection || {};
   const iw = clamp01(inspection.weight);
+  const inspectionFrameWeight = iw * iw;
   out.product.inspectionYaw = 0;
   out.product.inspectionPitch = 0;
   if(iw > 0){
@@ -38,10 +39,10 @@ export function composeVisualState(baseState, interactionState=createInteraction
     out.product.inspectionPitch = (inspection.pitch || 0) * iw;
 
     // Inspection is a full-product turntable, not another close-up camera beat.
-    // Keep the crown and both earcups comfortably inside the viewport while
-    // Front / Side / Rear or manual drag own the scene.
-    out.camera.target[1] += .34 * iw;
-    out.camera.position[2] += .18 * iw;
+    // Camera framing follows a squared ownership curve so it settles fully in
+    // Inspect but releases faster than rotation ownership at chapter exit.
+    out.camera.target[1] += .34 * inspectionFrameWeight;
+    out.camera.position[2] += .18 * inspectionFrameWeight;
   }
 
   const hotspot = interactionState.hotspot || {};
