@@ -32,12 +32,11 @@ export function composeVisualState(baseState, interactionState=createInteraction
   const inspection = interactionState.inspection || {};
   const iw = clamp01(inspection.weight);
   const inspectionFrameWeight = iw * iw;
-  out.product.inspectionYaw = 0;
-  out.product.inspectionPitch = 0;
+  // Preset view yaw is physically owned by the turntable spring itself. Manual
+  // drag offsets still follow interaction weight so they fade cleanly on exit.
+  out.product.inspectionYaw = (inspection.modelYaw || 0) + (inspection.yaw || 0) * iw;
+  out.product.inspectionPitch = (inspection.pitch || 0) * iw;
   if(iw > 0){
-    out.product.inspectionYaw = ((inspection.modelYaw || 0) + (inspection.yaw || 0)) * iw;
-    out.product.inspectionPitch = (inspection.pitch || 0) * iw;
-
     // Inspection is a full-product turntable, not another close-up camera beat.
     // Camera framing follows a squared ownership curve so it settles fully in
     // Inspect but releases faster than rotation ownership at chapter exit.
