@@ -18,8 +18,7 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         view='front';
         yawTarget=0;
         pitchTarget=0;
-        targetModelYaw=modelYaw;
-        modelYawVelocity=0;
+        targetModelYaw=0;
       }else if(view==='front'){
         targetModelYaw=0;
       }
@@ -72,7 +71,7 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         modelYaw=targetModelYaw;
         modelYawVelocity=0;
       }
-      if(!active && weight<=.001){
+      if(!active && weight<=.001 && Math.abs(modelYaw)<.002 && Math.abs(modelYawVelocity)<.005){
         weight=0;
         yaw=0;
         pitch=0;
