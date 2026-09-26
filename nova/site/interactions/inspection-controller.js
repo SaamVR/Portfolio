@@ -2,11 +2,14 @@ const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
 const VIEW_YAW={front:0,side:Math.PI*.48,rear:Math.PI};
 const VIEW_SPRING_STIFFNESS=85;
 const VIEW_SPRING_DAMPING=2*Math.sqrt(VIEW_SPRING_STIFFNESS);
-const MAX_SPRING_STEP=1/60;
+const MAX_SPRING_STEP=1/120;
 
 export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
-  let active=false, dragging=false, pointerId=null, lastX=0,lastY=0,yaw=0,pitch=0,yawTarget=0,pitchTarget=0,weight=0;
+  let active=false, dragging=false, pointerId=null, lastX=0,lastY=0;
+  let yaw=0,pitch=0,yawTarget=0,pitchTarget=0,weight=0;
   let view='front',modelYaw=0,targetModelYaw=0,modelYawVelocity=0;
+  let dragVelocity=0,pitchVelocity=0;
+
   return {
     setActive(value){
       const next=!!value;
@@ -18,6 +21,8 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         view='front';
         yawTarget=0;
         pitchTarget=0;
+        dragVelocity=0;
+        pitchVelocity=0;
         targetModelYaw=0;
       }else if(view==='front'){
         targetModelYaw=0;
@@ -29,26 +34,55 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       targetModelYaw=VIEW_YAW[next];
       yawTarget=0;
       pitchTarget=0;
+      dragVelocity=0;
+      pitchVelocity=0;
     },
-    pointerDown(x,y,id=0){ if(!active) return; dragging=true; pointerId=id; lastX=x; lastY=y; },
+    pointerDown(x,y,id=0){
+      if(!active) return;
+      dragging=true;
+      pointerId=id;
+      lastX=x;
+      lastY=y;
+      dragVelocity=0;
+      pitchVelocity=0;
+    },
     pointerMove(x,y,id=0,viewport={width:1,height:1}){
       if(!dragging || id!==pointerId) return;
       this.dragBy(x-lastX,y-lastY,viewport);
-      lastX=x; lastY=y;
+      lastX=x;
+      lastY=y;
     },
-    pointerUp(id=0){ if(id===pointerId){dragging=false;pointerId=null;} },
+    pointerUp(id=0){
+      if(id===pointerId){
+        dragging=false;
+        pointerId=null;
+      }
+    },
     dragBy(dx,dy,viewport={width:1,height:1}){
       if(!active) return;
-      const w=Math.max(1,viewport.width||1), h=Math.max(1,viewport.height||1);
-      yawTarget=clamp(yaw + (dx/w)*1.8,-maxYaw,maxYaw);
-      pitchTarget=clamp(pitch + (dy/h)*.8,-maxPitch,maxPitch);
+      const w=Math.max(1,viewport.width||1);
+      const h=Math.max(1,viewport.height||1);
+      const deltaYaw=(dx/w)*1.8;
+      const deltaPitch=(dy/h)*.8;
+      yawTarget=clamp(yawTarget+deltaYaw,-maxYaw,maxYaw);
+      pitchTarget=clamp(pitchTarget+deltaPitch,-maxPitch,maxPitch);
       yaw=yawTarget;
       pitch=pitchTarget;
+      // A small release velocity makes direct inspection feel physical without
+      // allowing the product to overshoot its bounded turntable limits.
+      dragVelocity=deltaYaw*14;
+      pitchVelocity=deltaPitch*14;
       weight=1;
     },
     reset(){
+      // Reset the manual offset immediately, while the named product view
+      // returns through the critically damped model spring.
       yawTarget=0;
       pitchTarget=0;
+      yaw=0;
+      pitch=0;
+      dragVelocity=0;
+      pitchVelocity=0;
       view='front';
       targetModelYaw=0;
     },
@@ -56,9 +90,24 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       const step=Math.max(0,Number(dt)||0);
       const target=active?1:0;
       weight += (target-weight)*Math.min(1,step*7);
+
+      if(active && !dragging){
+        const inertiaDecay=Math.exp(-11*step);
+        if(Math.abs(dragVelocity)>.0001 || Math.abs(pitchVelocity)>.0001){
+          yawTarget=clamp(yawTarget+dragVelocity*step,-maxYaw,maxYaw);
+          pitchTarget=clamp(pitchTarget+pitchVelocity*step,-maxPitch,maxPitch);
+          dragVelocity*=inertiaDecay;
+          pitchVelocity*=inertiaDecay;
+        }
+      }else if(!active){
+        dragVelocity=0;
+        pitchVelocity=0;
+      }
+
       const dragRelease=1-Math.exp(-12*step);
       yaw += (yawTarget-yaw)*dragRelease;
       pitch += (pitchTarget-pitch)*dragRelease;
+
       let remaining=step;
       while(remaining>0){
         const springStep=Math.min(MAX_SPRING_STEP,remaining);
@@ -67,10 +116,12 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         modelYaw += modelYawVelocity*springStep;
         remaining -= springStep;
       }
+
       if(Math.abs(targetModelYaw-modelYaw)<.0002 && Math.abs(modelYawVelocity)<.0005){
         modelYaw=targetModelYaw;
         modelYawVelocity=0;
       }
+
       if(!active && weight<=.001 && Math.abs(modelYaw)<.002 && Math.abs(modelYawVelocity)<.005){
         weight=0;
         yaw=0;
@@ -82,6 +133,8 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         modelYawVelocity=0;
       }
     },
-    getInfluence(){ return {weight,yaw,pitch,modelYaw,view,active,dragging}; }
+    getInfluence(){
+      return {weight,yaw,pitch,modelYaw,view,active,dragging};
+    }
   };
 }
