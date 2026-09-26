@@ -38,9 +38,10 @@ const DT=1/60;
   const firstExitFrame=inspect.getInfluence();
 
   assert.ok(firstExitFrame.weight<beforeExit.weight,
-    'leaving Inspect should begin fading inspection ownership');
-  assert.ok(Math.abs(firstExitFrame.modelYaw-beforeExit.modelYaw)<.01,
-    'leaving Inspect should not simultaneously spring model yaw while ownership is already fading');
+    'leaving Inspect should begin releasing interaction ownership');
+  const exitYawDelta=beforeExit.modelYaw-firstExitFrame.modelYaw;
+  assert.ok(exitYawDelta>0 && exitYawDelta<.12,
+    'leaving Inspect should spring preset yaw toward Front continuously instead of multiplying it by a fading weight');
 }
 
 console.log('motion_handoff_contract: PASS');
