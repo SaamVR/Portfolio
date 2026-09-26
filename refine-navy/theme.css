@@ -1,0 +1,1012 @@
+/* LEADFLOW REFINE — NAVY
+   Midnight navy / steel blue replaces the production green identity.
+   Yellow remains review/attention; brick remains action/failure.
+*/
+:root{
+  --v4-green:#76A9DA;
+  --v4-green-deep:#183B61;
+  --v4-green-soft:#14273A;
+  --accent:#76A9DA;
+  --accent2:#9CC5EC;
+  --accent-readable:#8FC0EE;
+  --meta-readable:#A8BACB;
+  --story-focus-ring:rgba(118,169,218,.28);
+  --bg:#0B111A;
+  --bg2:#101925;
+  --card:#142031;
+  --card2:#19283A;
+  --surface-1:#111B29;
+  --surface-2:#0C141E;
+  --surface-3:#1A293B;
+  --text:#F0F5FA;
+  --text-soft:#CFDCE7;
+  --muted:#9EB0C0;
+  --line:#30445A;
+  --line2:#445E78;
+}
+body{background:var(--bg);}
+.grid{
+  background-image:
+    linear-gradient(rgba(118,169,218,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(118,169,218,.035) 1px,transparent 1px);
+}
+.ambient-a{background:#285F93;opacity:.10}
+.nav{background:rgba(11,17,26,.9);border-bottom-color:#293B50}
+.brand-mark{color:#9CC5EC;background:#142438;border-color:#3F6489;box-shadow:inset 0 -2px 0 rgba(226,182,75,.5)}
+.primary-btn{background:#76A9DA;color:#07111C;box-shadow:0 10px 28px rgba(118,169,218,.16)}
+.hero .eyebrow,.hero h1 span{color:#8FC0EE}
+.glass-panel{background:linear-gradient(150deg,#142131,#0A111A);border-color:#354D67;box-shadow:0 36px 110px rgba(0,0,0,.42),inset 0 2px 0 rgba(118,169,218,.12)}
+.flow-orbit{background:radial-gradient(circle at 50% 48%,rgba(118,169,218,.09),transparent 44%)}
+.flow-node{background:#121D2A;border-color:#344A61}
+.flow-node.n3{border-color:#4779A7}
+.connector i,.signal{background:#76A9DA}
+#demo .execution-card{box-shadow:inset 0 2px 0 rgba(118,169,218,.78)}
+.backend-proof.live .backend-dot{background:#76A9DA}
+.ops-dashboard{background:#0E1621;border-color:#344A61;box-shadow:0 30px 90px rgba(0,0,0,.28),inset 0 2px 0 rgba(118,169,218,.10)}
+.ops-kpis article:nth-child(1){box-shadow:inset 0 2px 0 rgba(118,169,218,.78)}
+#reliability{--incident-safe:#76A9DA}
+.arch-core{box-shadow:inset 0 2px 0 rgba(118,169,218,.78)}
+#roi .roi-primary strong{color:#8FC0EE}
+.final-cta{background:linear-gradient(135deg,#102B46 0%,#111D2B 58%,#291918 100%);border-color:#425C75}
+.final-cta:before{background:linear-gradient(#76A9DA 0 54%,var(--v4-yellow) 54% 78%,var(--v4-brick) 78%)}
+.footer{background:#0D151F;border-top-color:#2D4054}
+.hero-actions #guidedDemo.guided-btn{border-color:#4D79A5;background:#15304A;color:#F2F8FF}
+.hero-actions #guidedDemo.guided-btn:hover{border-color:#76A9DA;background:#1A3B5C;color:#FFF}
+.guided-btn-play{background:#76A9DA;color:#071522;box-shadow:0 0 0 4px rgba(118,169,218,.12)}
+.hero-actions #guidedDemo:hover .guided-btn-play{box-shadow:0 0 0 6px rgba(118,169,218,.14)}
+.story-active{--story-focus-ring:rgba(118,169,218,.28)}
+#workflow .workflow-stage[data-story-tone="verified"].story-focus,
+#workflow .workflow-stage[data-story-tone="ready"].story-focus{border-color:#76A9DA!important;box-shadow:inset 0 3px 0 #76A9DA,0 12px 32px rgba(0,0,0,.14)!important}
+@keyframes heroNodeState{
+  0%,13%,100%{border-color:#344A61;background:#121D2A}
+  17%,32%{border-color:#76A9DA;background:#162A3E}
+  38%,100%{border-color:#344A61;background:#121D2A}
+}
+
+html[data-theme=light]{
+  --v4-green:#285F93;
+  --v4-green-deep:#1C4770;
+  --v4-green-soft:#DDEAF5;
+  --accent:#285F93;
+  --accent2:#1D4F7E;
+  --accent-readable:#245B8F;
+  --meta-readable:#506273;
+  --story-focus-ring:rgba(40,95,147,.22);
+  --bg:#F3F6F9;
+  --bg2:#E8EEF4;
+  --card:#FCFEFF;
+  --card2:#EAF0F5;
+  --surface-1:#FCFEFF;
+  --surface-2:#EDF2F7;
+  --surface-3:#E2EAF1;
+  --text:#1E2934;
+  --text-soft:#34495B;
+  --muted:#506273;
+  --line:#C1CDD8;
+  --line2:#A7B8C7;
+}
+html[data-theme=light] body{background:var(--bg);}
+html[data-theme=light] .nav{background:rgba(243,246,249,.92);border-bottom-color:#C3CFDA}
+html[data-theme=light] .brand-mark{background:#DFEAF4;border-color:#91ABC3;color:#245B8F;box-shadow:inset 0 -2px 0 #D4AF59}
+html[data-theme=light] .primary-btn{background:#285F93;color:#FFF}
+html[data-theme=light] .hero .eyebrow,
+html[data-theme=light] .hero h1 span{color:#245B8F}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{background:#245B8F;border-color:#245B8F;color:#FFF}
+html[data-theme=light] .guided-btn-play{background:#E5F0FA;color:#245B8F;box-shadow:0 0 0 4px rgba(36,91,143,.12)}
+html[data-theme=light] .flow-node.n3{border-color:#5A7EA0}
+html[data-theme=light] .final-cta{
+  background-color:#14283A!important;
+  background-image:linear-gradient(135deg,#153552 0%,#1C2C3C 62%,#38201E 100%)!important;
+}
+html[data-theme=light] #workflow .workflow-stage[data-story-tone="verified"].story-focus,
+html[data-theme=light] #workflow .workflow-stage[data-story-tone="ready"].story-focus{border-color:#285F93!important;box-shadow:inset 0 3px 0 #285F93,0 12px 32px rgba(31,66,99,.12)!important}
+
+
+/* Green-leak neutralization — remap inherited success/system states to navy */
+.trust-band{background:linear-gradient(90deg,rgba(226,182,75,.03),transparent 28%,transparent 72%,rgba(118,169,218,.055)),#0F1823;border-color:#2E4257}
+.capability span{color:#AFC1D1}
+.card-title>span{background:#172A3E;color:#8FC0EE}
+.result-orb{background:#13263A;border-color:#3C6287;color:#8FC0EE}
+.temperature.hot{background:#172A3E;color:#8FC0EE}
+.ai-summary{background:#101F2F;border-color:#355A7B}
+.ops-status-icon,.ops-console-brand>span{background:#14283D;color:#8FC0EE}
+.backend-proof.live{background:#101F2F;border-color:#416C92}
+.execution-progress>div{background:linear-gradient(90deg,#4779A7,#76A9DA)}
+.distribution-row i{background:linear-gradient(90deg,#4779A7,#76A9DA)}
+.ops-chart-item.hot i{background:linear-gradient(#9CC5EC,#4779A7)}
+.tour-progress i{background:linear-gradient(90deg,#4779A7,#9CC5EC);box-shadow:0 0 14px rgba(118,169,218,.30)}
+.workflow-story-packet.verified,
+.workflow-story-packet.ready{background:#162A3E;border-color:#527FA9;color:#ECF7FF;box-shadow:0 8px 24px rgba(0,0,0,.2),0 0 0 4px rgba(118,169,218,.09)}
+.workflow-story-packet.verified i,
+.workflow-story-packet.ready i{background:#76A9DA;box-shadow:0 0 14px rgba(118,169,218,.62)}
+#workflow .workflow-story-connector.tone-verified i,
+#workflow .workflow-story-connector.tone-ready i{background:#76A9DA!important}
+.reliability-actions [data-edge="duplicate"].active,
+.reliability-actions [data-edge="duplicate"]:hover{border-color:#527FA9;color:#EAF6FF;background:#162A3E;box-shadow:inset 0 3px 0 #76A9DA}
+#reliability[data-incident-scenario="duplicate"] .incident-beat-button:is([data-incident-index="2"],[data-incident-index="3"]).incident-focus,
+#reliability[data-incident-scenario="review"] .incident-beat-button[data-incident-index="3"].incident-focus{border-color:#76A9DA;background:#162A3E;box-shadow:inset 0 3px 0 #76A9DA}
+.architecture-payload.arch-tone-valid,
+.architecture-payload.arch-tone-ready{background:#162A3E;border-color:#527FA9;color:#ECF7FF;box-shadow:0 0 0 4px rgba(118,169,218,.09)}
+#architecture .architecture.arch-phase-valid [data-arch-node="api"],
+#architecture .architecture.arch-phase-ready [data-arch-node="next"]{border-color:#527FA9!important;box-shadow:inset 0 3px 0 #76A9DA,0 12px 30px rgba(0,0,0,.1)}
+#architecture .architecture.arch-reconverged [data-arch-edge="state"]{color:#8FC0EE!important;text-shadow:0 0 14px rgba(118,169,218,.26)}
+.incident-rail::before{background:linear-gradient(90deg,#7CC4FF,#F2C66D,#76A9DA)}
+.incident-rail article.incident-complete::before{border-color:#76A9DA;background:#17334D}
+.number-field:focus-within{border-color:#527FA9;box-shadow:0 0 0 3px rgba(118,169,218,.08)}
+@keyframes roiResultPulse{
+  0%{box-shadow:inset 0 0 0 1px rgba(118,169,218,0);background-color:#101F2F}
+  45%{box-shadow:inset 0 0 0 1px rgba(118,169,218,.28);background-color:#162A3E}
+  100%{box-shadow:inset 0 0 0 1px rgba(118,169,218,0);background-color:#101F2F}
+}
+@keyframes heroNodeLightState{
+  0%,13%,100%{border-color:#AAB9C7;background:#FFFFFF}
+  17%,32%{border-color:#285F93;background:#E6EFF7}
+  38%,100%{border-color:#AAB9C7;background:#FFFFFF}
+}
+html[data-theme=light] .workflow-story-packet.verified,
+html[data-theme=light] .workflow-story-packet.ready{background:#E7F0F8;color:#214D76;border-color:#5F85A8}
+html[data-theme=light] .architecture-payload.arch-tone-valid,
+html[data-theme=light] .architecture-payload.arch-tone-ready{background:#E7F0F8;color:#214D76;border-color:#5F85A8}
+html[data-theme=light] .reliability-actions [data-edge="duplicate"].active,
+html[data-theme=light] .reliability-actions [data-edge="duplicate"]:hover{background:#E7F0F8;color:#214D76;border-color:#5F85A8}
+html[data-theme=light] .workflow-map article:nth-of-type(3) .icon{background:#245B8F!important;color:#FFFFFF!important}
+html[data-theme=light] .hero .panel-top i{background:#76A9DA!important}
+html[data-theme=light] .tour-progress{background:#DDE7F0}
+html[data-theme=light] .tour-progress i{background:linear-gradient(90deg,#285F93,#76A9DA)}
+html[data-theme=light] .trust-band{background:linear-gradient(90deg,#E7EEF5,#EAF0F5 32%,#EAF0F5 70%,#EEE8DF);border-color:#C4D0DB}
+html[data-theme=light] .trust-grid>div:first-child small,
+html[data-theme=light] .ops-panel-head small{color:#245B8F!important}
+html[data-theme=light] .capability:hover{background:rgba(40,95,147,.05);border-left-color:#285F93}
+html[data-theme=light] .capability span{color:#53697C}
+html[data-theme=light] #roi .roi-primary strong{color:#245B8F}
+html[data-theme=light] .incident-neutral-mark{background:#E7EFF6;color:#214D76;border-color:#91ABC3}
+
+html[data-theme=light] .portfolio-next-eyebrow{color:#506273}
+html[data-theme=light] .footer{color:#506273}
+
+
+/* Full environmental recolor — remove inherited emerald chrome */
+:root{
+  --surface-page:#0B111A;
+  --surface-raised:#101A27;
+  --surface-focus:#17283A;
+  --border-quiet:#30445A;
+  --text-primary:#F0F5FA;
+  --text-secondary:#CAD7E3;
+  --text-muted-readable:#A8BACB;
+  --status-nurture:#7F93A5;
+  --status-other:#607487;
+}
+.theme-toggle{background:#0F1925;border-color:#36516C;color:#EFF7FE}
+.theme-toggle:hover{background:#142235;border-color:#527AA1}
+.theme-toggle-track{background:linear-gradient(135deg,#14263A,#21486C);box-shadow:inset 0 0 0 1px rgba(118,169,218,.22)}
+.theme-toggle-thumb{background:#E7F2FB;color:#214D76}
+.mini-terminal{background:#0B1520!important;border-color:#30445A}
+.mini-terminal div{border-bottom-color:rgba(143,192,238,.08)}
+.mini-terminal b{color:#D1DFEB}
+.mini-terminal em{color:#8FC0EE}
+.float-card{background:rgba(16,27,40,.97);border-color:#3F5F7D}
+.fc-two{background:#112235!important;border-color:#3E6487!important}
+.fc-two small{color:#B7C8D8}
+.trust-band{
+  background:linear-gradient(90deg,rgba(226,182,75,.03),transparent 26%,transparent 72%,rgba(198,93,73,.03)),#0D1722!important;
+  border-color:#30445A!important;
+}
+.capability{border-left-color:#354C63}
+.capability:hover{background:rgba(118,169,218,.05);border-left-color:#76A9DA}
+.capability b{color:#F0F5FA}
+.capability small{color:#A8BACB!important}
+#roi .calculator{background:#0F1824!important;border-color:#354B61!important}
+#roi .calc-inputs{background:#0C151F}
+.number-field{background:#121E2B!important;border-color:#3B526A!important}
+.calc-result{background:#12202F!important;border-color:#3B526A!important}
+.roi-track{background:#293B4D!important}
+.roi-track:not(.cost) i{background:linear-gradient(90deg,#4779A7,#76A9DA)!important}
+.blueprint-disclosure{background:#101A27!important;border-color:#30445A!important}
+.blueprint-summary-flow span{background:#122131!important;border-color:#3E5A75!important;color:#D0DFEB!important}
+.blueprint-summary-flow i{color:#76A9DA!important}
+.blueprint-disclosure>summary:hover .blueprint-summary-flow span{border-color:#567CA0!important}
+.blueprint-output{background:#0D1722!important}
+.blueprint-layout{border-color:#30445A!important}
+.bp-node{background:#17283A!important;border-color:#445E78!important;color:#CAD7E3!important}
+.bp-node.selected{background:#193551!important;border-color:#76A9DA!important;color:#F1F8FE!important}
+.blueprint-editor-controls button{background:#12202F!important;border-color:#3E5A75!important;color:#C4D3E0!important}
+.case-section{
+  background:linear-gradient(90deg,#0B141F 0 49%,#101D2A 49% 100%)!important;
+  border-color:#30445A!important;
+}
+.case-grid>div:first-child::after{border-color:#445E78!important;color:#A8BACB!important}
+.case-copy>p,.case-list span,.project-stack,.project-meta{color:#CAD7E3!important}
+.portfolio-next-card{
+  background:linear-gradient(145deg,rgba(118,169,218,.09),rgba(255,255,255,.018)),#101A27!important;
+  border-color:#344D65!important;
+  border-left-color:#76A9DA!important;
+}
+.portfolio-next-card:hover{border-color:#567CA0!important}
+.portfolio-next-tags span{color:#C3D3E1!important;border-color:#3E5A75!important}
+.final-cta .tag{color:#9CC5EC!important}
+.final-cta>div>p:not(.tag){color:#D6E3EE!important}
+.footer{background:#0A131D!important;border-top-color:#2D4054!important;color:#A8BACB!important}
+.crm-shell,.crm-main,.lead-drawer,.followup-dialog{background:#0D1722!important;border-color:#30445A!important}
+.crm-sidebar{background:#0A131D;border-right-color:#30445A}
+.crm-sidebar button.active{background:#17283A!important;color:#8FC0EE!important}
+.crm-panel-card,.automation-card,.run-history,.integration-row,.crm-overview-kpis article,.analytics-summary article{background:#101A27!important;border-color:#30445A!important}
+.crm-table th{background:#142235!important}
+.crm-table td{border-color:#30445A!important}
+
+html[data-theme=light]{
+  --surface-page:#F3F6F9;
+  --surface-raised:#FFFFFF;
+  --surface-focus:#E7EFF7;
+  --border-quiet:#C0CCD8;
+  --text-primary:#1E2934;
+  --text-secondary:#43586A;
+  --text-muted-readable:#5A6D7F;
+  --status-nurture:#71879A;
+  --status-other:#5C7184;
+}
+html[data-theme=light] .theme-toggle{background:#FFFFFF;border-color:#B6C6D5;color:#223343}
+html[data-theme=light] .theme-toggle:hover{background:#F2F6FA;border-color:#7898B6}
+html[data-theme=light] .theme-toggle-track{background:linear-gradient(135deg,#E2EDF6,#BFD4E7);box-shadow:inset 0 0 0 1px rgba(40,95,147,.18)}
+html[data-theme=light] .theme-toggle-thumb{background:#245B8F;color:#F8FCFF}
+html[data-theme=light] .glass-panel{border-color:#A9BBCB!important;border-left-color:#285F93!important}
+html[data-theme=light] .flow-node{background:#F8FBFE!important;color:#1E2934!important;border-color:#AFC2D3!important}
+html[data-theme=light] .flow-node span,html[data-theme=light] .flow-node small{color:#586D7F!important}
+html[data-theme=light] .mini-terminal{background:#17314A!important;border-color:#476D90!important}
+html[data-theme=light] .mini-terminal span{color:#BCD0E1!important}
+html[data-theme=light] .mini-terminal b{color:#F4FAFF!important}
+html[data-theme=light] .mini-terminal em{color:#A9D0F2!important}
+html[data-theme=light] .float-card{background:#18334D!important;border-color:#476D90!important;color:#F4FAFF!important}
+html[data-theme=light] .fc-two{background:#18334D!important;border-color:#476D90!important}
+html[data-theme=light] .fc-two small,html[data-theme=light] .fc-one span{color:#C2D5E5!important}
+html[data-theme=light] .trust-band{
+  background:linear-gradient(90deg,#E6EEF6,#E9F0F6 32%,#E9F0F6 70%,#EFE9E1)!important;
+  border-color:#C0CDD9!important;
+}
+html[data-theme=light] .trust-grid>div:first-child small{color:#245B8F!important}
+html[data-theme=light] .trust-grid>div:first-child strong{color:#1E2934!important}
+html[data-theme=light] .capability{border-left-color:#B4C5D4}
+html[data-theme=light] .capability:hover{background:rgba(40,95,147,.05);border-left-color:#285F93}
+html[data-theme=light] .capability b{color:#1E2934!important}
+html[data-theme=light] .capability small,html[data-theme=light] .capability span{color:#53697C!important}
+html[data-theme=light] .band{background:#E8EEF4!important}
+html[data-theme=light] #roi .calculator{background:#FFFFFF!important;border-color:#C0CCD8!important}
+html[data-theme=light] #roi .calc-inputs{background:#FFFFFF!important}
+html[data-theme=light] #roi .calc-result{background:#E7EFF7!important;border-color:#C0CCD8!important}
+html[data-theme=light] .number-field{background:#F6F9FC!important;border-color:#BBC9D5!important}
+html[data-theme=light] .roi-track{background:#CEDBE6!important}
+html[data-theme=light] .blueprint-disclosure{background:#FFFFFF!important;border-color:#C0CCD8!important}
+html[data-theme=light] .blueprint-summary-flow span{background:#EAF1F7!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .blueprint-summary-flow i{color:#285F93!important}
+html[data-theme=light] .blueprint-output{background:#EAF1F7!important}
+html[data-theme=light] .bp-node{background:#FFFFFF!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .bp-node.selected{background:#245B8F!important;border-color:#245B8F!important;color:#FFF!important}
+html[data-theme=light] .blueprint-editor-controls button{background:#EAF1F7!important;border-color:#AFC2D3!important;color:#354C60!important}
+html[data-theme=light] .case-section{
+  background:linear-gradient(90deg,#F4F8FB 0 49%,#E8F0F7 49% 100%)!important;
+}
+@media(max-width:680px){
+  .case-section{background:linear-gradient(180deg,#0B141F 0 40%,#101D2A 40% 100%)!important}
+  html[data-theme=light] .case-section{background:linear-gradient(180deg,#F4F8FB 0 40%,#E8F0F7 40% 100%)!important}
+}
+html[data-theme=light] .portfolio-next-card{background:#E5EDF5!important;border-color:#B4C5D4!important;border-left-color:#285F93!important}
+html[data-theme=light] .portfolio-next-tags span{color:#43586A!important;border-color:#AFC2D3!important}
+html[data-theme=light] .footer{background:#F3F6F9!important;border-top-color:#C0CCD8!important;color:#506273!important}
+html[data-theme=light] .crm-shell,html[data-theme=light] .crm-main,html[data-theme=light] .lead-drawer,html[data-theme=light] .followup-dialog{background:#F3F7FA!important;border-color:#C0CCD8!important}
+html[data-theme=light] .crm-sidebar{background:#E9F0F6!important;border-right-color:#C0CCD8!important}
+html[data-theme=light] .crm-panel-card,html[data-theme=light] .automation-card,html[data-theme=light] .run-history,html[data-theme=light] .integration-row,html[data-theme=light] .crm-overview-kpis article,html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#C0CCD8!important}
+
+html[data-theme=light] .case-copy>p,
+html[data-theme=light] .case-list span,
+html[data-theme=light] .project-stack,
+html[data-theme=light] .project-meta{color:#43586A!important}
+html[data-theme=light] .case-grid>div:first-child::after{color:#506273!important;border-color:#AFC2D3!important}
+
+.number-field span{color:#B3C4D3!important}
+
+html[data-theme=light] .number-field span{color:#506273!important}
+
+
+/* LEADFLOW REFINE — ACHROMATIC CANVAS
+   Large environmental surfaces use strict grayscale values (R=G=B).
+   Navy remains an identity accent only; it does not tint neutral chrome.
+*/
+:root{
+  --bg:#111111;
+  --bg2:#181818;
+  --card:#202020;
+  --card2:#262626;
+  --surface-1:#202020;
+  --surface-2:#161616;
+  --surface-3:#282828;
+  --surface-page:#111111;
+  --surface-raised:#202020;
+  --surface-focus:#282828;
+  --border-quiet:#383838;
+  --text:#F2F2F2;
+  --text-primary:#F2F2F2;
+  --text-soft:#D8D8D8;
+  --text-secondary:#C8C8C8;
+  --muted:#A8A8A8;
+  --text-muted-readable:#A8A8A8;
+  --meta-readable:#B0B0B0;
+  --status-nurture:#9A9A9A;
+  --status-other:#8A8A8A;
+  --line:#383838;
+  --line2:#505050;
+}
+body{background:#111111!important}
+.grid{
+  background-image:
+    linear-gradient(rgba(128,128,128,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(128,128,128,.035) 1px,transparent 1px)!important;
+}
+.ambient-a,.ambient-b{opacity:0!important}
+.nav{background:rgba(17,17,17,.93)!important;border-bottom-color:#383838!important}
+.theme-toggle{background:#202020!important;border-color:#424242!important;color:#D8D8D8!important}
+.theme-toggle-track{background:linear-gradient(135deg,#2A2A2A,#383838)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important}
+.theme-toggle-thumb{background:#E8E8E8!important;color:#222222!important}
+
+.glass-panel{
+  background:linear-gradient(150deg,#202020,#141414)!important;
+  border-color:#444444!important;
+}
+.panel-top{background:#1B1B1B!important;border-bottom-color:#3C3C3C!important}
+.flow-orbit{background:radial-gradient(circle at 50% 48%,rgba(255,255,255,.03),transparent 44%)!important}
+.flow-node{background:#1D1D1D!important;border-color:#444444!important}
+.mini-terminal{background:#151515!important;border-color:#3D3D3D!important}
+.float-card{background:rgba(28,28,28,.98)!important;border-color:#484848!important}
+
+.band{background:#181818!important}
+.trust-band{background:#181818!important;border-color:#383838!important}
+.capability{border-left-color:#404040!important}
+.brief-grid article,.workflow-map article{background:#202020!important;border-color:#404040!important}
+#demo .demo-layout{background:#161616!important;border-color:#404040!important}
+.ops-dashboard{background:#161616!important;border-color:#404040!important}
+.ops-input-panel,.ops-panel,.ops-kpis article{background:#202020!important;border-color:#404040!important}
+.ops-console{background:#141414!important}
+.reliability-lab{background:linear-gradient(180deg,#202020,#151515)!important;border-color:#404040!important}
+.arch-source,.arch-core,.arch-column>div{background:#202020!important;border-color:#404040!important}
+#roi .calculator{background:#181818!important;border-color:#404040!important}
+#roi .calc-inputs{background:#181818!important}
+#roi .calc-result{background:#222222!important;border-color:#444444!important}
+.number-field{background:#202020!important;border-color:#444444!important}
+.roi-track{background:#383838!important}
+.blueprint-disclosure{background:#202020!important;border-color:#404040!important}
+.blueprint-summary-flow span,.bp-node,.blueprint-editor-controls button{background:#242424!important;border-color:#454545!important}
+.blueprint-output{background:#181818!important}
+.case-section{background:linear-gradient(90deg,#161616 0 49%,#1D1D1D 49% 100%)!important}
+.portfolio-next-card{
+  background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.01)),#1D1D1D!important;
+  border-color:#424242!important;
+}
+.portfolio-next-tags span{border-color:#484848!important}
+.footer{background:#151515!important;border-top-color:#383838!important;color:#B0B0B0!important}
+.crm-shell,.crm-main,.lead-drawer,.followup-dialog{background:#181818!important;border-color:#404040!important}
+.crm-sidebar{background:#151515!important;border-right-color:#383838!important}
+.crm-panel-card,.automation-card,.run-history,.integration-row,.crm-overview-kpis article,.analytics-summary article{
+  background:#202020!important;border-color:#404040!important;
+}
+.crm-table th{background:#242424!important}
+.crm-table td{border-color:#383838!important}
+
+html[data-theme=light]{
+  --bg:#F7F7F7;
+  --bg2:#EFEFEF;
+  --card:#FFFFFF;
+  --card2:#F3F3F3;
+  --surface-1:#FFFFFF;
+  --surface-2:#F3F3F3;
+  --surface-3:#EAEAEA;
+  --surface-page:#F7F7F7;
+  --surface-raised:#FFFFFF;
+  --surface-focus:#F1F1F1;
+  --border-quiet:#D2D2D2;
+  --text:#242424;
+  --text-primary:#242424;
+  --text-soft:#444444;
+  --text-secondary:#444444;
+  --muted:#666666;
+  --text-muted-readable:#666666;
+  --meta-readable:#686868;
+  --status-nurture:#777777;
+  --status-other:#666666;
+  --line:#D2D2D2;
+  --line2:#B8B8B8;
+}
+html[data-theme=light] body{background:#F7F7F7!important}
+html[data-theme=light] .grid{
+  background-image:
+    linear-gradient(rgba(96,96,96,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(96,96,96,.045) 1px,transparent 1px)!important;
+}
+html[data-theme=light] .nav{background:rgba(250,250,250,.95)!important;border-bottom-color:#D6D6D6!important}
+html[data-theme=light] .theme-toggle{background:#FFFFFF!important;border-color:#D0D0D0!important;color:#444444!important}
+html[data-theme=light] .theme-toggle:hover{background:#F5F5F5!important;border-color:#B8B8B8!important}
+html[data-theme=light] .theme-toggle-track{background:linear-gradient(135deg,#E8E8E8,#D8D8D8)!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)!important}
+html[data-theme=light] .theme-toggle-thumb{background:#3A3A3A!important;color:#FFFFFF!important}
+
+html[data-theme=light] .glass-panel{
+  background:#FFFFFF!important;
+  border-color:#CFCFCF!important;
+  border-left-color:var(--accent)!important;
+}
+html[data-theme=light] .hero .panel-top{
+  background:#F2F2F2!important;
+  border-bottom-color:#D2D2D2!important;
+  color:#3C3C3C!important;
+}
+html[data-theme=light] .hero .panel-top>span{color:#3C3C3C!important}
+html[data-theme=light] .flow-orbit{background:radial-gradient(circle at 50% 48%,rgba(0,0,0,.025),transparent 44%)!important}
+html[data-theme=light] .flow-node{background:#FAFAFA!important;color:#242424!important;border-color:#D0D0D0!important}
+html[data-theme=light] .flow-node span,
+html[data-theme=light] .flow-node small{color:#666666!important}
+html[data-theme=light] .mini-terminal{background:#242424!important;border-color:#444444!important}
+html[data-theme=light] .mini-terminal span{color:#BDBDBD!important}
+html[data-theme=light] .mini-terminal b{color:#F5F5F5!important}
+html[data-theme=light] .float-card{background:#FFFFFF!important;border-color:#D0D0D0!important;color:#242424!important}
+html[data-theme=light] .fc-two{background:#FFFFFF!important}
+html[data-theme=light] .fc-two small,
+html[data-theme=light] .fc-one span{color:#666666!important}
+
+html[data-theme=light] .band{background:#EFEFEF!important}
+html[data-theme=light] .trust-band{background:#F1F1F1!important;border-color:#D2D2D2!important}
+html[data-theme=light] .capability{border-left-color:#D0D0D0!important}
+html[data-theme=light] .brief-grid article,
+html[data-theme=light] .workflow-map article{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] #demo .demo-layout{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .lead-form,
+html[data-theme=light] .execution-card,
+html[data-theme=light] .result-card{background:#FFFFFF!important}
+html[data-theme=light] .ops-dashboard{background:#F7F7F7!important;border-color:#D2D2D2!important}
+html[data-theme=light] .ops-input-panel,
+html[data-theme=light] .ops-panel,
+html[data-theme=light] .ops-kpis article{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .ops-console{background:#F3F3F3!important}
+html[data-theme=light] .reliability-lab{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .arch-source,
+html[data-theme=light] .arch-core,
+html[data-theme=light] .arch-column>div{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] #roi .calculator{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] #roi .calc-inputs{background:#FFFFFF!important}
+html[data-theme=light] #roi .calc-result{background:#F3F3F3!important;border-color:#D2D2D2!important}
+html[data-theme=light] .number-field{background:#FAFAFA!important;border-color:#D0D0D0!important}
+html[data-theme=light] .number-field span{color:#666666!important}
+html[data-theme=light] .roi-track{background:#DEDEDE!important}
+html[data-theme=light] .blueprint-disclosure{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .blueprint-output{background:#F3F3F3!important}
+html[data-theme=light] .blueprint-summary-flow span,
+html[data-theme=light] .bp-node,
+html[data-theme=light] .blueprint-editor-controls button{background:#F7F7F7!important;border-color:#CCCCCC!important}
+html[data-theme=light] .case-section{
+  background:linear-gradient(90deg,#F7F7F7 0 49%,#EFEFEF 49% 100%)!important;
+}
+@media(max-width:680px){
+  html[data-theme=light] .case-section{
+    background:linear-gradient(180deg,#F7F7F7 0 40%,#EFEFEF 40% 100%)!important;
+  }
+}
+html[data-theme=light] .portfolio-next-card{
+  background:#F2F2F2!important;
+  border-color:#D0D0D0!important;
+  border-left-color:var(--accent)!important;
+}
+html[data-theme=light] .portfolio-next-tags span{border-color:#C8C8C8!important;color:#555555!important}
+html[data-theme=light] .footer{background:#EFEFEF!important;border-top-color:#D2D2D2!important;color:#686868!important}
+html[data-theme=light] .crm-shell,
+html[data-theme=light] .crm-main,
+html[data-theme=light] .lead-drawer,
+html[data-theme=light] .followup-dialog{background:#F7F7F7!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-sidebar{background:#EFEFEF!important;border-right-color:#D2D2D2!important}
+html[data-theme=light] .crm-panel-card,
+html[data-theme=light] .automation-card,
+html[data-theme=light] .run-history,
+html[data-theme=light] .integration-row,
+html[data-theme=light] .crm-overview-kpis article,
+html[data-theme=light] .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-table th{background:#F2F2F2!important}
+html[data-theme=light] .crm-table td{border-color:#D8D8D8!important}
+html[data-theme=light] .hero .panel-top .healthy{color:var(--accent)!important}
+html[data-theme=light] .fc-one small{color:var(--accent)!important}
+html[data-theme=light] .fc-one span{color:#666666!important}
+html[data-theme=light] .fc-two small{color:#666666!important}
+html[data-theme=light] .fc-two b{color:#242424!important}
+
+/* Strict grayscale completion for inherited CRM analytics and guided-tour chrome */
+html[data-theme=light] .crm-modal,
+html[data-theme=light] .followup-modal{background:rgba(235,235,235,.88)!important}
+
+html[data-theme=light] .crm-topbar{
+  background:linear-gradient(180deg,#F7F7F7 76%,rgba(247,247,247,.95) 90%,rgba(247,247,247,0))!important;
+}
+html[data-theme=light] .crm-overview-kpis>div,
+html[data-theme=light] .crm-pipeline-section{background:#F3F3F3!important}
+
+html[data-theme=light] .crm-table-wrap{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-table th{background:#EFEFEF!important;color:#444444!important}
+html[data-theme=light] .crm-table td{color:#555555!important}
+html[data-theme=light] .crm-table td:first-child{color:#242424!important}
+html[data-theme=light] .crm-table tbody tr:hover,
+html[data-theme=light] .crm-table tbody tr.selected{background:#F3F3F3!important}
+
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>span{color:#444444!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary article>small{color:#666666!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-summary strong{color:#242424!important}
+html[data-theme=light] .crm-analytics-v2 .analytics-panel{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-analytics-v2 .score-band-labels{color:#666666!important}
+html[data-theme=light] .crm-analytics-v2 .panel-copy{color:#555555!important}
+
+html[data-theme=light] .crm-top-actions,
+html[data-theme=light] .crm-metrics span,
+html[data-theme=light] .crm-metrics small,
+html[data-theme=light] .crm-panel-head>span,
+html[data-theme=light] .automation-header>span,
+html[data-theme=light] .automation-copy p,
+html[data-theme=light] .automation-copy small,
+html[data-theme=light] .automation-toggle,
+html[data-theme=light] .run-history-row small,
+html[data-theme=light] .run-history-row em,
+html[data-theme=light] .integration-row small{color:#666666!important}
+html[data-theme=light] .search-wrap{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .crm-sidebar button{color:#555555!important}
+
+html[data-theme=light] .tour-status{
+  background:rgba(255,255,255,.97)!important;
+  box-shadow:0 15px 45px rgba(0,0,0,.12)!important;
+}
+html[data-theme=light] .tour-progress{background:#DEDEDE!important}
+
+/* Strict grayscale completion for the rendered Operations workspace */
+html[data-theme=light] .ops-table-wrap{background:#FFFFFF!important}
+html[data-theme=light] .ops-table th{background:#EFEFEF!important;color:#444444!important;border-bottom-color:#D2D2D2!important}
+html[data-theme=light] .ops-table td{color:#555555!important;border-bottom-color:#D8D8D8!important}
+html[data-theme=light] .ops-table td:first-child b{color:#242424!important}
+html[data-theme=light] .ops-table td:first-child small{color:#666666!important}
+html[data-theme=light] .ops-table tbody tr:hover{background:#F3F3F3!important}
+html[data-theme=light] .ops-chart-item>div{background:#E4E4E4!important}
+html[data-theme=light] .ops-source-row>i{background:#E4E4E4!important}
+html[data-theme=light] .ops-panel-head>span,
+html[data-theme=light] .ops-chart-item>b,
+html[data-theme=light] .ops-chart-item>span,
+html[data-theme=light] .ops-source-row span,
+html[data-theme=light] .ops-activity-row time,
+html[data-theme=light] .ops-activity-row code,
+html[data-theme=light] .ops-activity-row b{color:#666666!important}
+html[data-theme=light] .ops-story-ribbon{background:#FFFFFF!important;border-color:#D2D2D2!important}
+html[data-theme=light] .ops-story-token{background:#F3F3F3!important;border-color:#D2D2D2!important}
+
+/* LEADFLOW NAVY — GUIDELINE REFINEMENT
+   References applied:
+   - Material motion: informative, focused, hierarchical, outcome-led.
+   - WCAG 2.2.2 / 2.3.3: no persistent decorative motion; reduced-motion remains authoritative.
+   - WCAG 1.4.3: strong readable foreground/background contrast.
+   - NN/g: compact opaque sticky header; progressive disclosure for secondary detail.
+*/
+:root{
+  --navy-primary:#76A9DA;
+  --navy-primary-strong:#3E78AA;
+  --navy-focus:#8FC0EE;
+  --navy-motion-fast:160ms;
+  --navy-motion-standard:240ms;
+  --navy-motion-emphasis:320ms;
+  --navy-motion-ease:cubic-bezier(.4,0,.2,1);
+}
+html[data-theme=light]{
+  --navy-primary:#245B8F;
+  --navy-primary-strong:#174A75;
+  --navy-focus:#2B6CA3;
+  --v4-green:#245B8F;
+  --accent:#245B8F;
+  --accent-readable:#245B8F;
+  --text:#242424;
+  --text-soft:#444444;
+  --muted:#666666;
+}
+
+/* Focused motion: remove automatic decorative loops. State changes remain event-driven. */
+.signal,.connector i,.flow-node,.fc-two,#runAutomation{animation:none!important}
+.signal,.connector i{opacity:0!important}
+.presentation-progress span{transition:none!important}
+.workflow-map article:hover{transform:none!important}
+.primary-btn:hover,
+.secondary-btn:hover,
+.nav-cta:hover,
+.guided-btn:hover,
+.theme-toggle:hover{transform:none!important}
+
+.primary-btn,
+.secondary-btn,
+.nav-cta,
+.guided-btn,
+.theme-toggle,
+.desktop-nav a,
+.reliability-actions button,
+.demo-presets button,
+.blueprint-editor-controls button,
+.architecture-more>summary>span,
+.engineering-proof>summary i,
+.blueprint-disclosure>summary .blueprint-summary-action i{
+  transition:
+    color var(--navy-motion-fast) var(--navy-motion-ease),
+    background-color var(--navy-motion-fast) var(--navy-motion-ease),
+    border-color var(--navy-motion-fast) var(--navy-motion-ease),
+    box-shadow var(--navy-motion-standard) var(--navy-motion-ease),
+    opacity var(--navy-motion-fast) var(--navy-motion-ease)!important;
+}
+.story-focus,
+.workflow-stage,
+.incident-beat-button,
+.arch-source,
+.arch-core,
+.arch-column>div{
+  transition:
+    border-color var(--navy-motion-fast) var(--navy-motion-ease),
+    background-color var(--navy-motion-standard) var(--navy-motion-ease),
+    box-shadow var(--navy-motion-standard) var(--navy-motion-ease),
+    opacity var(--navy-motion-fast) var(--navy-motion-ease)!important;
+}
+
+/* Sticky navigation: compact, opaque, stable, and visually separated from content. */
+.nav{
+  height:64px!important;
+  background:#141414!important;
+  border-bottom:1px solid #303030!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.025)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.nav-inner{
+  gap:22px!important;
+  padding-inline:clamp(16px,3vw,44px)!important;
+}
+.nav .brand{font-size:16px!important}
+.nav .brand-mark{
+  width:34px!important;
+  height:34px!important;
+  border-radius:7px!important;
+  box-shadow:none!important;
+}
+.nav .desktop-nav{
+  gap:clamp(16px,1.8vw,26px)!important;
+  font-size:13.5px!important;
+}
+.desktop-nav a{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding:0!important;
+}
+.desktop-nav a::after{
+  bottom:7px!important;
+  height:2px!important;
+  background:var(--navy-primary)!important;
+  transition:transform var(--navy-motion-standard) var(--navy-motion-ease)!important;
+}
+.desktop-nav a.is-active{
+  color:var(--navy-primary-strong)!important;
+  font-weight:650!important;
+}
+html:not([data-theme=light]) .nav{background:#141414!important}
+html[data-theme=light] .nav{
+  background:#FAFAFA!important;
+  border-bottom-color:#D6D6D6!important;
+  box-shadow:0 1px 0 rgba(0,0,0,.025)!important;
+}
+
+/* Compact utility controls keep the persistent chrome subordinate to page content. */
+.theme-toggle{
+  min-width:92px!important;
+  min-height:44px!important;
+  padding:7px 9px 7px 7px!important;
+  border-radius:8px!important;
+  background:#1D1D1D!important;
+  border-color:#3A3A3A!important;
+  box-shadow:none!important;
+}
+.theme-toggle-track{
+  width:38px!important;
+  flex-basis:38px!important;
+  height:22px!important;
+  background:#292929!important;
+  box-shadow:inset 0 0 0 1px #454545!important;
+}
+.theme-toggle-track::after{display:none!important}
+.theme-toggle-thumb{
+  width:16px!important;
+  height:16px!important;
+  background:#E8E8E8!important;
+  color:#222!important;
+}
+html[data-theme=light] .theme-toggle{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  color:#444444!important;
+}
+html[data-theme=light] .theme-toggle-track{
+  background:#E7E7E7!important;
+  box-shadow:inset 0 0 0 1px #CCCCCC!important;
+}
+html[data-theme=light] .theme-toggle-thumb{
+  background:var(--navy-primary-strong)!important;
+  color:#FFFFFF!important;
+}
+.nav-cta{
+  min-height:44px!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+}
+
+/* Restrained navy hierarchy: color marks actions and state, not large surfaces. */
+.primary-btn{
+  background:var(--navy-primary-strong)!important;
+  color:#FFFFFF!important;
+  border:1px solid var(--navy-primary-strong)!important;
+  border-radius:8px!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.10)!important;
+}
+.primary-btn:hover{
+  background:#123D63!important;
+  border-color:#123D63!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.12)!important;
+}
+html:not([data-theme=light]) .primary-btn:hover{
+  background:#4D86B8!important;
+  border-color:#4D86B8!important;
+}
+.secondary-btn,.nav-cta{
+  background:#1B1B1B!important;
+  border-color:#3C3C3C!important;
+  color:#E5E5E5!important;
+}
+html[data-theme=light] .secondary-btn,
+html[data-theme=light] .nav-cta{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  color:#333333!important;
+}
+html[data-theme=light] .secondary-btn:hover,
+html[data-theme=light] .nav-cta:hover{
+  background:#F3F3F3!important;
+  border-color:#B8B8B8!important;
+}
+.hero-actions .guided-btn{
+  color:#AFAFAF!important;
+  padding-inline:6px!important;
+}
+html[data-theme=light] .hero-actions .guided-btn{color:#555555!important}
+.hero-actions .guided-btn:hover{color:var(--navy-primary)!important}
+
+/* Hero becomes a crisp product diagram rather than an ambient/glass effect. */
+.glass-panel{
+  border-radius:10px!important;
+  border:1px solid #3C3C3C!important;
+  border-left:3px solid var(--navy-primary)!important;
+  background:#1A1A1A!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.08)!important;
+  backdrop-filter:none!important;
+}
+html[data-theme=light] .glass-panel{
+  background:#FFFFFF!important;
+  border-color:#D0D0D0!important;
+  border-left-color:var(--navy-primary)!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.08)!important;
+}
+.panel-top{
+  background:#202020!important;
+  border-bottom-color:#383838!important;
+}
+html[data-theme=light] .hero .panel-top{
+  background:#F3F3F3!important;
+  border-bottom-color:#D5D5D5!important;
+}
+.flow-orbit{background:none!important}
+.flow-line{
+  background:linear-gradient(90deg,#424242 0%,var(--navy-primary) 50%,#424242 100%)!important;
+  opacity:.72;
+}
+html[data-theme=light] .flow-line{
+  background:linear-gradient(90deg,#D8D8D8 0%,var(--navy-primary) 50%,#D8D8D8 100%)!important;
+}
+.flow-node{
+  background:#202020!important;
+  border-color:#454545!important;
+  box-shadow:none!important;
+}
+.flow-node.n3,.flow-node.n4{border-color:var(--navy-primary)!important}
+html[data-theme=light] .flow-node{
+  background:#FAFAFA!important;
+  border-color:#D2D2D2!important;
+  color:#242424!important;
+}
+html[data-theme=light] .flow-node.n3,
+html[data-theme=light] .flow-node.n4{border-color:var(--navy-primary)!important}
+.float-card{
+  background:#1D1D1D!important;
+  border-color:#414141!important;
+  border-radius:8px!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.12)!important;
+  backdrop-filter:none!important;
+}
+html[data-theme=light] .float-card{
+  background:#FFFFFF!important;
+  border-color:#D2D2D2!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.07)!important;
+}
+.guided-btn-play{
+  background:transparent!important;
+  color:var(--navy-primary)!important;
+  box-shadow:none!important;
+  border:1px solid currentColor;
+}
+
+/* Fewer competing card treatments; hierarchy comes from spacing, type, and selective borders. */
+.brief-grid article,
+.workflow-map,
+.demo-layout,
+.ops-dashboard,
+.reliability-lab,
+.architecture-more,
+.engineering-proof,
+.calculator,
+.blueprint-disclosure,
+.portfolio-next-card,
+.crm-shell{
+  border-radius:9px!important;
+  box-shadow:none!important;
+}
+.workflow-map article{border-radius:0!important}
+.trust-band{box-shadow:none!important}
+.section-head{margin-bottom:34px!important}
+.tag,.eyebrow{color:var(--navy-primary)!important}
+html[data-theme=light] .tag,
+html[data-theme=light] .eyebrow{color:var(--navy-primary-strong)!important}
+
+/* Progressive disclosure: secondary technical depth is clearly available without dominating. */
+.architecture-more>summary,
+.engineering-proof>summary,
+.blueprint-disclosure>summary{
+  min-height:56px!important;
+  cursor:pointer;
+  background:#1C1C1C!important;
+  border-radius:8px;
+}
+html[data-theme=light] .architecture-more>summary,
+html[data-theme=light] .engineering-proof>summary,
+html[data-theme=light] .blueprint-disclosure>summary{
+  background:#F7F7F7!important;
+}
+.architecture-more>summary:hover,
+.engineering-proof>summary:hover,
+.blueprint-disclosure>summary:hover{
+  background:#222222!important;
+}
+html[data-theme=light] .architecture-more>summary:hover,
+html[data-theme=light] .engineering-proof>summary:hover,
+html[data-theme=light] .blueprint-disclosure>summary:hover{
+  background:#EFEFEF!important;
+}
+.architecture-more>summary:focus-visible,
+.engineering-proof>summary:focus-visible,
+.blueprint-disclosure>summary:focus-visible{
+  outline:3px solid var(--navy-focus)!important;
+  outline-offset:3px!important;
+}
+.architecture-more[open]>summary,
+.engineering-proof[open]>summary,
+.blueprint-disclosure[open]>summary{
+  border-bottom:1px solid #3A3A3A!important;
+  border-bottom-left-radius:0;
+  border-bottom-right-radius:0;
+}
+html[data-theme=light] .architecture-more[open]>summary,
+html[data-theme=light] .engineering-proof[open]>summary,
+html[data-theme=light] .blueprint-disclosure[open]>summary{
+  border-bottom-color:#D2D2D2!important;
+}
+
+/* Final CTA reads like a confident product close rather than another large color block. */
+.final-cta{
+  background:#1A1A1A!important;
+  border:1px solid #3D3D3D!important;
+  border-left:4px solid var(--navy-primary)!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+}
+.final-cta::before{
+  width:4px!important;
+  background:var(--navy-primary)!important;
+}
+html[data-theme=light] .final-cta{
+  background:#FFFFFF!important;
+  border-color:#D2D2D2!important;
+  border-left-color:var(--navy-primary)!important;
+}
+html[data-theme=light] .final-cta::before{background:var(--navy-primary)!important}
+
+/* Strong keyboard focus and readable active navigation. */
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible,
+.nav-cta:focus-visible,
+.guided-btn:focus-visible,
+.theme-toggle:focus-visible,
+.desktop-nav a:focus-visible,
+.reliability-actions button:focus-visible,
+.demo-presets button:focus-visible{
+  outline:3px solid var(--navy-focus)!important;
+  outline-offset:3px!important;
+}
+
+/* Mobile: preserve content-to-chrome ratio and avoid sticky-header crowding. */
+@media(max-width:680px){
+  .nav{height:60px!important}
+  .nav-inner{padding-inline:12px!important;gap:8px!important}
+  .nav .brand{font-size:15px!important}
+  .nav .brand-mark{width:32px!important;height:32px!important}
+  .theme-toggle{min-width:80px!important;min-height:44px!important;padding:6px 7px 6px 6px!important}
+  .theme-toggle-track{width:34px!important;flex-basis:34px!important;height:20px!important}
+  .theme-toggle-thumb{width:14px!important;height:14px!important}
+  .nav-cta{min-height:44px!important;padding-inline:10px!important}
+  section[id]{scroll-margin-top:72px!important}
+  .hero{padding-top:54px!important}
+  .section-head{margin-bottom:28px!important}
+}
+
+/* OS-level reduced-motion preference remains authoritative. */
+@media(prefers-reduced-motion:reduce){
+  .leadflow-refine-navy *,
+  .leadflow-refine-navy *::before,
+  .leadflow-refine-navy *::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
+
+/* Specificity completion after contrast audit */
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:#444444!important;
+  box-shadow:none!important;
+}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{color:var(--navy-primary-strong)!important}
+html[data-theme=light] .hero-actions #guidedDemo .guided-btn-label{color:inherit!important}
+html[data-theme=light] .hero-actions #guidedDemo .guided-btn-play{
+  background:transparent!important;
+  color:var(--navy-primary-strong)!important;
+  border-color:currentColor!important;
+  box-shadow:none!important;
+}
+
+html[data-theme=light] .final-cta{color:#242424!important}
+html[data-theme=light] .final-cta .tag{color:var(--navy-primary-strong)!important}
+html[data-theme=light] .final-cta h2{color:#242424!important}
+html[data-theme=light] .final-cta>div>p:not(.tag){color:#555555!important}
+
+/* Final visual hierarchy pass after screenshot review */
+.hero-actions #guidedDemo.guided-btn,
+.hero-actions #guidedDemo.guided-btn:hover{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+  color:#B8B8B8!important;
+}
+.hero-actions #guidedDemo.guided-btn:hover{color:var(--navy-primary)!important}
+.hero-actions #guidedDemo .guided-btn-label{color:inherit!important}
+.hero-actions #guidedDemo .guided-btn-play{
+  background:transparent!important;
+  color:var(--navy-primary)!important;
+  border:1px solid currentColor!important;
+  box-shadow:none!important;
+}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn,
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{color:#444444!important}
+html[data-theme=light] .hero-actions #guidedDemo.guided-btn:hover{color:var(--navy-primary-strong)!important}
+
+.trust-grid>div:first-child small,
+.capability span{color:var(--navy-primary)!important}
+.capability b{color:var(--text-primary,var(--text))!important}
