@@ -59,8 +59,4 @@ jobs:
       - name: Deploy Cloudflare Pages V4 preview
         run: |
           set -euo pipefail
-          npx wrangler@4 pages deploy nova/site \\
-            --project-name nova-interactive-portfolio \\
-            --branch v4 \\
-            --commit-hash "$GITHUB_SHA" \\
-            --commit-message "NOVA V4 final motion portfolio release"
+          npx wrangler@4 pages deploy nova/site --project-name nova-interactive-portfolio --branch v4 --commit-hash "$GITHUB_SHA" --commit-message "NOVA V4 final motion portfolio release"
