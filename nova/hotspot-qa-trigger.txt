@@ -3,3 +3,4 @@ Final framing release validation: site source 7177604cc03cb2b209c797a6b96b5ac2a7
 NOVA V3 control framing hotspot rerun — c8b7aac — 2026-09-25.
 NOVA V3 deterministic-ready hotspot rerun — a85882be — 2026-09-25.
 NOVA V3 motion-fluidity hotspot rerun — site source 2283e56ef6dbadeec458e33a6d9e3249433c7859 — 2026-09-25.
+NOVA V3 motion-system hardening hotspot rerun — site source d2880806c10f5f1238391634c44246ad04e29592 — 2026-09-26.
