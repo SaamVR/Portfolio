@@ -324,3 +324,50 @@ When deployment access returns, deploy exact product merge `a8d03aa665bc4291ea85
 4. confirm root/V2/V3 qualification engine is deterministic v2 and V1 remains deterministic v1
 5. create a deployment-ID preservation alias if desired and record the immutable Pages URL
 
+## GitHub Pages publication — 2026-09-26
+
+The navy guideline refinement is now published through the repository's existing GitHub Pages site without replacing the EZComo root page.
+
+Public route:
+- https://saamvr.github.io/Portfolio/refine-navy/
+
+GitHub Pages source:
+- branch: `gh-pages`
+- deployed bundle head: `5861d5d1a0384649c75ade738f6158ca9c36e17a`
+- Pages build/deployment run: https://github.com/SaamVR/Portfolio/actions/runs/36250651895
+- Pages run conclusion: SUCCESS
+- rollback/preservation branch: `preserve/leadflow-navy-github-pages-5861d5d1-20260926`
+
+Publication strategy:
+- existing GitHub Pages root at `/Portfolio/` remains untouched
+- LeadFlow is self-contained under `/Portfolio/refine-navy/`
+- the Pages bundle contains route-local copies of:
+  - `index.html`
+  - `styles.css`
+  - `theme.css`
+  - `dashboard.js`
+  - `storytelling.js`
+  - `app.js`
+- the HTML uses relative asset references so the project-site base path does not break CSS/JS loading
+
+Server-backed qualification on GitHub Pages:
+- GitHub Pages remains static hosting
+- the Pages-specific `app.js` sends qualification requests to `https://leadflow-ai-bhy.pages.dev/api/qualify`
+- the Pages request uses `Content-Type: text/plain;charset=UTF-8` so it is a CORS simple request and avoids the endpoint's unsupported OPTIONS preflight
+- the Cloudflare qualification endpoint returns `Access-Control-Allow-Origin: *`
+- deterministic browser fallback remains active if the server path is unavailable
+- direct API verification returned `deterministic-qualification-v2` with score 92 for the hot preset
+
+Live verification:
+- route HTML returns 200
+- `styles.css` returns 200
+- `theme.css` returns 200
+- `dashboard.js` returns 200
+- `storytelling.js` returns 200
+- `app.js` returns 200
+- served theme contains `LEADFLOW NAVY — GUIDELINE REFINEMENT`
+- served app contains the GitHub-Pages API bridge
+- GitHub Pages root still serves the prior EZComo portfolio page
+
+Treat the GitHub Pages route above as the currently published navy presentation while Cloudflare deployment remains optional rather than required.
+
