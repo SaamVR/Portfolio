@@ -59,3 +59,13 @@ test("external story interruption exits guided mode cleanly",()=>{
   const uses=(app.match(/guidedStoryInterrupted\(storyResult\)/g)||[]).length;
   assert.ok(uses>=4,uses);
 });
+
+test("guided camera ignores premature scrollend and arms settle monitor before smooth scroll",()=>{
+  const settle=app.match(/function waitForTourScrollSettle\([\s\S]*?\n\}/)?.[0]||"";
+  assert.match(settle,/if\(!moved\)return/);
+  assert.match(settle,/Math\.abs\(scrollY-initialY\)>\.5/);
+  const scroll=app.match(/async function scrollTourTargetSettled\([\s\S]*?\n\}/)?.[0]||"";
+  const monitor=scroll.indexOf("waitForTourScrollSettle()");
+  const move=scroll.indexOf("scrollIntoView");
+  assert.ok(monitor>=0&&move>=0&&monitor<move,{monitor,move,scroll});
+});

@@ -538,8 +538,12 @@ function waitForTourScrollSettle({timeout=1800,quietFrames=5}={}){
       if(supportsScrollEnd)removeEventListener("scrollend",onScrollEnd);
       resolve(reason);
     };
-    const onScrollEnd=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>finish("scrollend")));
-    if(supportsScrollEnd)addEventListener("scrollend",onScrollEnd,{once:true});
+    const onScrollEnd=()=>{
+      if(Math.abs(scrollY-initialY)>.5)moved=true;
+      if(!moved)return;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>finish("scrollend")));
+    };
+    if(supportsScrollEnd)addEventListener("scrollend",onScrollEnd);
     const sample=()=>{
       if(cancelled)return finish("cancelled");
       const y=scrollY,delta=Math.abs(y-lastY),elapsed=performance.now()-started;
@@ -557,8 +561,9 @@ async function scrollTourTargetSettled(selector){
   const target=focusTourTarget(selector);
   if(!target)return null;
   const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const settlePromise=waitForTourScrollSettle();
   target.scrollIntoView({behavior:reduced?"auto":"smooth",block:"center"});
-  await waitForTourScrollSettle();
+  await settlePromise;
   if(!reduced&&!cancelled)await tourHoldMs(110);
   return target;
 }
