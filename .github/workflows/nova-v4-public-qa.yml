@@ -1,0 +1,237 @@
+name: NOVA V4 Public QA
+
+on:
+  push:
+    branches: ["nova/v4-final-motion"]
+    paths:
+      - "nova/v4-public-qa-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NOVA_V4_URL: https://v4.nova-interactive-portfolio.pages.dev/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Audit deployed V4
+        run: |
+          cat > nova/v3-public-qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          fs.mkdirSync('nova-v4-public-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          const url=process.env.NOVA_V4_URL;
+          const errors=[];
+
+          async function ready(context,label,path=''){
+            const page=await context.newPage();
+            page.on('pageerror',e=>errors.push(label+': pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error') errors.push(label+': console: '+m.text());});
+            page.on('requestfailed',r=>errors.push(label+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||'')));
+            await page.goto(url+path,{waitUntil:'networkidle',timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:25000});
+            return page;
+          }
+
+          async function scrollProgress(page,p){
+            await page.evaluate(progress=>{
+              document.documentElement.style.scrollBehavior='auto';
+              const behind=document.querySelector('#behind');
+              const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              scrollTo(0,max*progress);
+            },p);
+            await page.waitForFunction(target=>{
+              const behind=document.querySelector('#behind');
+              const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+              return Math.abs(scrollY/max-target)<.004;
+            },p,{timeout:4000});
+            await page.waitForTimeout(500);
+          }
+
+          async function assertProductFraming(page,prefix,points){
+            for(const progress of points){
+              await scrollProgress(page,progress);
+              const state=await page.evaluate(async p=>{
+                const read=()=>window.__NOVA_QA__?.productFrame?.()||null;
+                let previous=read();
+                let stableFrames=0;
+                let frames=0;
+                while(frames<240 && stableFrames<8){
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  const next=read();
+                  if(previous&&next){
+                    const ids=['cushion','headband','controls'];
+                    const maxDelta=Math.max(...ids.map(id=>{
+                      const a=previous.points?.[id], b=next.points?.[id];
+                      if(!a||!b||!Number.isFinite(a.x)||!Number.isFinite(a.y)||!Number.isFinite(b.x)||!Number.isFinite(b.y)) return Infinity;
+                      return Math.hypot(b.x-a.x,b.y-a.y);
+                    }));
+                    stableFrames=maxDelta<=.45 ? stableFrames+1 : 0;
+                  }else{
+                    stableFrames=0;
+                  }
+                  previous=next;
+                  frames++;
+                }
+                return {
+                  progress:p,
+                  range:document.body.dataset.range,
+                  frame:previous,
+                  settled:stableFrames>=8,
+                  settleFrames:frames
+                };
+              },progress);
+              const minSpanX=prefix==='mobile'?50:100;
+              const minSpanY=prefix==='mobile'?35:60;
+              await page.screenshot({path:'nova-v4-public-qa/'+prefix+'_product_'+String(progress).replace('.','')+'.png'});
+              const intentionalDesignCrop=state.range==='design';
+              const landmarksOk=state.frame && state.settled && (intentionalDesignCrop
+                ? state.frame.nearViewport>=3 && state.frame.inViewport>=2 && state.frame.earcupsInViewport>=1
+                : state.frame.inViewport>=3 && state.frame.earcupsInViewport>=2);
+              if(
+                !state.frame ||
+                !state.settled ||
+                !landmarksOk ||
+                state.frame.spanX<minSpanX ||
+                state.frame.spanY<minSpanY
+              ){
+                throw new Error(prefix+' deployed product framing invalid '+JSON.stringify({minSpanX,minSpanY,intentionalDesignCrop,state}));
+              }
+            }
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await ready(context,'desktop');
+            const basics=await page.evaluate(()=>({
+              title:document.title,
+              model:document.body.dataset.modelState,
+              hero:document.body.innerText.includes('Hear beyond.'),
+              story:document.body.innerText.includes('Designed like a launch.'),
+              runtime:document.querySelector('#runtimeState')?.textContent||'',
+              fakeNotify:Boolean(document.querySelector('#notifyConcept,#notifyPanel,#notifyDemoForm'))
+            }));
+            if(basics.model!=='ready'||!basics.hero||!basics.story||!basics.runtime.includes('LIVE')||basics.fakeNotify){
+              throw new Error('desktop V4 runtime invalid '+JSON.stringify(basics));
+            }
+            await assertProductFraming(page,'desktop',[.02,.16,.36,.54,.65,.79,.90]);
+
+            for(const check of [
+              {p:.16,detail:'cushion',hotspot:'cushion',file:'design_cushion.png'},
+              {p:.205,detail:'hinge',hotspot:'headband',file:'design_hinge.png'},
+              {p:.255,detail:'controls',hotspot:'controls',file:'design_controls.png'}
+            ]){
+              await scrollProgress(page,check.p);
+              await page.waitForFunction(detail=>document.body.dataset.designDetail===detail,check.detail);
+              await page.waitForFunction(hotspot=>{
+                const el=document.querySelector('[data-hotspot="'+hotspot+'"]');
+                return el?.dataset.visible==='true' && Number(getComputedStyle(el).opacity)>=.8;
+              },check.hotspot,{timeout:5000});
+              const state=await page.evaluate(({detail,hotspot})=>({
+                detail:document.body.dataset.designDetail,
+                pressed:document.querySelector('[data-detail-id="'+detail+'"]')?.getAttribute('aria-pressed'),
+                hotspotVisible:document.querySelector('[data-hotspot="'+hotspot+'"]')?.dataset.visible,
+                hotspotOpacity:Number(getComputedStyle(document.querySelector('[data-hotspot="'+hotspot+'"]')).opacity)
+              }),check);
+              if(state.detail!==check.detail||state.pressed!=='true'||state.hotspotVisible!=='true'||state.hotspotOpacity<.8){
+                throw new Error('deployed V4 Design detail invalid '+JSON.stringify({check,state}));
+              }
+              await page.screenshot({path:'nova-v4-public-qa/'+check.file});
+            }
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/specifications/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            const facts=await page.evaluate(()=>({
+              open:document.body.dataset.productFacts,
+              hidden:document.querySelector('#productFactsPanel')?.getAttribute('aria-hidden'),
+              sony:document.body.innerText.includes('Sony WH-1000XM6'),
+              weight:document.body.innerText.includes('Approx. 254 g / 8.96 oz'),
+              driver:document.body.innerText.includes('30 mm / 1.18 in'),
+              bluetooth:document.body.innerText.includes('Bluetooth 5.3'),
+              codecs:document.body.innerText.includes('SBC / AAC / LDAC / LC3'),
+              standardBattery:document.body.innerText.includes('30 hrs NC on / 40 hrs NC off'),
+              ldacBattery:document.body.innerText.includes('26 hrs NC on / 36 hrs NC off'),
+              multipoint:document.body.innerText.includes('Multipoint: 2 devices'),
+              wiredCaveat:document.querySelector('#productFactsPanel')?.textContent.includes('Bluetooth is unavailable while the supplied headphone cable is connected')||false,
+              sourceLinks:[...document.querySelectorAll('#productFactsPanel .reference-source a')].map(a=>a.href)
+            }));
+            const officialSources=[
+              'https://www.sony.com/electronics/support/wireless-headphones-bluetooth-headphones/wh-1000xm6/specifications',
+              'https://helpguide.sony.net/mdr/2984/v1/en/contents/TP1001856818.html',
+              'https://helpguide.sony.net/mdr/2984/v1/en/contents/TP1001863603.html',
+              'https://helpguide.sony.net/mdr/2984/v1/en/contents/TP1001856898.html'
+            ];
+            if(facts.open!=='open'||facts.hidden!=='false'||!facts.sony||!facts.weight||!facts.driver||!facts.bluetooth||!facts.codecs||!facts.standardBattery||!facts.ldacBattery||!facts.multipoint||!facts.wiredCaveat||!officialSources.every(source=>facts.sourceLinks.includes(source))){
+              throw new Error('deployed V4 reference specifications invalid '+JSON.stringify(facts));
+            }
+            await page.screenshot({path:'nova-v4-public-qa/specifications_desktop.png'});
+            await page.locator('#productFactsPanel [data-facts-close]').click();
+            await context.close();
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+            const page=await ready(context,'mobile');
+            await assertProductFraming(page,'mobile',[.02,.16,.36,.54,.65,.79,.90]);
+            await page.getByRole('button',{name:/menu/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.mobileNav==='open');
+            const nav=await page.evaluate(()=>({
+              state:document.body.dataset.mobileNav,
+              hidden:document.querySelector('#mobileNavPanel')?.getAttribute('aria-hidden'),
+              links:document.querySelectorAll('#mobileNavPanel a').length
+            }));
+            if(nav.state!=='open'||nav.hidden!=='false'||nav.links<5) throw new Error('mobile navigation invalid '+JSON.stringify(nav));
+            await page.screenshot({path:'nova-v4-public-qa/mobile_nav.png'});
+            await page.keyboard.press('Escape');
+
+            await scrollProgress(page,.255);
+            const mobileDetail=await page.evaluate(()=>({
+              detail:document.body.dataset.designDetail,
+              rail:Boolean(document.querySelector('.detail-rail,[data-detail-rail],.design-detail-rail')),
+              pressed:document.querySelector('[data-detail-id="controls"]')?.getAttribute('aria-pressed')
+            }));
+            if(mobileDetail.detail!=='controls'||mobileDetail.pressed!=='true') throw new Error('mobile Design detail rail invalid '+JSON.stringify(mobileDetail));
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/specifications/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.productFacts==='open');
+            await page.screenshot({path:'nova-v4-public-qa/specifications_mobile.png'});
+            await context.close();
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:1024,height:768}});
+            const page=await ready(context,'v1','v1/');
+            const v1=await page.evaluate(()=>({
+              model:document.body.dataset.modelState,
+              film:document.body.innerText.includes('Scroll-controlled product film')
+            }));
+            if(v1.model!=='ready'||!v1.film) throw new Error('V1 archive invalid on V4 '+JSON.stringify(v1));
+            await context.close();
+          }
+
+          fs.writeFileSync('nova-v4-public-qa/result.json',JSON.stringify({url,errors},null,2));
+          await browser.close();
+          if(errors.length) throw new Error('V4 public browser errors:\n'+errors.join('\n'));
+          JS
+          node nova/v3-public-qa.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-v4-public-qa
+          path: nova-v4-public-qa
+          retention-days: 7
