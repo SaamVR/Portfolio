@@ -143,6 +143,7 @@ function viewportAdjusted(state, viewportClass){
     // Mobile keeps a complete, legible product silhouette above the copy.
     // Do not park the rig beyond the top edge just to create negative space.
     state.camera.target[1] += .02;
+    if(state.range === 'spatial') state.camera.target[1] += .012;
     state.product.position[0] *= .12;
     state.product.position[1] += .06;
     state.product.yaw *= .62;
