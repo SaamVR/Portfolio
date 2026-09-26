@@ -1,13 +1,10 @@
-name: NOVA V4 Cloudflare Preview Deploy
+name: NOVA V4 Cloudflare Preview Deploy (manual)
 
+# Cloudflare credentials are intentionally kept on the configured deployment
+# machine. Run this workflow only after adding repository secrets, or use the
+# documented Wrangler fallback in docs/handoffs/nova-v4-final-motion-handoff-2026-09-27.md.
 on:
   workflow_dispatch:
-  push:
-    branches: ["nova/v4-final-motion"]
-    paths:
-      - "nova/site/**"
-      - "nova/v4-deploy-trigger.txt"
-      - ".github/workflows/nova-v4-deploy-cloudflare.yml"
 
 permissions:
   contents: read
@@ -62,8 +59,8 @@ jobs:
       - name: Deploy Cloudflare Pages V4 preview
         run: |
           set -euo pipefail
-          npx wrangler@4 pages deploy nova/site \
-            --project-name nova-interactive-portfolio \
-            --branch v4 \
-            --commit-hash "$GITHUB_SHA" \
+          npx wrangler@4 pages deploy nova/site \\
+            --project-name nova-interactive-portfolio \\
+            --branch v4 \\
+            --commit-hash "$GITHUB_SHA" \\
             --commit-message "NOVA V4 final motion portfolio release"
