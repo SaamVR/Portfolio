@@ -75,19 +75,17 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       weight=1;
     },
     reset(){
-      // Reset the manual offset immediately, while the named product view
-      // returns through the critically damped model spring.
+      // Keep the rendered offset continuous; the release and view spring own
+      // the return to neutral after a click, including mid-drag resets.
       yawTarget=0;
       pitchTarget=0;
-      yaw=0;
-      pitch=0;
       dragVelocity=0;
       pitchVelocity=0;
       view='front';
       targetModelYaw=0;
     },
     update(dt){
-      const step=Math.max(0,Number(dt)||0);
+      const step=Math.max(0,Math.min(.1,Number(dt)||0));
       const target=active?1:0;
       weight += (target-weight)*Math.min(1,step*7);
 
@@ -135,6 +133,15 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
     },
     getInfluence(){
       return {weight,yaw,pitch,modelYaw,view,active,dragging};
+    },
+    settle(){
+      weight=active?1:0;
+      yaw=yawTarget;
+      pitch=pitchTarget;
+      modelYaw=targetModelYaw;
+      modelYawVelocity=0;
+      dragVelocity=0;
+      pitchVelocity=0;
     }
   };
 }

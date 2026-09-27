@@ -110,6 +110,8 @@ function applyCompositionInfluences(state,p){
   const adaptive=windowWeight(p,.42,.47,.535,.60);
   const resolution=windowWeight(p,.82,.87,.915,.965);
   const behind=ramp(p,.962,.988);
+  const form=windowWeight(p,.555,.615,.69,.75);
+  const inspect=windowWeight(p,.69,.755,.84,.89);
 
   // Camera framing does the heavy lifting so the product itself stays spatially stable.
   // Keep the full product silhouette inside the viewport during the Sound pass.
@@ -117,6 +119,9 @@ function applyCompositionInfluences(state,p){
   // especially on short desktop and mobile viewports.
   state.camera.target[1] -= .16 * spatial;
   state.camera.position[2] += .26 * spatial;
+  // Sound, Form and Inspect share a clear right-side product zone.
+  state.camera.target[0] -= .88 * spatial + .75 * form + .64 * inspect;
+  state.camera.target[1] += .20 * (spatial+form);
 
   state.camera.target[0] += .58 * adaptive;
   // Keep the complete headband visible while the Control copy owns the right side.
@@ -142,14 +147,15 @@ function viewportAdjusted(state, viewportClass){
     state.camera.target[0] *= .12;
     // Mobile keeps a complete, legible product silhouette above the copy.
     // Do not park the rig beyond the top edge just to create negative space.
-    state.camera.target[1] += .02;
+    state.camera.target[1] -= .30;
     if(state.range === 'spatial') state.camera.target[1] += .012;
-    state.product.position[0] *= .12;
+    state.product.position[0] *= .04;
     state.product.position[1] += .06;
     state.product.yaw *= .62;
     state.product.pitch *= .58;
     state.camera.position[2] += .94;
     state.camera.fov += 1.8;
+    state.product.scale *= .80;
   } else if(viewportClass === 'tablet'){
     state.camera.position[0] *= .68;
     state.camera.target[0] *= .68;
@@ -204,5 +210,6 @@ export function sampleTimeline(progress, viewportClass='desktop'){
         'none'
     }
   };
+  state.viewportClass=viewportClass;
   return viewportAdjusted(applyCompositionInfluences(state,p), viewportClass);
 }

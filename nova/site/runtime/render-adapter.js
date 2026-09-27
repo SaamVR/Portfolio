@@ -101,9 +101,11 @@ export function createRenderAdapter({
       presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,3.55,step);
       presentation.rotation.z=damp(presentation.rotation.z,0,3.55,step);
       if(splitInspection){
-        inspection.rotation.x=damp(inspection.rotation.x,state.product.inspectionPitch || 0,3.40,step);
-        inspection.rotation.y=damp(inspection.rotation.y,0,3.00,step);
-        inspection.rotation.z=damp(inspection.rotation.z,state.product.inspectionYaw || 0,3.00,step);
+        // The inspection controller already integrates its spring and drag
+        // release. A second low-pass filter here makes direct input feel late.
+        inspection.rotation.x=state.product.inspectionPitch || 0;
+        inspection.rotation.y=0;
+        inspection.rotation.z=state.product.inspectionYaw || 0;
       }
       const s=state.product.scale;
       presentation.scale.x=damp(presentation.scale.x,s,2.85,step);

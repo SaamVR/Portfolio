@@ -20,7 +20,17 @@ const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
 const behindStageEl=document.querySelector('#behind');
 const caseStudyEl=document.querySelector('#case-study');
 let publishedRange=null;
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = motionPreference.matches;
+try{const saved=sessionStorage.getItem('nova-motion');if(saved) reducedMotion=saved==='reduced';}catch{}
+function publishMotionPreference(){
+  document.body.dataset.reducedMotion=String(reducedMotion);
+  const button=document.querySelector('#motionToggle');
+  button?.setAttribute('aria-pressed',String(reducedMotion));
+  if(button) button.textContent=reducedMotion?'Motion reduced':'Reduce motion';
+}
+publishMotionPreference();
+motionPreference.addEventListener('change',event=>{reducedMotion=event.matches;publishMotionPreference();});
 const query = new URLSearchParams(location.search);
 const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
@@ -62,7 +72,7 @@ try{
   document.body.dataset.threeDAvailable='false';
   canvas.hidden=true;
   set3dAvailability(false);
-  if(runtimeState) runtimeState.textContent='STATIC MODE / 3D UNAVAILABLE';
+  if(runtimeState) runtimeState.textContent='Product preview · 3D unavailable';
   console.warn('NOVA WebGL renderer unavailable; continuing with static product experience.',error);
 }
 
@@ -284,14 +294,14 @@ function loadModel(){
 
     document.body.dataset.modelState='ready';
     set3dAvailability(true);
-    if(runtimeState) runtimeState.textContent=`${clip?.name || 'GLTF'} / ${clipDuration.toFixed(2)} SEC / LIVE`;
+    if(runtimeState) runtimeState.textContent='Live 3D · Ready to explore';
   },xhr=>{
     if(xhr.total && runtimeState) runtimeState.textContent=`LOADING NOVA / ${Math.round(xhr.loaded/xhr.total*100)}%`;
   },error=>{
     document.body.dataset.modelState='error';
     set3dAvailability(false);
     hideHotspots();
-    if(runtimeState) runtimeState.textContent='3D MODEL UNAVAILABLE';
+    if(runtimeState) runtimeState.textContent='Product preview · 3D unavailable';
     console.error('NOVA GLTF load failed',error);
   });
 }
@@ -339,7 +349,16 @@ function measureProductFrame(){
 }
 
 Object.defineProperty(window,'__NOVA_QA__',{
-  value:{productFrame:measureProductFrame},
+  value:{productFrame:measureProductFrame,productBounds:()=>{
+    if(!model) return null;
+    scene.updateMatrixWorld(true);
+    const box=computePrimaryBounds(model),points=[];
+    for(const x of [box.min.x,box.max.x]) for(const y of [box.min.y,box.max.y]) for(const z of [box.min.z,box.max.z]){
+      const p=new THREE.Vector3(x,y,z).project(camera);
+      points.push({x:(p.x*.5+.5)*innerWidth,y:(-p.y*.5+.5)*innerHeight});
+    }
+    return {left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y))};
+  },inspection:()=>inspectionController.getInfluence()},
   configurable:true
 });
 
@@ -367,7 +386,13 @@ function publishState(state){
   document.body.dataset.transition=state.ui.transition || 'none';
   document.body.dataset.stageGating='true';
   if(publishedRange!==state.range){
-    for(const stage of rangeStages) stage.classList.toggle('is-active',stage.dataset.rangeAnchor===state.range);
+    for(const stage of rangeStages){
+      const active=stage.dataset.rangeAnchor===state.range;
+      stage.classList.toggle('is-active',active);
+      stage.inert=!active;
+      stage.setAttribute('aria-hidden',String(!active));
+    }
+    hotspotController?.clear();
     publishedRange=state.range;
   }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
@@ -383,10 +408,11 @@ function publishState(state){
 function updateInteractionInfluences(base,dt,now){
   inspectionController.setActive(base.range==='inspect');
   inspectionController.update(dt);
+  if(reducedMotion) inspectionController.settle();
   modeController.update(dt);
 
   const foldInfluenceBefore=foldController.getInfluence();
-  foldController.update(dt,{
+  foldController.update(reducedMotion?1:dt,{
     scrollActive:foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil,
     timelinePose:base.product.pose
   });
@@ -423,20 +449,24 @@ function updateInteractionInfluences(base,dt,now){
   };
 }
 
+let frameRequest=0;
 function render(now=performance.now()){
+  if(document.hidden){frameRequest=0;return;}
   const dt=Math.min(.05,Math.max(.001,(now-lastTime)/1000 || 1/60));
   lastTime=now;
 
   const base=sampleAuthoredState();
   updateInteractionInfluences(base,dt,now);
   const composed=composeVisualState(base,interactionState);
+  if(reducedMotion) composed.environment.motion=0;
   currentComposedState=composed;
   publishState(composed);
   if(rendererAvailable && adapter){
-    adapter.apply(composed,dt);
+    if(reducedMotion) adapter.snap(composed);
+    else adapter.apply(composed,dt);
     renderer.render(scene,camera);
   }
-  requestAnimationFrame(render);
+  frameRequest=requestAnimationFrame(render);
 }
 
 function scrollToProgress(progress){
@@ -444,14 +474,32 @@ function scrollToProgress(progress){
   scrollTo({top:max*Math.max(0,Math.min(1,progress)),behavior:reducedMotion?'auto':'smooth'});
 }
 
+let detailTimer=0;
 function scheduleTourDetail(callback){
+  clearTimeout(detailTimer);
   const delay=reducedMotion?80:620;
-  window.setTimeout(callback,delay);
+  detailTimer=window.setTimeout(callback,delay);
 }
 
 const DESIGN_DETAIL_PROGRESS={cushion:.16,hinge:.205,controls:.255};
 
 const actions={
+  toggleMotion(){
+    reducedMotion=!reducedMotion;
+    try{sessionStorage.setItem('nova-motion',reducedMotion?'reduced':'full');}catch{}
+    publishMotionPreference();
+  },
+  navigate(hash){
+    const targets={'#hero':0,'#design':.16,'#sound':.36,'#control':.52,'#form':.65,'#experience':.79,'#discover':.90};
+    if(hash in targets) scrollToProgress(targets[hash]);
+    else{
+      const target=document.querySelector(hash);
+      target?.scrollIntoView({behavior:reducedMotion?'auto':'smooth'});
+      if(target){target.tabIndex=-1;target.focus({preventScroll:true});}
+    }
+    history.replaceState(null,'',hash);
+  },
+  cancelTour(){clearTimeout(detailTimer);},
   setListeningMode(mode){
     listeningMode=mode;
     modeController.setListening(mode);
@@ -473,7 +521,8 @@ const actions={
     if(Number.isFinite(progress)) scrollToProgress(progress);
     if(rendererAvailable){
       const delay=reducedMotion?70:520;
-      window.setTimeout(()=>hotspotController?.focus(target),delay);
+      clearTimeout(detailTimer);
+      detailTimer=window.setTimeout(()=>{if(document.body.dataset.range==='design')hotspotController?.focus(target);},delay);
     }
   },
   clearHotspot(){
@@ -490,13 +539,14 @@ const actions={
     hotspotController?.clear();
   },
   tourTo(step){
+    clearTimeout(detailTimer);
     hotspotController?.clear();
     if(step==='comfort'){
       foldState='open';
       foldController.begin('open',currentComposedState?.product.pose ?? .24);
       inspectionView='front';
       inspectionController.reset();
-      scrollToProgress(.20);
+      scrollToProgress(.16);
       if(rendererAvailable) scheduleTourDetail(()=>hotspotController?.focus('cushion'));
       return;
     }
@@ -527,7 +577,7 @@ const actions={
 };
 
 bindProductUI(actions);
-set3dAvailability(rendererAvailable);
+set3dAvailability(false);
 
 window.addEventListener('pointermove',event=>{
   pointer.tx=(event.clientX/Math.max(1,innerWidth)-.5)*2;
@@ -568,7 +618,16 @@ canvas.addEventListener('pointercancel',event=>{
 });
 
 window.addEventListener('resize',resize,{passive:true});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){cancelAnimationFrame(frameRequest);frameRequest=0;}
+  else if(!frameRequest){lastTime=performance.now();frameRequest=requestAnimationFrame(render);}
+});
+canvas.addEventListener('webglcontextlost',event=>{
+  event.preventDefault();rendererAvailable=false;
+  document.body.dataset.modelState='fallback';set3dAvailability(false);hideHotspots();
+  if(runtimeState)runtimeState.textContent='Product preview · Reload to restore 3D';
+});
 
 resize();
 loadModel();
-requestAnimationFrame(render);
+frameRequest=requestAnimationFrame(render);

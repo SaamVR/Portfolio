@@ -1,0 +1,48 @@
+name: NOVA V5 Portfolio Review
+on:
+  push:
+    branches: ["nova/v5-portfolio"]
+    paths: ["nova/site/**", "nova/tests/v5-browser-qa.mjs", ".github/workflows/nova-v5-review.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+      - name: Install pinned rendering and QA dependencies
+        run: |
+          npm install three@0.180.0 playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          mkdir -p nova/site/vendor/addons/{loaders,utils}
+          cp node_modules/three/build/three.module.js node_modules/three/build/three.core.js nova/site/vendor/
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js nova/site/vendor/addons/loaders/
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js nova/site/vendor/addons/utils/
+      - name: Motion contracts
+        run: |
+          node nova/tests/motion_control_contract.mjs
+          node nova/tests/render_adapter_contract.mjs
+          node nova/tests/motion_handoff_contract.mjs
+      - name: Render and verify V5
+        run: |
+          python3 -m http.server 4173 --directory nova/site >/tmp/nova-http.log 2>&1 &
+          node nova/tests/v5-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-v5-review
+          path: nova-v5-qa
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-v5-site
+          path: nova/site
+          retention-days: 30

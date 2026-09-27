@@ -2,3 +2,6 @@
 node_modules/
 .DS_Store
 *.log
+nova/site/assets/
+nova/site/vendor/
+nova-v5-qa/

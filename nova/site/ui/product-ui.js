@@ -13,17 +13,20 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'LDAC is included in the reference codec set for compatible Bluetooth source devices.',
-  focus:'AAC is included in the reference codec set for practical playback across supported devices.',
-  ambient:'LC3 is included alongside SBC, AAC and LDAC in the reference Bluetooth codec set.'
+  spatial:'For a compatible source device. Up to 26 hours with noise canceling on in the reference hardware.',
+  focus:'A supported codec for compatible devices. Up to 30 hours with noise canceling on in the reference hardware.',
+  ambient:'Available with a compatible LE Audio connection. Check source-device support before choosing a codec.'
 };
 const NOISE_COPY = {
-  adaptive:'Noise Canceling is the reference mode for reducing outside sound during travel, work and focused listening.',
-  transparency:'Ambient Sound keeps useful surroundings available when awareness matters.'
+  adaptive:'A quieter setting for the journey, the desk and the space between.',
+  transparency:'Bring voices and everyday surroundings back into the listening experience.'
 };
 
 const actions = {};
 let bound = false;
+let lastUISignature='';
+let lastProgress=-1;
+const CHAPTERS={hero:'01 / Introduction',design:'02 / Design',spatial:'03 / Connection',adaptive:'04 / Quiet',form:'05 / Movement',inspect:'06 / Explore',resolution:'07 / Specifications',behind:'08 / The project'};
 
 function setPressed(selector,value,dataKey){
   document.querySelectorAll(selector).forEach(button => {
@@ -43,8 +46,9 @@ function setDialog({open,bodyKey,trigger,panel,shell,focusTarget}){
   trigger?.setAttribute('aria-expanded',String(open));
   panel?.setAttribute('aria-hidden',String(!open));
   shell?.setAttribute('aria-hidden',String(!open));
-  if(open) requestAnimationFrame(()=>focusTarget?.focus?.());
-  else trigger?.focus?.();
+  for(const el of document.querySelectorAll('main,.masthead,.hotspot-layer,.experience-toolbar')) el.inert=open;
+  if(open) requestAnimationFrame(()=>focusTarget?.focus?.({preventScroll:true}));
+  else trigger?.focus?.({preventScroll:true});
 }
 
 export function set3dAvailability(available){
@@ -64,6 +68,10 @@ export function bindProductUI(nextActions={}){
   document.body.dataset.mobileNav='closed';
   document.body.dataset.productFacts='closed';
   document.body.dataset.guidedTour='closed';
+  document.querySelector('#motionToggle')?.addEventListener('click',()=>actions.toggleMotion?.());
+  document.querySelectorAll('a[href^="#"]').forEach(link=>link.addEventListener('click',event=>{
+    if(actions.navigate){event.preventDefault();actions.navigate(link.getAttribute('href'));}
+  }));
 
   document.querySelectorAll('[data-listening-mode]').forEach(button => {
     button.addEventListener('click', () => {
@@ -135,7 +143,9 @@ export function bindProductUI(nextActions={}){
     document.body.dataset.mobileNav=open?'open':'closed';
     mobileToggle?.setAttribute('aria-expanded',String(open));
     mobilePanel?.setAttribute('aria-hidden',String(!open));
+    if(mobilePanel) mobilePanel.inert=!open;
   };
+  setMobileNav(false);
   mobileToggle?.addEventListener('click',()=>setMobileNav(document.body.dataset.mobileNav!=='open'));
   mobilePanel?.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>setMobileNav(false)));
 
@@ -144,9 +154,10 @@ export function bindProductUI(nextActions={}){
   const tourShell=document.querySelector('.tour-shell');
   const tourStatus=document.querySelector('#guidedTourStatus');
   let tourIndex=0;
-  const setTourOpen=open=>setDialog({
-    open,bodyKey:'guidedTour',trigger:tourTrigger,panel:tourPanel,shell:tourShell,focusTarget:tourPanel
-  });
+  const setTourOpen=open=>{
+    setDialog({open,bodyKey:'guidedTour',trigger:tourTrigger,panel:tourPanel,shell:tourShell,focusTarget:tourPanel});
+    if(!open) actions.cancelTour?.();
+  };
   const activateTourStep=(step,{move=true}={})=>{
     const index=TOUR_ORDER.indexOf(step);
     if(index<0) return;
@@ -194,32 +205,49 @@ export function bindProductUI(nextActions={}){
   factsTrigger?.addEventListener('click',()=>setFactsOpen(true));
   document.querySelectorAll('[data-facts-close]').forEach(button=>button.addEventListener('click',()=>setFactsOpen(false)));
 
-  const projectBrief='I would like an interactive 3D product website similar to NOVA, adapted to my real product, brand, assets and conversion goal.';
+  const projectBrief='Hi Fojle, I saw NOVA and would like to discuss an interactive product website.\n\nProduct / brand:\nAudience and main goal:\n3D assets available (GLB/GLTF/CAD or none):\nPages and interactions needed:\nTarget launch date:\nBudget range:\n\nPlease suggest an approach and the assets you would need.';
   const briefButton=document.querySelector('#copyProjectBrief');
   const briefStatus=document.querySelector('#projectBriefStatus');
   briefButton?.addEventListener('click',async()=>{
     try{
       await navigator.clipboard.writeText(projectBrief);
       if(briefStatus) briefStatus.textContent='Project brief copied.';
+      briefButton.textContent='Copied ✓';
+      setTimeout(()=>{briefButton.textContent='Copy project brief';},2500);
     }catch{
       if(briefStatus) briefStatus.textContent=projectBrief;
     }
   });
 
   document.addEventListener('keydown',event=>{
+    const panel=document.body.dataset.productFacts==='open'?factsPanel:document.body.dataset.guidedTour==='open'?tourPanel:null;
+    if(panel && event.key==='Tab'){
+      const controls=[...panel.querySelectorAll('button:not(:disabled),a[href],summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+      const first=controls[0],last=controls.at(-1);
+      if(event.shiftKey && (document.activeElement===first || document.activeElement===panel)){event.preventDefault();last?.focus();}
+      else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
+    }
     if(event.key!=='Escape') return;
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);
-    if(document.body.dataset.mobileNav==='open') setMobileNav(false);
+    if(document.body.dataset.mobileNav==='open'){setMobileNav(false);mobileToggle?.focus({preventScroll:true});}
   });
 }
 
 export function updateProductUI(state){
   const ui=state?.ui || {};
+  const progress=Math.round((state?.progress||0)*100);
+  if(progress!==lastProgress){document.querySelector('#experienceProgress')?.style.setProperty('width',progress+'%');lastProgress=progress;}
+  const detailKey=state?.rangeProgress<.34?0:state?.rangeProgress<.68?1:2;
+  const signature=JSON.stringify([ui.range,state?.range,ui.dark,ui.settled,detailKey,state?.interaction]);
+  if(signature===lastUISignature) return;
+  lastUISignature=signature;
   document.body.dataset.range=ui.range || state?.range || 'hero';
   document.body.dataset.theme=ui.dark ? 'dark' : 'light';
   document.body.dataset.settled=String(Boolean(ui.settled));
   const range=ui.range || state?.range || 'hero';
+  const chapter=document.querySelector('#chapterLabel');
+  if(chapter) chapter.textContent=CHAPTERS[range]||'';
   const designDetail=range==='design'
     ? (state?.rangeProgress < .34 ? 'cushion' : state?.rangeProgress < .68 ? 'hinge' : 'controls')
     : 'none';
