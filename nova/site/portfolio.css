@@ -124,3 +124,5 @@ body:not([data-stage-gating="true"]) :is(.stage--sound,.stage--control,.stage--b
  .copy h2,.inspect-copy h2,.resolution-copy h2{font-size:38px}.hero-copy h1{font-size:78px}.hero-copy h2{font-size:32px}.eyebrow{margin-bottom:10px}.copy>p:not(.eyebrow),.inspect-copy>p:not(.eyebrow),.resolution-copy>p:not(.eyebrow),.hero-copy .lede{font-size:14px;margin-top:12px}.mode-description{min-height:48px;font-size:12px!important}.simulation-note{margin-top:4px}.resolution-copy .concept-note{font-size:9px!important}.resolution-actions{margin-top:12px}.interaction-note{display:none}.experience-toolbar{bottom:8px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+body[data-reduced-motion="true"] *,body[data-reduced-motion="true"] *::before,body[data-reduced-motion="true"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

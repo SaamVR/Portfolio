@@ -1,0 +1,28 @@
+name: NOVA V5 Public QA
+on:
+  push:
+    branches: ["nova/v5-portfolio"]
+    paths: ["nova/v5-public-qa-trigger.txt"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NOVA_URL: https://v5.nova-interactive-portfolio.pages.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Verify deployed V5
+        run: node nova/tests/v5-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-v5-public-qa
+          path: nova-v5-qa
+          retention-days: 90

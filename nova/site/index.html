@@ -55,9 +55,9 @@
   <div class="experience-progress" aria-hidden="true"><i id="experienceProgress"></i></div>
 
   <div class="hotspot-layer" aria-label="Product detail hotspots">
-    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
-    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="headband" aria-label="Explore folding hinge design"><i></i><span>Fold hinge</span></button>
-    <button type="button" class="hotspot" data-requires-3d="true" data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" disabled data-hotspot="cushion" aria-label="Explore ear cushion design"><i></i><span>Soft-touch cushion</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" disabled data-hotspot="headband" aria-label="Explore folding hinge design"><i></i><span>Fold hinge</span></button>
+    <button type="button" class="hotspot" data-requires-3d="true" disabled data-hotspot="controls" aria-label="Explore earcup controls"><i></i><span>Control surface</span></button>
   </div>
 
   <main id="top">
@@ -129,8 +129,8 @@
         <p>One fluid gesture. A smaller footprint. Explore how the articulated form changes for the journey ahead.</p>
         <p class="interaction-note">Try the fold. Take your time.</p>
         <div class="segmented segmented--light" role="group" aria-label="Headphone form">
-          <button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button>
-          <button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button>
+          <button type="button" data-requires-3d="true" disabled data-fold-state="open" aria-pressed="true">Open</button>
+          <button type="button" data-requires-3d="true" disabled data-fold-state="fold" aria-pressed="false">Fold</button>
         </div>
       </div>
     </section>
@@ -141,14 +141,14 @@
         <h2>Look closer.</h2>
         <p>Every angle tells you something. Turn the product, inspect a detail, and make the view your own.</p>
         <div class="inspection-views" role="group" aria-label="Inspection view">
-          <button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button>
-          <button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button>
-          <button type="button" data-requires-3d="true" data-inspection-view="rear" aria-pressed="false">Rear</button>
+          <button type="button" data-requires-3d="true" disabled data-inspection-view="front" aria-pressed="true">Front</button>
+          <button type="button" data-requires-3d="true" disabled data-inspection-view="side" aria-pressed="false">Side</button>
+          <button type="button" data-requires-3d="true" disabled data-inspection-view="rear" aria-pressed="false">Rear</button>
         </div>
         <div class="inspect-meta">
           <span class="desktop-only">DRAG TO FINE-TUNE</span>
           <span class="mobile-only">SWIPE TO FINE-TUNE</span>
-          <button type="button" id="inspectionReset" data-requires-3d="true">Reset view</button>
+          <button type="button" id="inspectionReset" data-requires-3d="true" disabled>Reset view</button>
         </div>
       </div>
     </section>

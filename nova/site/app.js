@@ -348,7 +348,7 @@ Object.defineProperty(window,'__NOVA_QA__',{
       points.push({x:(p.x*.5+.5)*innerWidth,y:(-p.y*.5+.5)*innerHeight});
     }
     return {left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y))};
-  },inspection:()=>inspectionController.getInfluence()},
+  },settled:()=>Boolean(currentComposedState&&adapter?.isSettled(currentComposedState)),inspection:()=>inspectionController.getInfluence()},
   configurable:true
 });
 
@@ -456,7 +456,7 @@ function updateInteractionInfluences(base,dt,now){
 let frameRequest=0;
 function render(now=performance.now()){
   if(document.hidden){frameRequest=0;return;}
-  const dt=Math.min(.05,Math.max(.001,(now-lastTime)/1000 || 1/60));
+  const dt=Math.min(.1,Math.max(.001,(now-lastTime)/1000 || 1/60));
   lastTime=now;
 
   const base=sampleAuthoredState();

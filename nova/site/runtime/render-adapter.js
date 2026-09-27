@@ -83,9 +83,14 @@ export function createRenderAdapter({
   };
   return {
     snap,
+    isSettled(state){
+      const poseReady=renderedPose===null || Math.abs(renderedPose-state.product.pose)<.002;
+      const framingReady=!state.camera.framing || renderedFraming?.every((v,i)=>Math.abs(v-state.camera.framing[i])<.003);
+      return Boolean(poseReady&&framingReady);
+    },
     apply(state,dt=DEFAULT_DT){
       if(!state) return;
-      const step=Math.max(.001,Math.min(.05,dt||DEFAULT_DT));
+      const step=Math.max(.001,Math.min(.1,dt||DEFAULT_DT));
       const cameraLambda = state.range === 'behind' ? 3.35 : state.range === 'resolution' ? 3.15 : 3.0;
       applyVec(camera,'position',state.camera.position,cameraLambda,step);
       camera.fov=damp(camera.fov,state.camera.fov,2.70,step);

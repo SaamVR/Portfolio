@@ -21,7 +21,12 @@ async function go(page,p){
     const e=document.querySelector('#behind');
     scrollTo({top:(e.offsetTop+e.offsetHeight-innerHeight)*p,behavior:'instant'});
   },p);
-  await page.waitForTimeout(1600);
+  await page.waitForFunction(p=>{
+    const e=document.querySelector('#behind');
+    return Math.abs(scrollY/(e.offsetTop+e.offsetHeight-innerHeight)-p)<.004;
+  },p);
+  await page.waitForFunction(()=>window.__NOVA_QA__.settled(),{},{timeout:30000});
+  await page.waitForTimeout(450);
 }
 async function frame(page,label,p,shot=true){
   await go(page,p);
@@ -95,10 +100,10 @@ try{
       check('dialog focus restored',await page.evaluate(()=>document.activeElement?.id==='productFactsTrigger'&&!document.querySelector('main').inert));
       await go(page,0);
       await page.locator('#guidedTourStart').click();
-      await page.waitForTimeout(1200);
-      await page.locator('[data-tour-next]').click();await page.waitForTimeout(1500);
+      await page.waitForFunction(()=>document.body.dataset.range==='design');
+      await page.locator('[data-tour-next]').click();await page.waitForFunction(()=>document.body.dataset.range==='form'&&window.__NOVA_QA__.settled());
       await page.screenshot({path:`${out}/desktop-tour.png`});
-      await page.locator('[data-tour-next]').click();await page.waitForTimeout(1600);
+      await page.locator('[data-tour-next]').click();await page.waitForFunction(()=>document.body.dataset.range==='inspect'&&window.__NOVA_QA__.settled());
       check('tour reaches inspection',await page.evaluate(()=>document.body.dataset.range==='inspect'));
       await page.locator('[data-tour-next]').click();
       await page.locator('#motionToggle').click();
@@ -107,14 +112,14 @@ try{
       await page.waitForFunction(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw-Math.PI)<.001);
       check('reduced motion presets settle',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw-Math.PI)<.001));
       await page.locator('#motionToggle').click();
-      await page.locator('.masthead-cta').click();await page.waitForTimeout(1000);
+      await page.locator('.masthead-cta').click();await page.waitForFunction(()=>Math.abs(document.querySelector('#case-study').getBoundingClientRect().top-80)<3);await page.waitForTimeout(500);
       await page.screenshot({path:`${out}/case-study.png`});
-      await page.locator('#services').scrollIntoViewIfNeeded();
+      await page.locator('#services').evaluate(el=>el.scrollIntoView({behavior:'instant',block:'start'}));await page.waitForTimeout(500);
       await page.screenshot({path:`${out}/services.png`});
       if(!process.env.NOVA_URL){await go(page,0);await page.screenshot({path:'nova/site/media/nova-social.png'});}
     }
     if(label==='mobile'){
-      await page.locator('#mobileNavToggle').click();await page.locator('#mobileNavPanel a[href="#sound"]').click();await page.waitForTimeout(1500);
+      await page.locator('#mobileNavToggle').click();await page.locator('#mobileNavPanel a[href="#sound"]').click();await page.waitForFunction(()=>document.body.dataset.range==='spatial'&&window.__NOVA_QA__.settled());
       check('mobile chapter navigation',await page.evaluate(()=>document.body.dataset.range==='spatial'&&document.body.dataset.mobileNav==='closed'));
       await go(page,.90);await page.locator('#productFactsTrigger').click();
       await page.screenshot({path:`${out}/mobile-specs.png`});await page.keyboard.press('Escape');
