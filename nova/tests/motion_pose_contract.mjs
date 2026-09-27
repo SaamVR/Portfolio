@@ -54,8 +54,10 @@ assert.ok(resolution.span<=.018,'Resolution should present a stable commercial h
 assert.equal(resolution.reversals,0,'Resolution pose should not pulse before the final recession');
 
 const behindRows=samples(.96,1);
-assertMonotonic(behindRows,'down','Behind handoff');
+assertMonotonic(behindRows,'up','Behind handoff');
 const behind=analyze(behindRows);
 assert.equal(behind.reversals,0,'Behind handoff should close/recede in one direction');
+
+for(const {pose} of samples(0,1,1001)) assert.ok(pose>=.37&&pose<=.43,'V5 must not enter unrelated source-clip takes');
 
 console.log('motion_pose_contract: PASS',JSON.stringify({design,spatial,adaptive,form,inspect,resolution,behind}));

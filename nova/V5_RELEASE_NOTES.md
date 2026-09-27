@@ -13,6 +13,7 @@ V5 develops the existing NOVA concept into a clearer product experience and a cr
 
 - Corrected product normalization: hidden cable descendants no longer alter the bounding box, scale or rotation center.
 - Introduced responsive product zones, preserving space for copy and keeping the complete silhouette visible.
+- Isolated the clean .37–.43 hinge segment of the supplied animation, avoiding unrelated expansion and twisting takes.
 - Kept one spring responsible for inspection rotation; removed duplicate smoothing, added a continuous reset and controlled release inertia.
 - Improved low-frame-rate integration and paused rendering in hidden tabs and the case-study section.
 - Reworked typography, spacing, dark controls and chapter copy; condensed implementation details into a disclosure.

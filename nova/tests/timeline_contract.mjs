@@ -115,7 +115,7 @@ assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the 
 
 
 const designPose=sampleTimeline(.20,'desktop').product.pose;
-assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
+assert.ok(designPose >= .36 && designPose <= .38,'Design should stay in an open design-study pose');
 const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
 const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
@@ -123,7 +123,7 @@ assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
-  assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
+  assert.ok(pose >= .36 && pose <= .38,`commercial product pose must stay open at ${p}, got ${pose}`);
 }
 
 
@@ -210,13 +210,13 @@ assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment
 // physical beats instead of making the rig "breathe" open/closed under every chapter.
 const r14SoundStart=sampleTimeline(.34,'desktop').product.pose;
 const r14SoundEnd=sampleTimeline(.44,'desktop').product.pose;
-assert.ok(r14SoundEnd-r14SoundStart >= .08,
-  `R14 Sound should retain the expressive one-way opening action; delta=${r14SoundEnd-r14SoundStart}`);
+assert.ok(Math.abs(r14SoundEnd-r14SoundStart) <= .002,
+  `V5 Sound holds the clean open pose while environment owns motion; delta=${r14SoundEnd-r14SoundStart}`);
 
 const r14AdaptiveStart=sampleTimeline(.45,'desktop').product.pose;
 const r14AdaptiveEnd=sampleTimeline(.58,'desktop').product.pose;
-assert.ok(r14AdaptiveStart-r14AdaptiveEnd >= .015 && r14AdaptiveStart-r14AdaptiveEnd <= .035,
-  `R14 Adaptive should settle the opened rig subtly in one direction; delta=${r14AdaptiveStart-r14AdaptiveEnd}`);
+assert.ok(Math.abs(r14AdaptiveStart-r14AdaptiveEnd) <= .002,
+  `V5 Adaptive preserves the clean open pose; delta=${r14AdaptiveStart-r14AdaptiveEnd}`);
 
 for(const [label,start,end,maxSpan] of [
   ['Form',.58,.72,.025],
@@ -232,7 +232,7 @@ for(const [label,start,end,maxSpan] of [
 
 const r14BehindStart=sampleTimeline(.96,'desktop').product.pose;
 const r14BehindEnd=sampleTimeline(1,'desktop').product.pose;
-assert.ok(r14BehindStart-r14BehindEnd >= .07,
+assert.ok(r14BehindEnd-r14BehindStart >= .05,
   `R14 Behind handoff should retain a deliberate final closing/recession; delta=${r14BehindStart-r14BehindEnd}`);
 
 

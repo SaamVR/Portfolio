@@ -70,17 +70,10 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // Keep physical articulation narrative-led and single-directional:
-  // stable Design study -> one opening action -> quiet product study -> final recession.
-  [0.000,.240],[0.045,.270],[0.090,.290],[0.120,.300],
-  [0.160,.300],[0.200,.300],[0.240,.300],[0.280,.300],
-  [0.300,.400],[0.320,.520],[0.340,.640],[0.360,.720],
-  [0.410,.730],[0.450,.740],
-  [0.490,.735],[0.540,.725],[0.580,.720],
-  [0.620,.720],[0.670,.720],[0.720,.720],
-  [0.760,.720],[0.790,.720],[0.830,.720],[0.860,.720],
-  [0.900,.720],[0.945,.720],[0.960,.720],
-  [0.985,.670],[1.000,.640]
+  // Use the clean hinge segment of the supplied clip. The old .30–.72 sweep
+  // crossed unrelated expansion and earcup-twist takes, not one opening action.
+  // Camera, light and orientation tell the scroll story; direct Fold owns .37–.43.
+  [0,.37],[.96,.37],[1,.43]
 ];
 
 function sampleProductPose(progress){

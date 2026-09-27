@@ -41,7 +41,7 @@ const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.72,foldedPose:.50,duration:.92});
+const foldController = createFoldController({openPose:.37,foldedPose:.43,duration:.92});
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
@@ -251,7 +251,7 @@ function loadModel(){
       mixer=new THREE.AnimationMixer(model);
       const action=mixer.clipAction(clip);
       action.play();
-      mixer.setTime(clipDuration*.24);
+      mixer.setTime(clipDuration*.37);
       model.updateMatrixWorld(true);
     }
 
