@@ -27,7 +27,9 @@ Deployment: https://d7c7f2d4.nova-interactive-portfolio.pages.dev
 Deployment alias: https://v5.nova-interactive-portfolio.pages.dev/
 Cloudflare deployment identifier: d7c7f2d4
 
-Public verification runs against the alias after the trigger commit below.
+Public verification: https://github.com/SaamVR/Portfolio/actions/runs/36327116759 (success)
+
+The public workflow checked the deployed alias after the trigger commit.
 
 ## Repeat deployment
 
