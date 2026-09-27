@@ -83,6 +83,7 @@ export function createRenderAdapter({
   };
   return {
     snap,
+    getPose:()=>renderedPose,
     isSettled(state){
       const poseReady=renderedPose===null || Math.abs(renderedPose-state.product.pose)<.002;
       const framingReady=!state.camera.framing || renderedFraming?.every((v,i)=>Math.abs(v-state.camera.framing[i])<.003);

@@ -87,7 +87,9 @@ try{
       check('drag responds',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.inspection().yaw)>.01));
       await page.locator('#inspectionReset').click();
       await go(page,.65);
-      await page.locator('[data-fold-state="fold"]').click();await page.waitForTimeout(1600);
+      await page.locator('[data-fold-state="fold"]').click();
+      await page.waitForFunction(()=>Math.abs(window.__NOVA_QA__.pose()-.5)<.003);
+      check('fold reaches articulated pose',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.pose()-.5)<.003));
       await page.screenshot({path:`${out}/desktop-folded.png`});
       check('fold pressed',await page.locator('[data-fold-state="fold"]').getAttribute('aria-pressed')==='true');
       await page.locator('[data-fold-state="open"]').click();

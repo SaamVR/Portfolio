@@ -48,7 +48,12 @@ function setDialog({open,bodyKey,trigger,panel,shell,focusTarget}){
   shell?.setAttribute('aria-hidden',String(!open));
   for(const el of document.querySelectorAll('main,.masthead,.hotspot-layer,.experience-toolbar')) el.inert=open;
   if(open) focusTarget?.focus?.({preventScroll:true});
-  else trigger?.focus?.({preventScroll:true});
+  else{
+    const destination=trigger?.closest('[inert]')
+      ? document.querySelector('.stage.is-active button:not(:disabled)') || document.querySelector('.brand')
+      : trigger;
+    destination?.focus?.({preventScroll:true});
+  }
 }
 
 export function set3dAvailability(available){
