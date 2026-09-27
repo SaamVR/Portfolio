@@ -26,7 +26,12 @@ async function go(page,p){
     return Math.abs(scrollY/(e.offsetTop+e.offsetHeight-innerHeight)-p)<.004;
   },p);
   await page.waitForFunction(()=>window.__NOVA_QA__.settled(),{},{timeout:30000});
-  await page.waitForTimeout(450);
+  await page.waitForFunction(()=>{
+    const el=document.querySelector('.stage.is-active .stage-inner');
+    if(!el)return true;
+    const s=getComputedStyle(el);
+    return Number(s.opacity)>.99&&Math.abs(new DOMMatrix(s.transform).m42)<.5;
+  });
 }
 async function frame(page,label,p,shot=true){
   await go(page,p);

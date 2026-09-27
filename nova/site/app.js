@@ -348,7 +348,7 @@ Object.defineProperty(window,'__NOVA_QA__',{
       points.push({x:(p.x*.5+.5)*innerWidth,y:(-p.y*.5+.5)*innerHeight});
     }
     return {left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y))};
-  },pose:()=>adapter?.getPose(),settled:()=>Boolean(currentComposedState&&adapter?.isSettled(currentComposedState)),inspection:()=>inspectionController.getInfluence()},
+  },pose:()=>adapter?.getPose(),settled:()=>Boolean(currentComposedState&&Math.abs(currentComposedState.progress-currentProgress())<.002&&adapter?.isSettled(currentComposedState)),inspection:()=>inspectionController.getInfluence()},
   configurable:true
 });
 
