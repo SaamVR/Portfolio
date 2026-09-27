@@ -27,6 +27,9 @@ jobs:
           cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js nova/site/vendor/addons/utils/
       - name: Motion contracts
         run: |
+          node nova/tests/timeline_contract.mjs
+          node nova/tests/interaction_contract.mjs
+          node nova/tests/motion_pose_contract.mjs
           node nova/tests/motion_control_contract.mjs
           node nova/tests/render_adapter_contract.mjs
           node nova/tests/motion_handoff_contract.mjs

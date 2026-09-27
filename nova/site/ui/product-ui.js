@@ -47,7 +47,7 @@ function setDialog({open,bodyKey,trigger,panel,shell,focusTarget}){
   panel?.setAttribute('aria-hidden',String(!open));
   shell?.setAttribute('aria-hidden',String(!open));
   for(const el of document.querySelectorAll('main,.masthead,.hotspot-layer,.experience-toolbar')) el.inert=open;
-  if(open) requestAnimationFrame(()=>focusTarget?.focus?.({preventScroll:true}));
+  if(open) focusTarget?.focus?.({preventScroll:true});
   else trigger?.focus?.({preventScroll:true});
 }
 
@@ -148,6 +148,9 @@ export function bindProductUI(nextActions={}){
   setMobileNav(false);
   mobileToggle?.addEventListener('click',()=>setMobileNav(document.body.dataset.mobileNav!=='open'));
   mobilePanel?.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>setMobileNav(false)));
+  document.addEventListener('pointerdown',event=>{
+    if(document.body.dataset.mobileNav==='open'&&!mobilePanel?.contains(event.target)&&!mobileToggle?.contains(event.target))setMobileNav(false);
+  });
 
   const tourTrigger=document.querySelector('#guidedTourStart');
   const tourPanel=document.querySelector('#guidedTourPanel');
@@ -224,7 +227,7 @@ export function bindProductUI(nextActions={}){
     if(panel && event.key==='Tab'){
       const controls=[...panel.querySelectorAll('button:not(:disabled),a[href],summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
       const first=controls[0],last=controls.at(-1);
-      if(event.shiftKey && (document.activeElement===first || document.activeElement===panel)){event.preventDefault();last?.focus();}
+      if(event.shiftKey && (document.activeElement===first || document.activeElement===panel || !panel.contains(document.activeElement))){event.preventDefault();last?.focus();}
       else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
     }
     if(event.key!=='Escape') return;

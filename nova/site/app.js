@@ -19,6 +19,7 @@ const hotspotElements = Object.fromEntries(
 const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
 const behindStageEl=document.querySelector('#behind');
 const caseStudyEl=document.querySelector('#case-study');
+const servicesEl=document.querySelector('#services');
 let publishedRange=null;
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 let reducedMotion = motionPreference.matches;
@@ -140,7 +141,7 @@ function currentProgress(){
 
 function applyTextureQuality(root){
   const maxAniso=renderer.capabilities.getMaxAnisotropy();
-  root.traverse(obj=>{
+  root.traverseVisible(obj=>{
     if(!obj.isMesh) return;
     obj.frustumCulled=true;
     const materials=Array.isArray(obj.material)?obj.material:[obj.material];
@@ -161,7 +162,7 @@ function computePrimaryBounds(root){
   root.updateMatrixWorld(true);
   const box=new THREE.Box3();
   const childBox=new THREE.Box3();
-  root.traverse(obj=>{
+  root.traverseVisible(obj=>{
     if(!obj.isMesh || obj.name === 'Circle013_0' || obj.name === 'Circle.013_0') return;
     childBox.makeEmpty();
     childBox.setFromObject(obj,true);
@@ -257,23 +258,12 @@ function loadModel(){
     const cable=model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
-    // Preserve the released V3 visual-origin/normalization path exactly,
-    // then add an identity-at-rest inspection pivot inside that existing layer.
-    // This keeps authored Hero/Design/scroll composition unchanged while
-    // Side/Rear/manual inspection rotate around the product's local center.
+    // Measure only visible product meshes: the hidden cable's child meshes
+    // must never affect normalization or the inspection pivot.
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
-    const centerWorld=primaryProductBounds.getCenter(new THREE.Vector3());
-    const pivotLocal=centerGroup.worldToLocal(centerWorld.clone());
-
-    // Legacy visual-origin behavior: the timeline and all framing QA were
-    // authored against this centerGroup offset.
-    centerGroup.position.copy(centerWorld).multiplyScalar(-1);
-
-    // T(C) * R * T(-C) is identity when R=0, so ordinary scroll frames are
-    // untouched; inspection rotation is centered only when the user invokes it.
-    pivotGroup.position.copy(pivotLocal);
-    modelOffsetGroup.position.copy(pivotLocal).multiplyScalar(-1);
+    const center=primaryProductBounds.getCenter(new THREE.Vector3());
+    modelOffsetGroup.position.copy(center).multiplyScalar(-1);
 
     const major=Math.max(size.x,size.y,size.z,1);
     normalizationRoot.scale.setScalar(3.55/major);
@@ -290,7 +280,7 @@ function loadModel(){
     adapter?.snap?.(readyState);
     currentComposedState=readyState;
     publishState(readyState);
-    renderer.render(scene,camera);
+    if(document.body.dataset.caseStudy!=='true') renderer.render(scene,camera);
 
     document.body.dataset.modelState='ready';
     set3dAvailability(true);
@@ -367,6 +357,19 @@ function sampleAuthoredState(){
   const range=getRangeState(progress);
   const authoredProgress=reducedMotion ? REDUCED_SETTLED[range.range] ?? progress : progress;
   const state=sampleTimeline(authoredProgress,viewportClass());
+  // Keep the complete product in a dedicated editorial zone. Projection shift
+  // moves the composition without introducing an oblique camera or rig drift.
+  const mobile=innerWidth<=700;
+  const cap=mobile?Math.min(.32,.78*camera.aspect):Math.min(.66,.36*camera.aspect);
+  const controlIn=THREE.MathUtils.smoothstep(progress,.435,.49);
+  const controlOut=1-THREE.MathUtils.smoothstep(progress,.55,.615);
+  const leftWeight=controlIn*controlOut;
+  state.camera.position=[state.camera.position[0]*.22,.08,2.15/(Math.tan(Math.PI/12)*cap)];
+  state.camera.target=[0,0,0];
+  state.camera.fov=30;
+  state.camera.framing=[mobile?.5:THREE.MathUtils.lerp(.745,.255,leftWeight),mobile?.27:.49];
+  state.product.position=[0,0,0];
+  state.product.scale=1;
   state.progress=progress;
   state.range=range.range;
   state.rangeProgress=range.progress;
@@ -379,6 +382,7 @@ function sampleAuthoredState(){
 function publishState(state){
   const caseStudyActive=Boolean(caseStudyEl && scrollY>=Math.max(0,caseStudyEl.offsetTop-innerHeight*.18));
   document.body.dataset.caseStudy=String(caseStudyActive);
+  if(caseStudyActive) state.ui.dark=!(servicesEl && scrollY>=servicesEl.offsetTop-innerHeight*.12);
   document.body.dataset.range=state.range;
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
   document.body.dataset.settled=String(Boolean(state.ui.settled));
@@ -464,7 +468,7 @@ function render(now=performance.now()){
   if(rendererAvailable && adapter){
     if(reducedMotion) adapter.snap(composed);
     else adapter.apply(composed,dt);
-    renderer.render(scene,camera);
+    if(document.body.dataset.caseStudy!=='true') renderer.render(scene,camera);
   }
   frameRequest=requestAnimationFrame(render);
 }

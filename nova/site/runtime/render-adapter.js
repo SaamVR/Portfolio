@@ -17,6 +17,15 @@ export function createRenderAdapter({
   const damp=(current,target,lambda,dt)=>THREE.MathUtils.damp(current,target,lambda,dt||DEFAULT_DT);
   let renderedPose=null;
   let renderedTarget=null;
+  let renderedFraming=null;
+  function frameCamera(state,dt=0){
+    if(!state.camera.framing) return;
+    if(!renderedFraming || !dt) renderedFraming=[...state.camera.framing];
+    else renderedFraming=renderedFraming.map((v,i)=>damp(v,state.camera.framing[i],5,dt));
+    camera.projectionMatrix.elements[8]=1-2*renderedFraming[0];
+    camera.projectionMatrix.elements[9]=2*renderedFraming[1]-1;
+    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  }
   const applyVec=(obj,key,values,lambda,dt)=>{
     obj[key].x=damp(obj[key].x,values[0],lambda,dt);
     obj[key].y=damp(obj[key].y,values[1],lambda,dt);
@@ -32,6 +41,7 @@ export function createRenderAdapter({
     setVec(camera,'position',state.camera.position);
     camera.fov=state.camera.fov;
     camera.updateProjectionMatrix();
+    frameCamera(state);
     renderedTarget=[...state.camera.target];
     camera.lookAt(...renderedTarget);
 
@@ -80,6 +90,7 @@ export function createRenderAdapter({
       applyVec(camera,'position',state.camera.position,cameraLambda,step);
       camera.fov=damp(camera.fov,state.camera.fov,2.70,step);
       camera.updateProjectionMatrix();
+      frameCamera(state,step);
       if(renderedTarget===null) renderedTarget=[...state.camera.target];
       else{
         // Resolution must reclaim the headline field promptly after the

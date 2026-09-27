@@ -92,8 +92,8 @@ assert.equal(environmentState, rendered.environment);
 
 const spatialDesktop=sampleTimeline(.36,'desktop');
 assert.ok(
-  spatialDesktop.camera.target[1] > -.30 && spatialDesktop.camera.target[1] < -.08,
-  'Spatial camera should preserve copy separation without pushing the product beyond the top edge'
+  spatialDesktop.camera.target[0] < -.6,
+  'V5 Sound keeps the product right of its left-aligned copy; actual bounds are verified in browser QA'
 );
 const adaptiveDesktop=sampleTimeline(.52,'desktop');
 assert.ok(adaptiveDesktop.camera.target[0] > .38, 'Adaptive camera should frame product left of right-aligned copy');
@@ -103,12 +103,12 @@ const resolutionDesktop=sampleTimeline(.90,'desktop');
 assert.ok(resolutionDesktop.camera.target[0] < -.55, 'Resolution camera should frame product right of headline');
 const spatialMobile=sampleTimeline(.36,'mobile');
 assert.ok(
-  spatialMobile.camera.target[1] > -.30 && spatialMobile.camera.target[1] < -.04,
-  'Mobile Spatial should preserve product/copy separation while keeping the product visibly framed'
+  spatialMobile.product.scale < spatialDesktop.product.scale,
+  'Mobile Sound scales the complete silhouette into its reserved product area'
 );
 assert.ok(
-  spatialMobile.camera.target[1] >= -.17,
-  `Mobile Spatial crown clearance should keep the top landmark inside frame; targetY=${spatialMobile.camera.target[1]}`
+  Math.abs(spatialMobile.camera.target[0]) < .15,
+  'Mobile Sound recenters the desktop composition; crown clearance is verified with projected bounds'
 );
 const behindMobile=sampleTimeline(.985,'mobile');
 assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the product secondary');

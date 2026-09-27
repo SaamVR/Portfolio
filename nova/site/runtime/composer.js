@@ -40,7 +40,7 @@ export function composeVisualState(baseState, interactionState=createInteraction
     // Inspection is a full-product turntable, not another close-up camera beat.
     // Camera framing follows a squared ownership curve so it settles fully in
     // Inspect but releases faster than rotation ownership at chapter exit.
-    out.camera.target[1] += (baseState.viewportClass==='mobile'?.06:.34) * inspectionFrameWeight;
+    out.camera.target[1] += (baseState.camera.framing?0:baseState.viewportClass==='mobile'?.06:.34) * inspectionFrameWeight;
     out.camera.position[2] += .18 * inspectionFrameWeight;
   }
 

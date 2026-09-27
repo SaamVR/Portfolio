@@ -76,7 +76,7 @@ try{
       await page.waitForTimeout(1200);
       await page.screenshot({path:`${out}/desktop-side.png`});
       await page.locator('#inspectionReset').click();
-      await page.waitForTimeout(1400);
+      await page.waitForFunction(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw)<.01);
       check('reset returns to front',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw)<.01));
       await page.mouse.move(980,340);await page.mouse.down();await page.mouse.move(1100,375,{steps:12});await page.mouse.up();
       check('drag responds',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.inspection().yaw)>.01));
@@ -104,7 +104,7 @@ try{
       await page.locator('#motionToggle').click();
       check('motion preference works',await page.evaluate(()=>document.body.dataset.reducedMotion==='true'));
       await page.locator('[data-inspection-view="rear"]').click();
-      await page.waitForTimeout(100);
+      await page.waitForFunction(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw-Math.PI)<.001);
       check('reduced motion presets settle',await page.evaluate(()=>Math.abs(window.__NOVA_QA__.inspection().modelYaw-Math.PI)<.001));
       await page.locator('#motionToggle').click();
       await page.locator('.masthead-cta').click();await page.waitForTimeout(1000);

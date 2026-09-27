@@ -8,7 +8,7 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
   let active=false, dragging=false, pointerId=null, lastX=0,lastY=0;
   let yaw=0,pitch=0,yawTarget=0,pitchTarget=0,weight=0;
   let view='front',modelYaw=0,targetModelYaw=0,modelYawVelocity=0;
-  let dragVelocity=0,pitchVelocity=0;
+  let dragVelocity=0,pitchVelocity=0,lastPointerTime=0;
 
   return {
     setActive(value){
@@ -30,6 +30,8 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
     },
     setView(next){
       if(!(next in VIEW_YAW)) return;
+      dragging=false;
+      pointerId=null;
       view=next;
       targetModelYaw=VIEW_YAW[next];
       yawTarget=0;
@@ -43,12 +45,16 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       pointerId=id;
       lastX=x;
       lastY=y;
+      lastPointerTime=performance.now();
       dragVelocity=0;
       pitchVelocity=0;
     },
     pointerMove(x,y,id=0,viewport={width:1,height:1}){
       if(!dragging || id!==pointerId) return;
-      this.dragBy(x-lastX,y-lastY,viewport);
+      const now=performance.now();
+      const elapsed=clamp((now-lastPointerTime)/1000,1/240,.1);
+      this.dragBy(x-lastX,y-lastY,viewport,elapsed);
+      lastPointerTime=now;
       lastX=x;
       lastY=y;
     },
@@ -58,7 +64,7 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         pointerId=null;
       }
     },
-    dragBy(dx,dy,viewport={width:1,height:1}){
+    dragBy(dx,dy,viewport={width:1,height:1},elapsed=1/60){
       if(!active) return;
       const w=Math.max(1,viewport.width||1);
       const h=Math.max(1,viewport.height||1);
@@ -70,11 +76,13 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       pitch=pitchTarget;
       // A small release velocity makes direct inspection feel physical without
       // allowing the product to overshoot its bounded turntable limits.
-      dragVelocity=deltaYaw*14;
-      pitchVelocity=deltaPitch*14;
+      dragVelocity=clamp(deltaYaw/elapsed*.24,-1.2,1.2);
+      pitchVelocity=clamp(deltaPitch/elapsed*.24,-.3,.3);
       weight=1;
     },
     reset(){
+      dragging=false;
+      pointerId=null;
       // Keep the rendered offset continuous; the release and view spring own
       // the return to neutral after a click, including mid-drag resets.
       yawTarget=0;

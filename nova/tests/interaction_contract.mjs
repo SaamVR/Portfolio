@@ -161,17 +161,17 @@ console.log('interaction_contract: PASS');
 
 
 inspect.setView('side');
-inspect.update(.3);
+for(let n=0;n<18;n++) inspect.update(1/60);
 i=inspect.getInfluence();
 assert.equal(i.view,'side');
 assert.ok(i.modelYaw>1,'side inspection view must rotate the product substantially');
 inspect.setView('rear');
-inspect.update(.5);
+for(let n=0;n<30;n++) inspect.update(1/60);
 i=inspect.getInfluence();
 assert.equal(i.view,'rear');
 assert.ok(i.modelYaw>2.5,'rear inspection view must reveal the back of the product');
 inspect.setView('front');
-inspect.update(.5);
+for(let n=0;n<30;n++) inspect.update(1/60);
 i=inspect.getInfluence();
 assert.equal(i.view,'front');
 assert.ok(Math.abs(i.modelYaw)<.2,'front inspection view must return toward the authored front');

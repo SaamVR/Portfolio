@@ -82,6 +82,7 @@ body[data-range="design"][data-design-detail="controls"] .hotspot[data-hotspot="
 body[data-guided-tour="open"] .stage-inner{opacity:0!important;visibility:hidden!important}
 body[data-reduced-motion="true"] *,body[data-reduced-motion="true"] *:before,body[data-reduced-motion="true"] *:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 body:not([data-stage-gating="true"]) .stage{min-height:100svh;margin-top:0}body:not([data-stage-gating="true"]) .stage-inner{position:relative}
+body:not([data-stage-gating="true"]) :is(.stage--sound,.stage--control,.stage--behind){background:#151411!important}
 @media(min-width:701px) and (max-height:760px){
  .copy h2,.inspect-copy h2,.resolution-copy h2{font-size:clamp(56px,5.5vw,80px)}
  .copy>p:not(.eyebrow),.inspect-copy>p:not(.eyebrow),.resolution-copy>p:not(.eyebrow){font-size:15px;margin-top:18px}
