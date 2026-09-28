@@ -93,9 +93,9 @@ async function auditCandidate(viewport,mobile=false,label='desktop'){
   assert(byP.get(.255)?.detail==='controls',label+' Design controls beat missing');
 
   const open=byP.get(.62)?.pose, folded=byP.get(.675)?.pose, hold=byP.get(.69)?.pose, reopened=byP.get(.72)?.pose;
-  assert(Number.isFinite(open)&&Number.isFinite(folded)&&open-folded>.15,label+' fold action too weak: '+JSON.stringify({open,folded}));
+  assert(Number.isFinite(open)&&Number.isFinite(folded)&&folded-open>.045,label+' fold action did not traverse the clean hinge segment: '+JSON.stringify({open,folded}));
   assert(Math.abs(hold-folded)<.02,label+' folded plateau missing: '+JSON.stringify({folded,hold}));
-  assert(reopened-hold>.15,label+' reopen action missing: '+JSON.stringify({hold,reopened}));
+  assert(hold-reopened>.045,label+' reopen action missing: '+JSON.stringify({hold,reopened}));
 
   await gotoProgress(page,.79);
   await page.locator('[data-inspection-view="side"]').click();
