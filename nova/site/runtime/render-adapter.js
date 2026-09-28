@@ -83,10 +83,13 @@ export function createRenderAdapter({
       if(!state) return;
       const step=Math.max(.001,Math.min(.05,dt||DEFAULT_DT));
       const scrollVelocity=Math.max(0,Math.min(3,Number(state.motion?.scrollVelocity)||0));
-      const followBoost=1+Math.min(.72,scrollVelocity*.24);
-      const cameraLambda=(state.range === 'behind' ? 4.15 : state.range === 'resolution' ? 4.45 : 4.05)*followBoost;
+      const tracking=Boolean(state.motion?.scrollActive);
+      const followBoost=tracking
+        ? 1+Math.min(1.35,scrollVelocity*.45)
+        : 1.12;
+      const cameraLambda=(state.range === 'behind' ? 5.0 : state.range === 'resolution' ? 5.6 : 5.25)*followBoost;
       applyVec(camera,'position',state.camera.position,cameraLambda,step);
-      camera.fov=damp(camera.fov,state.camera.fov,3.75*followBoost,step);
+      camera.fov=damp(camera.fov,state.camera.fov,4.8*followBoost,step);
       camera.updateProjectionMatrix();
       if(renderedTarget===null) renderedTarget=[...state.camera.target];
       else{
@@ -94,20 +97,20 @@ export function createRenderAdapter({
         // inspection turntable. A slightly faster look-target convergence is
         // still eased, but prevents the inspection framing tail from crossing
         // the next chapter's copy during a normal scroll/jump handoff.
-        const targetLambda=(state.range==='behind' ? 5.2 : state.range==='resolution' ? 6.0 : 5.0)*followBoost;
+        const targetLambda=(state.range==='behind' ? 6.2 : state.range==='resolution' ? 7.4 : 6.5)*followBoost;
         renderedTarget[0]=damp(renderedTarget[0],state.camera.target[0],targetLambda,step);
         renderedTarget[1]=damp(renderedTarget[1],state.camera.target[1],targetLambda,step);
         renderedTarget[2]=damp(renderedTarget[2],state.camera.target[2],targetLambda,step);
       }
       camera.lookAt(...renderedTarget);
 
-      const productPositionLambda=(state.range === 'inspect' ? 4.55 : 4.25)*followBoost;
+      const productPositionLambda=(state.range === 'inspect' ? 5.9 : 5.55)*followBoost;
       presentation.position.x=damp(presentation.position.x,state.product.position[0],productPositionLambda,step);
       presentation.position.y=damp(presentation.position.y,state.product.position[1],productPositionLambda,step);
       presentation.position.z=damp(presentation.position.z,state.product.position[2],productPositionLambda,step);
-      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,4.65*followBoost,step);
-      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,4.45*followBoost,step);
-      presentation.rotation.z=damp(presentation.rotation.z,0,4.45*followBoost,step);
+      presentation.rotation.x=damp(presentation.rotation.x,orientationX+state.product.pitch,5.9*followBoost,step);
+      presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,5.7*followBoost,step);
+      presentation.rotation.z=damp(presentation.rotation.z,0,5.7*followBoost,step);
       if(splitInspection){
         // The inspection controller already owns a critically damped spring and
         // drag-release inertia. Applying another low-pass here creates visible
@@ -117,30 +120,30 @@ export function createRenderAdapter({
         inspection.rotation.z=state.product.inspectionYaw || 0;
       }
       const s=state.product.scale;
-      presentation.scale.x=damp(presentation.scale.x,s,3.75*followBoost,step);
-      presentation.scale.y=damp(presentation.scale.y,s,3.75*followBoost,step);
-      presentation.scale.z=damp(presentation.scale.z,s,3.75*followBoost,step);
+      presentation.scale.x=damp(presentation.scale.x,s,5.1*followBoost,step);
+      presentation.scale.y=damp(presentation.scale.y,s,5.1*followBoost,step);
+      presentation.scale.z=damp(presentation.scale.z,s,5.1*followBoost,step);
 
       if(mixer && Number.isFinite(clipDuration)){
         const targetPose=Math.max(0,Math.min(1,state.product.pose));
         if(renderedPose===null) renderedPose=targetPose;
         else{
           const interactionOwnsPose=state.motion?.sourcePoseOwner==='interaction';
-          const poseLambda=(interactionOwnsPose ? 6.4 : 8.4)*followBoost;
+          const poseLambda=(interactionOwnsPose ? 6.8 : 10.4)*followBoost;
           const candidate=damp(renderedPose,targetPose,poseLambda,step);
           // Manual Fold/Open stays mechanical and restrained. Scroll-authored
           // choreography can catch up faster after a wheel/touch jump, but still
           // has an explicit velocity ceiling so the skeleton never visibly scrubs.
           const maxPoseVelocity=interactionOwnsPose
             ? .52
-            : Math.min(1.20,.40+scrollVelocity*.27);
+            : Math.min(1.65,(tracking?.62:.82)+scrollVelocity*.38);
           const maxPoseDelta=Math.max(.0012,step*maxPoseVelocity);
           renderedPose += Math.max(-maxPoseDelta,Math.min(maxPoseDelta,candidate-renderedPose));
         }
         mixer.setTime(renderedPose*clipDuration);
       }
 
-      renderer.toneMappingExposure=damp(renderer.toneMappingExposure,state.lighting.exposure,3.7,step);
+      renderer.toneMappingExposure=damp(renderer.toneMappingExposure,state.lighting.exposure,4.25,step);
       if(lights){
         if(lights.hemi) lights.hemi.intensity=damp(lights.hemi.intensity,state.lighting.hemi,3.7,step);
         if(lights.key){
