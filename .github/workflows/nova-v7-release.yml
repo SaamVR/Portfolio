@@ -1,0 +1,121 @@
+name: NOVA V7 Storytelling Release
+
+on:
+  push:
+    branches: ["nova/v7-storytelling-motion"]
+    paths:
+      - "nova/v7-release-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-deploy-v7:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NOVA_CANDIDATE_URL: http://127.0.0.1:4173/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore exact NOVA GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+
+      - name: Install verified runtime and browser tooling
+        run: |
+          set -euo pipefail
+          npm install three@0.180.0 playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          mkdir -p nova/site/vendor/addons/{loaders,utils}
+          cp node_modules/three/build/three.module.js nova/site/vendor/
+          cp node_modules/three/build/three.core.js nova/site/vendor/
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js nova/site/vendor/addons/loaders/
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js nova/site/vendor/addons/utils/
+
+      - name: Run V7 motion and interaction contracts
+        run: |
+          set -euo pipefail
+          node nova/tests/timeline_contract.mjs
+          node nova/tests/motion_control_contract.mjs
+          node nova/tests/motion_pose_contract.mjs
+          node nova/tests/render_adapter_contract.mjs
+          node nova/tests/interaction_contract.mjs
+
+      - name: Start exact-source V7 preview
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory nova/site >/tmp/nova-v7-http.log 2>&1 &
+          echo $! >/tmp/nova-v7-http.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/nova-v7-http.log
+          exit 1
+
+      - name: Run cross-viewport V7 story QA
+        run: |
+          set -euo pipefail
+          NOVA_V7_QA_OUT=nova-v7-story-qa node nova/tests/v7-story-browser-qa.mjs
+
+      - name: Compare V4 and V7 motion trajectories
+        run: |
+          set -euo pipefail
+          mkdir -p nova-v7-motion-reports
+          for phase in desktop-inspection desktop-fold desktop-scroll mobile; do
+            NOVA_MOTION_PHASE="$phase" node nova/tests/motion-browser-audit.mjs
+            cp nova-motion-audit/report.json "nova-v7-motion-reports/$phase.json"
+          done
+
+      - name: Upload exact-source QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-v7-exact-source-qa
+          path: |
+            nova-v7-story-qa
+            nova-motion-audit
+            nova-v7-motion-reports
+          retention-days: 14
+
+      - name: Require Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 2; }
+
+      - name: Deploy V7 to Cloudflare Pages
+        run: |
+          set -euo pipefail
+          npx wrangler@4 pages deploy nova/site             --project-name nova-interactive-portfolio             --branch v7             --commit-hash "$GITHUB_SHA"             --commit-message "NOVA V7 storytelling motion release"
+
+      - name: Wait for V7 public alias
+        run: |
+          set -euo pipefail
+          for i in {1..36}; do
+            if curl -fsS https://v7.nova-interactive-portfolio.pages.dev/ >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          echo "V7 alias did not become reachable"
+          exit 1
+
+      - name: Verify deployed V7 in Chromium
+        run: |
+          set -euo pipefail
+          NOVA_CANDIDATE_URL=https://v7.nova-interactive-portfolio.pages.dev/           NOVA_V7_QA_OUT=nova-v7-public-qa           node nova/tests/v7-story-browser-qa.mjs
+
+      - name: Upload public V7 QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-v7-public-qa
+          path: nova-v7-public-qa
+          retention-days: 14
