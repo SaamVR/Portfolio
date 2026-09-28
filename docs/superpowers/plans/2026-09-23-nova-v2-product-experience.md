@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the proven Three.js/GLTF asset pipeline, but replace section-owned camera/pose presets with a global authored timeline and a visual-state composer. Product UI and 3D interactions live in separate modules with explicit contracts, so motion/runtime, UI/content, interactions, and QA can be developed in parallel and merged into a dedicated V2 integration branch before any deployment.
 
-**Tech Stack:** Static HTML/CSS/ES modules, Three.js 0.180, GLTFLoader, existing optimized GLTF/WebP assets, Python contract tests, Node-based pure-runtime tests, Playwright visual/interaction QA in GitHub Actions, Cloudflare Pages for preview/production deployment.
+**Tech Stack:** Static HTML/CSS/ES modules, Three.js 0.180, GLTFLoader, existing optimized GLTF/WebP assets, Python contract tests, Node-based pure-runtime tests, Playwright visual/interaction QA in GitHub Actions, GitHub Pages for canonical production publication under `https://saamvr.github.io/Portfolio/NovaAG/`; Cloudflare may remain available as an optional preview/fallback host.
 
 **Spec:** `docs/superpowers/specs/2026-09-23-nova-v2-product-experience-design.md`
 
@@ -22,6 +22,9 @@
 - `samvr` is deployment-only. All development, debugging, design, asset processing, and QA stay in GPT runtime / hosted repository tooling.
 - Do not touch the repository-root LeadFlow product except shared workflow paths explicitly named in this plan.
 - Do not overwrite production until a V2 preview passes public verification.
+- Canonical final publication target: `https://saamvr.github.io/Portfolio/NovaAG/` from the root `NovaAG/` directory.
+- `NovaAG/` is generated deployment output; do not develop directly inside it.
+- Preserve the repository-root LeadFlow site and all existing portfolio routes when publishing NOVA.
 
 ## File Structure
 
@@ -1034,78 +1037,139 @@ Update `nova/VERIFIED_STATE.md` with:
 
 ---
 
-### Task 5: Build exact production artifact and deploy preview
+### Task 5: Build exact production artifact and verify release candidate
 
-**Lane:** Deployment (samvr only for deploy command)
+**Lane:** Deployment preparation
 
 **Files:**
-- No source changes unless public verification discovers a production-only defect.
+- Update only deployment metadata/instructions unless public verification discovers a production-only defect.
+- Reference: `nova/GITHUB_PAGES_PUBLISH.md`.
 
-- [ ] **Step 1: Run production-bundle workflow**
+- [ ] **Step 1: Complete final scale/detail-motion refinement**
+
+Before release, visually refine the headphone so it is more dominant and presents more physical detail through motion:
+
+- use larger authored framing where composition permits;
+- favor camera dolly/distance over arbitrary model scaling;
+- use close/detail moments to expose earcup, cushion, headband/articulation, and control-surface form;
+- keep motion purposeful and continuous;
+- preserve text/product separation on desktop/tablet/mobile.
+
+- [ ] **Step 2: Run production-bundle workflow**
 
 Require successful exact asset/runtime validation and artifact upload.
 
-- [ ] **Step 2: Download/inspect artifact in GPT runtime**
+Artifact name:
 
-Verify module tree, HTML/CSS/JS, GLTF, WebP maps, and Three.js vendor runtime are present.
+`nova-production-site`
 
-- [ ] **Step 3: Use samvr only to deploy the exact verified artifact to Cloudflare preview branch**
+Record source SHA, build run ID, artifact ID, and digest.
 
-Target:
+- [ ] **Step 3: Download/inspect artifact in GPT runtime**
 
-`redesign` (or a new `v2` preview alias if preserving redesign alias is useful).
+Verify module tree, HTML/CSS/JS, GLTF, WebP maps, Three.js vendor runtime, and relative subpath-safe URLs.
 
-Do not edit source on samvr.
+- [ ] **Step 4: Run exact-position browser QA**
 
-- [ ] **Step 4: Publicly verify preview from GPT runtime**
+Verify desktop/tablet/mobile, boundary transitions, product controls, Fold/Open, hotspots, inspection, reduced motion, fallback, and the final larger/detail-oriented product framing.
 
-Verify:
+- [ ] **Step 5: Optional preview**
 
-- production HTML/CSS reachable;
-- model/runtime loads through browser QA where available;
-- desktop/mobile public screenshots match the verified artifact;
-- no missing module/asset paths.
+Cloudflare may be used as an optional preview/fallback host, but it is not the canonical final NOVA URL.
 
-- [ ] **Step 5: Record preview URL and deployment ID**
+- [ ] **Step 6: Record the accepted release candidate**
 
-Update `nova/VERIFIED_STATE.md` on the integration branch.
+Update `nova/VERIFIED_STATE.md` with the accepted source SHA, QA run/artifact, production-bundle run/artifact, and known accepted limitations.
 
 ---
 
-### Task 6: Promote V2 only after preview acceptance
+### Task 6: Publish canonical NOVA build to GitHub Pages
 
 **Lane:** Deployment
 
-**Files:**
-- Update `nova/VERIFIED_STATE.md` and `nova/PROJECT_STATE.md` after deployment.
+**Canonical public URL:**
 
-- [ ] **Step 1: Confirm preview acceptance**
+`https://saamvr.github.io/Portfolio/NovaAG/`
 
-Do not infer approval from a successful deploy alone.
+**Repository publish directory:**
 
-- [ ] **Step 2: Merge `nova/v2-integration` to `main`**
+`NovaAG/`
 
-Preserve the V1 backup branch.
+**Workflow:**
 
-- [ ] **Step 3: Build exact `main` production artifact**
+`.github/workflows/nova-pages-publish.yml`
 
-Confirm it matches the accepted integration source.
+**Detailed procedure:**
 
-- [ ] **Step 4: Use samvr only to deploy the verified artifact to Cloudflare production branch `main`**
+`nova/GITHUB_PAGES_PUBLISH.md`
 
-No source edits or QA on samvr.
+- [ ] **Step 1: Confirm release acceptance**
 
-- [ ] **Step 5: Verify primary production alias from GPT runtime**
+Do not publish merely because the build or QA workflow is green. Confirm the final screenshots and interaction behavior are accepted.
 
-Primary alias:
+- [ ] **Step 2: Merge accepted NOVA source to `main`**
 
-`https://nova-interactive-portfolio.pages.dev/`
+Preserve:
 
-Verify product-first copy, critical controls, model load, and public asset availability.
+- `backup/nova-interactive-v1-2026-09-23`;
+- the repository-root LeadFlow site;
+- existing portfolio routes.
 
-- [ ] **Step 6: Record final durable state**
+- [ ] **Step 3: Build the exact accepted `main` production artifact**
 
-Record final production commit, artifact hash, Cloudflare deployment URL, preview URL, and rollback branch.
+Use `.github/workflows/nova-build.yml`.
+
+The artifact published to Pages must be the exact verified `nova-production-site` bundle.
+
+- [ ] **Step 4: Point the Pages publisher at that exact artifact**
+
+Update `.github/workflows/nova-pages-publish.yml` to download the newly accepted production-bundle run ID, unless the workflow has been upgraded to accept the run ID as an explicit dispatch input.
+
+Do not rebuild or hand-copy a different payload.
+
+- [ ] **Step 5: Publish only into `NovaAG/`**
+
+The Pages workflow must replace only the generated `NovaAG/` payload, preserve `.nojekyll`, and leave repository-root site files untouched.
+
+Required structure includes:
+
+```
+NovaAG/index.html
+NovaAG/app.js
+NovaAG/styles.css
+NovaAG/assets/headphones-web.gltf
+NovaAG/runtime/
+NovaAG/interactions/
+NovaAG/ui/
+NovaAG/vendor/
+```
+
+- [ ] **Step 6: Trigger `Publish NOVA to GitHub Pages`**
+
+Use `workflow_dispatch` or the workflow's publish-trigger mechanism.
+
+GitHub Actions performs the publication; `samvr` is not required for this GitHub Pages release path.
+
+- [ ] **Step 7: Public verification from GPT runtime**
+
+Verify:
+
+`https://saamvr.github.io/Portfolio/NovaAG/`
+
+Check:
+
+- page availability;
+- GLTF/model ready state;
+- relative module/texture paths under `/Portfolio/NovaAG/`;
+- final headphone scale/detail framing;
+- scroll animation and transitions;
+- interactive controls and direct inspection;
+- desktop/tablet/mobile;
+- no regression to the repository-root site.
+
+- [ ] **Step 8: Record final durable state**
+
+Record final source commit, artifact digest, GitHub Pages workflow run ID, public URL, and rollback references in `nova/VERIFIED_STATE.md` and `nova/PROJECT_STATE.md`.
 
 ---
 
@@ -1133,9 +1197,10 @@ Record final production commit, artifact hash, Cloudflare deployment URL, previe
 - interaction sequences work without snapping.
 
 ### Checkpoint E — Deployment
-- exact bundle built;
-- preview publicly verified;
-- production promoted only after preview acceptance.
+- exact bundle built and accepted;
+- `NovaAG/` generated only from that exact artifact;
+- GitHub Pages public URL verified at `https://saamvr.github.io/Portfolio/NovaAG/`;
+- repository-root site and unrelated portfolio routes unchanged.
 
 ## Definition of Done
 
@@ -1146,5 +1211,6 @@ The plan is complete only when NOVA V2:
 - uses one continuous authored timeline with clean interaction reconciliation;
 - passes desktop/tablet/mobile browser QA and reduced-motion/fallback checks;
 - keeps the existing GLTF facts/orientation/cable protections;
-- is deployed from the exact verified artifact;
+- is deployed from the exact verified artifact to `https://saamvr.github.io/Portfolio/NovaAG/`;
+- preserves the repository-root LeadFlow site and other portfolio routes;
 - preserves the V1 rollback branch.
