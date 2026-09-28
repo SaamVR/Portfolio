@@ -266,8 +266,10 @@ assert.ok(v3MaxPoseStep <= .020,
 
 const v3SettleA=sampleTimeline(.19,'desktop');
 const v3SettleB=sampleTimeline(.22,'desktop');
-assert.ok(Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw) <= .012,
-  `V3 Design settle yaw drift must stay bounded for stable engineering annotations; delta=${Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw)}`);
+assert.ok(Math.abs(v3SettleB.product.pose-v3SettleA.product.pose) <= .006,
+  'V7 Design detail changes must not scrub the source rig');
+assert.ok(Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw) <= .14,
+  `V7 Design detail study may reframe the product but must remain controlled; yaw delta=${Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw)}`);
 
 
 // V7 storytelling contract: the Design study must move the camera target between
