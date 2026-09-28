@@ -32,7 +32,7 @@ const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.72,foldedPose:.50,duration:.92});
+const foldController = createFoldController({openPose:.37,foldedPose:.43,duration:.92});
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
@@ -134,7 +134,7 @@ function currentProgress(){
 
 function applyTextureQuality(root){
   const maxAniso=renderer.capabilities.getMaxAnisotropy();
-  root.traverse(obj=>{
+  root.traverseVisible(obj=>{
     if(!obj.isMesh) return;
     obj.frustumCulled=true;
     const materials=Array.isArray(obj.material)?obj.material:[obj.material];
@@ -155,7 +155,7 @@ function computePrimaryBounds(root){
   root.updateMatrixWorld(true);
   const box=new THREE.Box3();
   const childBox=new THREE.Box3();
-  root.traverse(obj=>{
+  root.traverseVisible(obj=>{
     if(!obj.isMesh || obj.name === 'Circle013_0' || obj.name === 'Circle.013_0') return;
     childBox.makeEmpty();
     childBox.setFromObject(obj,true);
@@ -244,7 +244,7 @@ function loadModel(){
       mixer=new THREE.AnimationMixer(model);
       const action=mixer.clipAction(clip);
       action.play();
-      mixer.setTime(clipDuration*.24);
+      mixer.setTime(clipDuration*.37);
       model.updateMatrixWorld(true);
     }
 
@@ -257,17 +257,13 @@ function loadModel(){
     // Side/Rear/manual inspection rotate around the product's local center.
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
-    const centerWorld=primaryProductBounds.getCenter(new THREE.Vector3());
-    const pivotLocal=centerGroup.worldToLocal(centerWorld.clone());
+    const center=primaryProductBounds.getCenter(new THREE.Vector3());
 
-    // Legacy visual-origin behavior: the timeline and all framing QA were
-    // authored against this centerGroup offset.
-    centerGroup.position.copy(centerWorld).multiplyScalar(-1);
-
-    // T(C) * R * T(-C) is identity when R=0, so ordinary scroll frames are
-    // untouched; inspection rotation is centered only when the user invokes it.
-    pivotGroup.position.copy(pivotLocal);
-    modelOffsetGroup.position.copy(pivotLocal).multiplyScalar(-1);
+    // Center only visible product meshes. The hidden cable and its descendants
+    // must not influence normalization or the inspection rotation center.
+    centerGroup.position.set(0,0,0);
+    pivotGroup.position.set(0,0,0);
+    modelOffsetGroup.position.copy(center).multiplyScalar(-1);
 
     const major=Math.max(size.x,size.y,size.z,1);
     normalizationRoot.scale.setScalar(3.55/major);
@@ -436,8 +432,10 @@ function updateInteractionInfluences(base,dt,now){
   };
 }
 
+let frameRequest=0;
 function render(now=performance.now()){
-  const dt=Math.min(.05,Math.max(.001,(now-lastTime)/1000 || 1/60));
+  if(document.hidden){frameRequest=0;return;}
+  const dt=Math.min(.08,Math.max(.001,(now-lastTime)/1000 || 1/60));
   lastTime=now;
 
   const scrollDelta=Math.abs(scrollY-previousScrollY)/Math.max(1,innerHeight);
@@ -457,9 +455,9 @@ function render(now=performance.now()){
   publishState(composed);
   if(rendererAvailable && adapter){
     adapter.apply(composed,dt);
-    renderer.render(scene,camera);
+    if(document.body.dataset.caseStudy!=='true') renderer.render(scene,camera);
   }
-  requestAnimationFrame(render);
+  frameRequest=requestAnimationFrame(render);
 }
 
 function scrollToProgress(progress){
@@ -529,13 +527,13 @@ const actions={
       scrollToProgress(.65);
       if(rendererAvailable) scheduleTourDetail(()=>{
         foldState='fold';
-        foldController.begin('fold',currentComposedState?.product.pose ?? .72);
+        foldController.begin('fold',currentComposedState?.product.pose ?? .37);
       });
       return;
     }
     if(step==='controls'){
       foldState='open';
-      foldController.begin('open',currentComposedState?.product.pose ?? .50);
+      foldController.begin('open',currentComposedState?.product.pose ?? .43);
       scrollToProgress(.79);
       if(rendererAvailable) scheduleTourDetail(()=>{
         inspectionView='side';
@@ -591,7 +589,24 @@ canvas.addEventListener('pointercancel',event=>{
 });
 
 window.addEventListener('resize',resize,{passive:true});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    cancelAnimationFrame(frameRequest);
+    frameRequest=0;
+  }else if(!frameRequest){
+    lastTime=performance.now();
+    frameRequest=requestAnimationFrame(render);
+  }
+});
+canvas.addEventListener('webglcontextlost',event=>{
+  event.preventDefault();
+  rendererAvailable=false;
+  document.body.dataset.modelState='fallback';
+  set3dAvailability(false);
+  hideHotspots();
+  if(runtimeState) runtimeState.textContent='Product preview · Reload to restore 3D';
+});
 
 resize();
 loadModel();
-requestAnimationFrame(render);
+frameRequest=requestAnimationFrame(render);
