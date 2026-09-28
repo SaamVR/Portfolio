@@ -376,7 +376,13 @@ function publishState(state){
   document.body.dataset.transition=state.ui.transition || 'none';
   document.body.dataset.stageGating='true';
   if(publishedRange!==state.range){
-    for(const stage of rangeStages) stage.classList.toggle('is-active',stage.dataset.rangeAnchor===state.range);
+    for(const stage of rangeStages){
+      const active=stage.dataset.rangeAnchor===state.range;
+      stage.classList.toggle('is-active',active);
+      stage.inert=!active;
+      stage.setAttribute('aria-hidden',String(!active));
+    }
+    hotspotController?.clear();
     publishedRange=state.range;
   }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
@@ -548,7 +554,7 @@ const actions={
 };
 
 bindProductUI(actions);
-set3dAvailability(rendererAvailable);
+set3dAvailability(false);
 
 window.addEventListener('pointermove',event=>{
   pointer.tx=(event.clientX/Math.max(1,innerWidth)-.5)*2;
