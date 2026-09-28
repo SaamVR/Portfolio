@@ -153,7 +153,7 @@ function viewportAdjusted(state, viewportClass){
     if(state.range === 'design'){
       // Keep V4's larger mobile detail pass, but bias the hardware left so
       // cushion/control anchors do not collapse against the right safe edge.
-      state.product.position[0] -= .035;
+      state.product.position[0] -= .095;
       state.camera.target[0] += .01;
       state.camera.position[2] += .08;
     }
