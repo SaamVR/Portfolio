@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   publish:
@@ -22,38 +23,19 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Checkout verified NOVA integration source
-        uses: actions/checkout@v4
-        with:
-          ref: nova/v2-integration
-          path: .nova-r13-source
-          fetch-depth: 1
-
-      - name: Restore exact GLTF assets
-        uses: actions/cache@v4
-        with:
-          path: .nova-r13-source/nova/site/assets
-          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
-          fail-on-cache-miss: true
-
-      - name: Vendor Three.js 0.180 runtime
+      - name: Download exact verified R13 production artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SITE="$GITHUB_WORKSPACE/.nova-r13-source/nova/site"
-          mkdir -p "$SITE/vendor/addons/loaders" "$SITE/vendor/addons/utils"
-          mkdir -p /tmp/nova-pages-vendor
-          cd /tmp/nova-pages-vendor
-          npm init -y >/dev/null 2>&1
-          npm install three@0.180.0 --no-audit --no-fund
-          cp node_modules/three/build/three.module.js "$SITE/vendor/"
-          cp node_modules/three/build/three.core.js "$SITE/vendor/"
-          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$SITE/vendor/addons/loaders/"
-          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$SITE/vendor/addons/utils/"
+          rm -rf /tmp/nova-r13-site
+          mkdir -p /tmp/nova-r13-site
+          gh run download 36074433568             --repo "${GITHUB_REPOSITORY}"             --name nova-production-site             --dir /tmp/nova-r13-site
 
       - name: Validate exact NOVA payload
         run: |
           set -euo pipefail
-          SITE=".nova-r13-source/nova/site"
+          SITE="/tmp/nova-r13-site"
           test -f "$SITE/index.html"
           test -f "$SITE/styles.css"
           test -f "$SITE/app.js"
@@ -74,13 +56,13 @@ jobs:
           test -f "$SITE/vendor/addons/utils/BufferGeometryUtils.js"
           python3 - <<'PY'
           import json, pathlib
-          root=pathlib.Path(".nova-r13-source/nova/site")
+          root=pathlib.Path("/tmp/nova-r13-site")
           g=json.loads((root/"assets/headphones-web.gltf").read_text())
           assert len(g["meshes"]) == 14
           assert len(g["skins"][0]["joints"]) == 36
           assert len(g["animations"]) == 3
           assert all((root/"assets"/img["uri"]).exists() for img in g["images"])
-          print("NOVA GitHub Pages payload verified")
+          print("Verified R13 NOVA artifact:", len(g["meshes"]), "meshes,", len(g["skins"][0]["joints"]), "joints")
           PY
 
       - name: Publish under NovaAG
@@ -88,8 +70,7 @@ jobs:
           set -euo pipefail
           rm -rf NovaAG
           mkdir -p NovaAG
-          cp -a .nova-r13-source/nova/site/. NovaAG/
-          rm -rf .nova-r13-source
+          cp -a /tmp/nova-r13-site/. NovaAG/
           touch .nojekyll
 
           test -f NovaAG/index.html
@@ -100,7 +81,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A NovaAG .nojekyll
           if git diff --cached --quiet; then
-            echo "NovaAG already matches verified NOVA payload."
+            echo "NovaAG already matches verified R13 artifact."
             exit 0
           fi
           git commit -m "publish(nova): GitHub Pages NovaAG"
