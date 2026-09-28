@@ -258,3 +258,62 @@ const v3SettleA=sampleTimeline(.19,'desktop');
 const v3SettleB=sampleTimeline(.22,'desktop');
 assert.ok(Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw) <= .012,
   `V3 Design settle yaw drift must stay bounded for stable engineering annotations; delta=${Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw)}`);
+
+
+// V4 scale/detail refinement contract: the product must dominate the frame and
+// use authored close-detail motion rather than a uniformly centered full-product shot.
+const v4HeroOpening=sampleTimeline(.02,'desktop');
+assert.ok(v4HeroOpening.product.scale >= 1.13,
+  `V4 Hero opening must be materially larger; scale=${v4HeroOpening.product.scale}`);
+assert.ok(v4HeroOpening.camera.position[2] <= 3.85,
+  `V4 Hero opening must dolly into the hardware; z=${v4HeroOpening.camera.position[2]}`);
+
+const v4HeroResolved=sampleTimeline(.10,'desktop');
+assert.ok(v4HeroResolved.product.scale >= 1.10,
+  `V4 Hero resolved silhouette should remain product-dominant; scale=${v4HeroResolved.product.scale}`);
+assert.ok(v4HeroResolved.camera.position[2] <= 4.40,
+  `V4 Hero resolved silhouette should not retreat too far; z=${v4HeroResolved.camera.position[2]}`);
+
+const v4Cushion=sampleTimeline(.16,'desktop');
+const v4Hinge=sampleTimeline(.205,'desktop');
+const v4Controls=sampleTimeline(.255,'desktop');
+for(const [label,state,minScale,maxZ] of [
+  ['cushion',v4Cushion,1.16,3.92],
+  ['hinge',v4Hinge,1.19,3.86],
+  ['controls',v4Controls,1.17,3.92]
+]){
+  assert.ok(state.product.scale >= minScale,
+    `V4 ${label} detail must fill more of the viewport; scale=${state.product.scale}`);
+  assert.ok(state.camera.position[2] <= maxZ,
+    `V4 ${label} detail must use a close camera pass; z=${state.camera.position[2]}`);
+}
+assert.ok(v4Hinge.camera.target[1] >= .13,
+  `V4 hinge detail should visibly travel upward to the articulation; targetY=${v4Hinge.camera.target[1]}`);
+assert.ok(Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw) >= .45,
+  `V4 Design should reveal opposite hardware faces across the detail sequence; yaw delta=${Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw)}`);
+
+const v4Adaptive=sampleTimeline(.52,'desktop');
+assert.ok(v4Adaptive.product.scale >= 1.10 && v4Adaptive.camera.position[2] <= 4.18,
+  `V4 Control chapter should preserve large hardware presence; scale=${v4Adaptive.product.scale} z=${v4Adaptive.camera.position[2]}`);
+
+const v4Form=sampleTimeline(.65,'desktop');
+assert.ok(v4Form.product.scale >= 1.11 && v4Form.camera.position[2] <= 4.12,
+  `V4 Form chapter should read the folding hardware at a larger scale; scale=${v4Form.product.scale} z=${v4Form.camera.position[2]}`);
+
+const v4Inspect=sampleTimeline(.79,'desktop');
+assert.ok(v4Inspect.product.scale >= 1.15,
+  `V4 Inspection should be the largest controlled full-product study; scale=${v4Inspect.product.scale}`);
+assert.ok(v4Inspect.camera.position[2] <= 3.88 && v4Inspect.camera.fov <= 25.4,
+  `V4 Inspection must expose surface/detail with a closer lens; z=${v4Inspect.camera.position[2]} fov=${v4Inspect.camera.fov}`);
+
+const v4Resolution=sampleTimeline(.92,'desktop');
+assert.ok(v4Resolution.product.scale >= 1.12 && v4Resolution.camera.position[2] <= 4.12,
+  `V4 Resolution should finish with a bold product hero; scale=${v4Resolution.product.scale} z=${v4Resolution.camera.position[2]}`);
+
+const v4MobileDesign=sampleTimeline(.205,'mobile');
+assert.ok(v4MobileDesign.product.scale >= 1.15,
+  `V4 mobile Design should also gain product presence; scale=${v4MobileDesign.product.scale}`);
+assert.ok(v4MobileDesign.camera.position[2] <= 4.78,
+  `V4 mobile Design should not be pushed excessively far away; z=${v4MobileDesign.camera.position[2]}`);
+assert.ok(Math.abs(v4MobileDesign.product.yaw) < Math.abs(v4Hinge.product.yaw),
+  'V4 mobile detail motion must remain shallower than desktop');
