@@ -132,8 +132,8 @@ export function createRenderAdapter({
           // choreography can catch up faster after a wheel/touch jump, but still
           // has an explicit velocity ceiling so the skeleton never visibly scrubs.
           const maxPoseVelocity=interactionOwnsPose
-            ? .58
-            : Math.min(1.28,.68+scrollVelocity*.20);
+            ? .52
+            : Math.min(1.20,.40+scrollVelocity*.27);
           const maxPoseDelta=Math.max(.0012,step*maxPoseVelocity);
           renderedPose += Math.max(-maxPoseDelta,Math.min(maxPoseDelta,candidate-renderedPose));
         }
