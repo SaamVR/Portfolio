@@ -191,19 +191,19 @@ function buildHotspotController(size){
     anchors:{
       cushion:{
         ...cushion,
-        cameraOffset:[.12,-.02,-.16],
-        targetOffset:[.10,-.03,0]
+        cameraOffset:[.18,-.03,-.28],
+        targetOffset:[.14,-.04,0]
       },
       headband:{
         ...headband,
         offset:[-.12,-.12,0],
-        cameraOffset:[-.08,.12,-.10],
-        targetOffset:[0,.11,0]
+        cameraOffset:[-.05,.18,-.24],
+        targetOffset:[0,.16,0]
       },
       controls:{
         ...controls,
-        cameraOffset:[-.12,-.01,-.16],
-        targetOffset:[-.10,-.02,0]
+        cameraOffset:[-.18,-.02,-.28],
+        targetOffset:[-.14,-.03,0]
       }
     }
   });
