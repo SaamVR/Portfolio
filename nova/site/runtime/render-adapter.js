@@ -136,7 +136,7 @@ export function createRenderAdapter({
           // has an explicit velocity ceiling so the skeleton never visibly scrubs.
           const maxPoseVelocity=interactionOwnsPose
             ? .52
-            : Math.min(1.65,(tracking?.62:.82)+scrollVelocity*.38);
+            : Math.min(1.65,(tracking ? .62 : .82)+scrollVelocity*.38);
           const maxPoseDelta=Math.max(.0012,step*maxPoseVelocity);
           renderedPose += Math.max(-maxPoseDelta,Math.min(maxPoseDelta,candidate-renderedPose));
         }
