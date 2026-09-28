@@ -1,3 +1,3 @@
 NOVA V7 storytelling release gate
 2026-09-28
-revision 7: final exact-source story gate after bounded pose fix
+revision 7: complete branch head 2fcbdb48e2ad3589607933fe6b591b1bda3c1e60
