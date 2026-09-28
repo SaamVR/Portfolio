@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eee9df" />
+  <title>NOVA — Interactive 3D Product Film</title>
+  <meta name="description" content="An interactive 3D product film built from a real animated GLTF asset — source animation, camera choreography and live lighting directed by scroll." />
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
+  </script>
+</head>
+<body data-model-state="loading">
+  <div class="grain" aria-hidden="true"></div>
+  <canvas id="webgl" aria-label="Animated 3D headphone product model"></canvas>
+  <div class="frame frame--left" aria-hidden="true"></div>
+  <div class="frame frame--right" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <a class="mark" href="#top" aria-label="NOVA home">NOVA</a>
+    <div class="masthead__center">3D / MOTION / CREATIVE DEVELOPMENT</div>
+    <a class="notes" href="#closing">BUILD NOTES ↘</a>
+  </header>
+
+  <div class="runtime" aria-live="polite">
+    <span class="runtime__dot"></span>
+    <span id="runtimeState">LOADING ORIGINAL GLTF</span>
+  </div>
+
+  <aside class="chapter-rail" aria-label="Experience chapters">
+    <span class="rail-number" id="railNumber">01</span>
+    <div class="rail-line"><i id="railProgress"></i></div>
+    <span class="rail-label" id="railLabel">INTRO</span>
+  </aside>
+
+  <main id="top">
+    <section class="chapter chapter--warm chapter--hero" data-scene="hero" data-label="INTRO">
+      <div class="construction construction--hero" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="hero-meta reveal">
+        <span>OBJECT / 01</span>
+        <span>INTERACTIVE PRODUCT STUDY</span>
+      </div>
+      <div class="hero-statement reveal">
+        <p>Scroll-controlled product film.<br />No pre-rendered video.</p>
+      </div>
+      <p class="hero-caption reveal">An animated product asset, rebuilt for the browser.</p>
+      <h1 class="hero-word reveal" aria-label="NOVA">NOVA</h1>
+      <div class="scroll-cue" aria-hidden="true"><span>SCROLL</span><i></i></div>
+    </section>
+
+    <section class="chapter chapter--warm chapter--form" data-scene="form" data-label="FORM">
+      <div class="chapter-copy chapter-copy--left reveal">
+        <span class="eyebrow">01 / FORM</span>
+        <h2>Give the<br />object <em>the page.</em></h2>
+        <p>The interface does less so the model can do more. Framing follows the headphone body, not the oversized cable bounds, and the product remains readable while the camera moves.</p>
+      </div>
+      <div class="side-note side-note--right reveal">
+        <span>FRAME</span>
+        <p>Readable from open form to folded pose without forcing the object into a generic product-card layout.</p>
+      </div>
+      <div class="micro-line micro-line--bottom"><span>CAMERA CHOREOGRAPHY AND SOURCE ANIMATION ARE CONTROLLED INDEPENDENTLY.</span></div>
+    </section>
+
+    <section class="chapter chapter--warm chapter--mechanism" data-scene="mechanism" data-label="MECHANISM">
+      <div class="ghost-word" aria-hidden="true">MOTION</div>
+      <div class="chapter-copy chapter-copy--mechanism reveal">
+        <span class="eyebrow">02 / MECHANISM</span>
+        <h2>The source<br />animation<br /><em>becomes the timeline.</em></h2>
+        <p>The original 27.71-second skeletal clip is scrubbed directly by this chapter. No fake explode animation and no video baked over the canvas.</p>
+        <div class="fact-grid" aria-label="Source asset facts">
+          <div><strong>36</strong><span>skin joints</span></div>
+          <div><strong>14</strong><span>skinned meshes</span></div>
+          <div><strong>3</strong><span>source clips</span></div>
+          <div><strong>42</strong><span>main clip channels</span></div>
+        </div>
+      </div>
+      <div class="timeline reveal" aria-hidden="true">
+        <span>SOURCE CLIP / ARMATUREACTION</span><i><b id="timelineNeedle"></b></i><span>27.71 SEC</span>
+      </div>
+    </section>
+
+    <section class="chapter chapter--dark chapter--choreography" data-scene="choreography" data-label="CHOREOGRAPHY">
+      <div class="dark-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="chapter-copy chapter-copy--center reveal">
+        <span class="eyebrow">03 / CHOREOGRAPHY</span>
+        <h2>Scroll is<br /><em>the director.</em></h2>
+        <p>Model pose, camera arc, key light and typography run on separate curves. It reads like a product film, but the visitor owns the playhead.</p>
+      </div>
+      <div class="motion-ledger reveal" aria-label="Motion layers">
+        <span>01&nbsp; SOURCE POSE</span><span>02&nbsp; CAMERA</span><span>03&nbsp; LIGHT</span><span>04&nbsp; TYPE</span>
+      </div>
+    </section>
+
+    <section class="chapter chapter--sand chapter--interaction" data-scene="interaction" data-label="LIVE INPUT">
+      <div class="construction construction--interaction" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="chapter-copy chapter-copy--wide reveal">
+        <span class="eyebrow">04 / LIVE INPUT</span>
+        <h2>Light follows<br /><em>your movement.</em></h2>
+        <p>Pointer movement shifts the key light and restrained parallax. Dragging is intentionally unnecessary: the product stays art-directed instead of turning into a toy.</p>
+      </div>
+      <div class="pointer-note reveal"><i></i><span>MOVE POINTER</span></div>
+      <div class="side-note side-note--lower reveal"><span>LIVE INPUT</span><p>Interaction changes emphasis, not orientation.</p></div>
+    </section>
+
+    <section class="chapter chapter--ink chapter--closing" id="closing" data-scene="closing" data-label="BUILD">
+      <div class="closing-grid">
+        <div class="closing-title reveal">
+          <span class="eyebrow">05 / BUILD</span>
+          <h2>Built as<br />a <em>system.</em></h2>
+        </div>
+        <div class="closing-copy reveal">
+          <p>The model is not a background decoration. Source animation, scroll state, camera, light and responsive framing are composed as separate systems and synchronized at runtime.</p>
+          <div class="stack">
+            <span>THREE.JS</span><span>GLTF RUNTIME</span><span>SKINNED ANIMATION</span><span>SCROLL CHOREOGRAPHY</span><span>POINTER LIGHTING</span><span>RESPONSIVE 3D</span>
+          </div>
+        </div>
+      </div>
+      <div class="closing-footer reveal">
+        <span>NOVA / INTERACTIVE PRODUCT STUDY</span>
+        <button id="replay" type="button">REPLAY EXPERIENCE ↗</button>
+      </div>
+    </section>
+  </main>
+
+  <noscript><div class="noscript">NOVA requires JavaScript to render the interactive product model.</div></noscript>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

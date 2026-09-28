@@ -1,0 +1,293 @@
+# LeadFlow V4 warm-industrial handoff — 2026-09-25
+
+## Authoritative V4 repository state
+
+Repository: `SaamVR/Portfolio`
+
+V4 feature branch:
+- `leadflow/v4-warm-industrial`
+- final reviewed head: `21bf8fec1cc934e814afc449e54cf414f8eff6cc`
+
+Merged V4 source:
+- PR #27: https://github.com/SaamVR/Portfolio/pull/27
+- squash merge commit: `54bb13ca316d04f51a266c2e513ed66c49b01e7d`
+- preservation branch: `preserve/leadflow-v4-warm-industrial-20260925`
+- preservation branch head: `54bb13ca316d04f51a266c2e513ed66c49b01e7d` (the V4 squash merge commit)
+- the preserved root V4 application blobs match reviewed feature head `21bf8fec1cc934e814afc449e54cf414f8eff6cc` for `index.html`, `styles.css`, `app.js`, `dashboard.js`, `storytelling.js`, and the hardened LeadFlow deploy workflow
+
+Production-trigger commit on main:
+- `0aaa860dcfbafb3c0e0cf29abb0af89819515eb1`
+
+Do not rebuild V4 from scratch. Do not alter V1/V2/V3 unless a version-specific fix is explicitly requested.
+
+## Version topology
+
+- root `/` in GitHub main = LeadFlow V4
+- `/v3/` = preserved V3 from application source `4d2bb37cb282120b5d7791d838bd0dfbc5e05d9a`
+- `/v2/` = frozen pre-V3 experience
+- `/v1/` = legacy preserved experience
+
+V3 preservation integrity:
+- `v3/index.html`, `v3/dashboard.js`, `v3/storytelling.js`, `v3/styles.css`, `v3/favicon.svg`, and `functions/v3/api/qualify.js` match the V3 source blobs exactly.
+- `v3/app.js` is the V3 app byte-for-byte after the intentional route substitution `/api/qualify` → `/v3/api/qualify`.
+- V1 and V2 files were not modified by V4.
+
+## V4 art direction
+
+V4 is a warm-industrial refinement of the verified V3 product presentation.
+
+Colour hierarchy:
+- forest / emerald green remains the dominant system colour and owns successful flow, primary product identity, positive state, and the majority of core interaction language
+- warm yellow is expanded for review, attention, live-state, annotation, and secondary information accents
+- graphite / concrete grey gives neutral surfaces, chrome, dividers, and cards more visual weight
+- brick red is expanded for action, urgency, high-priority emphasis, and failure/recovery states
+
+The palette is deliberately semantic rather than four equal colours.
+
+Key dark tokens:
+- `--v4-green: #78D39C`
+- `--v4-yellow: #E2B64B`
+- `--v4-grey: #848C86`
+- `--v4-brick: #C65D49`
+
+The light theme uses darker accessible equivalents while preserving the same roles.
+
+## V4 presentation changes
+
+The V4 palette is distributed through:
+- hero and browser/product panel
+- sticky navigation and action CTA
+- system capabilities / trust band
+- problem / brief cards
+- workflow cards and connectors
+- live qualification form / execution / result surfaces
+- Lead Operations KPIs and charts
+- Reliability scenarios
+- Architecture nodes
+- ROI calculator
+- final CTA and footer
+
+Important presentation constraints preserved:
+- green remains visually dominant
+- no return to generic glass/glow-heavy styling
+- existing product structure and copy remain intact
+- current V3 animation/story directors remain intact
+- 12px visible-text floor remains intact
+- 44px audited control floor remains intact
+- light and dark semantic status distinctions remain intact
+
+## QA evidence
+
+Primary final V4 QA run:
+- https://github.com/SaamVR/Portfolio/actions/runs/36164622709
+- result: SUCCESS
+
+Final gates:
+- V4 palette/preservation contract: 4/4 PASS
+- deployment preservation contract: 3/3 PASS
+- full Node regression suite: 91/91 PASS
+- JavaScript syntax checks: PASS
+- real-browser release matrix: PASS
+- dark/light × 390 / 768 / 1024 / 1440: PASS
+- no page-level horizontal overflow
+- no visible audited text below 12px
+- audited controls >= 44px
+- qualification presets remain 92 / 64 / 33
+- execution remains 16 events for each canonical preset
+- whole-page contrast: 0 failures at dark/light 1440 and 390
+- visual-review render capture: PASS
+
+Visual-review artifact:
+- GitHub Actions artifact `leadflow-v4-visual-review`
+- artifact ID: `10877605460`
+- generated from final feature head `21bf8fec...`
+
+## Deployment workflow hardening
+
+`.github/workflows/leadflow-deploy-cloudflare.yml` was corrected before V4 merge.
+
+The clean Pages payload now includes:
+- `index.html`
+- `app.js`
+- `dashboard.js`
+- `storytelling.js`
+- `styles.css`
+- `favicon.svg`
+- `v1/`
+- `v2/`
+- `v3/`
+- `functions/`
+
+The deploy workflow now smoke-checks:
+- root V4
+- root `dashboard.js`
+- root `storytelling.js`
+- `/v3/`
+- `/v2/`
+- `/v1/`
+- root qualification API v2
+- V3 qualification API v2
+- V2 qualification API v2
+- V1 qualification API v1
+
+Do not revert this workflow to the older root+V1-only payload.
+
+## Current deployment status
+
+V4 production is COMPLETE.
+
+Canonical production:
+- https://leadflow-ai-bhy.pages.dev/
+
+Immutable V4 deployment:
+- https://8ee3bf74.leadflow-ai-bhy.pages.dev/
+
+Previously verified immutable V3 deployment:
+- https://aa6c8f81.leadflow-ai-bhy.pages.dev/
+
+Deployment path:
+- authenticated Wrangler CLI on `samvr`
+- isolated npm cache: `/home/ubuntu/.cache/leadflow-wrangler-v4`
+- reconciled detached deploy worktree: `/home/ubuntu/leadflow-v4-production-deploy`
+- deployed source SHA: `e4023b728698b89e4179ed939d17f90f609e0957`
+- V4 application blobs at that SHA match the final reviewed V4 source
+- Cloudflare Pages project: `leadflow-ai`
+- production hostname: `leadflow-ai-bhy.pages.dev`
+
+Production verification:
+- local Node regression before deploy: 91/91 PASS
+- immutable root V4 smoke: PASS
+- canonical root V4 smoke: PASS
+- immutable and canonical root assets `index.html`, `app.js`, `dashboard.js`, `storytelling.js`, `styles.css` match the reconciled source byte-for-byte
+- `/v3/`, `/v2/`, `/v1/`: PASS on immutable and canonical deployment
+- root / V3 / V2 qualification APIs report deterministic v2 engine
+- V1 qualification API reports deterministic v1 engine
+- live real-browser dark/light × 390/768/1024/1440 release matrix: PASS
+- no audited visible text below 12px
+- audited controls remain >=44px
+- no horizontal overflow
+- live canonical presets remain 92 / 64 / 33 with 16 events each and LIVE API RESPONSE
+- live whole-page contrast: 0 failures at dark/light 1440 and 390
+
+Earlier GitHub Actions release attempt:
+- https://github.com/SaamVR/Portfolio/actions/runs/36165187748
+- still documents that GitHub Actions does not currently have the Cloudflare credentials
+- this no longer blocks V4 production because the authenticated `samvr` Wrangler path completed the release
+
+## Remaining CI deployment-path issue
+
+GitHub Actions still lacks:
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+Tracking issue:
+- https://github.com/SaamVR/Portfolio/issues/24
+
+This is now a future CI/CD reliability task, not a V4 production blocker. Never paste either credential into chat, source, an issue, or a handoff.
+
+## Exact resume instructions
+
+1. Treat V4 production as frozen and complete at immutable deployment `https://8ee3bf74.leadflow-ai-bhy.pages.dev/`.
+2. Do not redo V4 design/audit/deployment work unless a regression or new V5 request is explicit.
+3. Preserve `/v3/`, `/v2/`, and `/v1/` independently.
+4. For future production changes, reconcile the active runtime worktree against GitHub `main` before any write.
+5. Prefer the hardened GitHub Actions deploy path after its Cloudflare secrets are configured.
+6. Until then, the authenticated `samvr` Wrangler path is proven; use a clean detached worktree and isolated npm cache.
+7. Require byte checks, version/API smoke checks, and real-browser verification for any future production promotion.
+
+
+## V4 motion refinement — 2026-09-25
+
+The V4 visual direction remains frozen. A focused motion-quality audit and refinement was completed after the warm-industrial release.
+
+Authoritative motion refinement:
+- PR #28: https://github.com/SaamVR/Portfolio/pull/28
+- reviewed feature commit: `872ee04f6bc8d02180448bffb37249fb22754d3a`
+- squash merge on `main`: `a2a3d9e2a923f6fc47660b00c06fbf6bfc68fec8`
+- preservation branch: `preserve/leadflow-v4-motion-1f4caf2f-20260925`
+- immutable production: https://1f4caf2f.leadflow-ai-bhy.pages.dev/
+- canonical production: https://leadflow-ai-bhy.pages.dev/
+- pre-motion V4 immutable remains preserved at https://8ee3bf74.leadflow-ai-bhy.pages.dev/
+
+Verified abnormalities fixed:
+- guided chapter animations could begin while smooth camera scroll was still moving, including roughly 0.94–1.04 seconds of overlap in later chapters
+- reveal staggering used a page-global index instead of a local card-group sequence
+- reveal delay remained attached after entrance and could delay later hover/focus transitions
+- Escape could close the tour UI while native smooth scroll continued
+- native smooth-scroll startup had a cancellation race
+- mobile Qualification and Operations could move 16–17px from browser scroll anchoring when dynamic content changed
+- manually replaying a story during the guided tour could leave the tour UI open and disabled
+- duplicate/dead CSS animation declarations were present
+
+Refinement behavior:
+- each guided chapter waits for camera settle before internal motion begins
+- native `scrollend` is used when available with a requestAnimationFrame/frame-stability fallback
+- a short post-settle breathing gap separates camera motion from content motion
+- cancelling the tour actively stops in-flight/native-startup smooth scrolling
+- guided tour temporarily owns `overflow-anchor:none`; normal browsing retains native anchoring
+- external story interruption exits guided mode cleanly
+- reveal groups stagger locally 1 → 2 → 3 → 4 and entrance delay is discarded after transition completion
+- V4 palette, copy, application logic, qualification APIs, V1/V2/V3, and the six-chapter story structure are unchanged
+
+Final verification:
+- Node regression suite: 100/100 PASS
+- production desktop guided trace: all six chapter actions had 0px viewport movement in the preceding ~96ms; 0 browser exceptions; ~31.9s total
+- production mobile 390×844 guided trace: all six chapter actions had 0px viewport movement in the preceding ~96ms; 0 browser exceptions; ~30.8s total
+- Escape cancellation stops continued camera drift once cancellation is processed
+- replay interruption during LEAD JOURNEY exits guided mode, closes status UI, and re-enables the CTA
+- reduced-motion mode completes with 0 running animations and 0 browser exceptions at 390 and 1440
+- manual-scroll audit confirms Workflow / Operations / Reliability / Architecture do not auto-start during continuous user scrolling
+- production responsive matrix dark/light × 390/768/1024/1440: PASS
+- production canonical presets: 92 / 64 / 33, 16 events each, LIVE API RESPONSE
+- whole-page production contrast: 0 failures at dark/light 1440 and 390
+- immutable and canonical root assets match merged source byte-for-byte
+- `/v3/`, `/v2/`, `/v1/` and versioned qualification APIs remain functional
+
+For future work, treat `a2a3d9e2a923f6fc47660b00c06fbf6bfc68fec8` plus immutable deployment `1f4caf2f` as the current LeadFlow V4 production motion baseline. Do not restore the earlier immediate-scroll story sequencing.
+
+
+## V4 mobile guided-camera settle refinement — 2026-09-26
+
+Production application source:
+- `168ee88b8c47150318bd16242b9dffbbc5b7dfbc` — `fix LeadFlow mobile guided camera settle`
+
+Production:
+- Canonical: https://leadflow-ai-bhy.pages.dev/
+- Immutable verified deployment: https://b7aac3eb.leadflow-ai-bhy.pages.dev/
+- Wrangler: `4.141.0`
+- Deployment path: authenticated `samvr` CLI with isolated npm cache `/home/ubuntu/.cache/leadflow-wrangler-v4`
+
+Issue found during the final current-main audit:
+- At 390px, the first guided chapter could accept a premature native `scrollend` event before the new smooth camera move had actually begun.
+- The Workflow story could therefore begin about 248ms before the camera reached its settled position.
+
+Fix:
+- `waitForTourScrollSettle()` now ignores `scrollend` until real scroll movement is observed.
+- The `scrollend` listener is no longer one-shot, so an early event cannot remove the listener before the real guided move finishes.
+- `scrollTourTargetSettled()` now arms the settle monitor before calling `scrollIntoView()`.
+- V1/V2/V3 and their qualification Functions were not changed.
+
+Verification:
+- Fresh Node suite: **118/118 PASS**.
+- Source/syntax/diff checks: PASS.
+- Protected `/v1/`, `/v2/`, `/v3/` and versioned Functions unchanged.
+- V4 release matrix: dark/light × 390/768/1024/1440 PASS.
+- Visible audited text below 12px: **0**.
+- Primary audited controls remain >=44px.
+- Whole-page contrast: **0 failures** at dark/light 1440 and 390.
+- Qualification presets remain 92 / 64 / 33 with 16 events.
+- Professional story runtime: PASS.
+- Workflow semantics remain `NEW INQUIRY → VERIFIED → 92 / 100 → SALES REVIEW`.
+- Lead Operations infographic motion and pointer/keyboard emphasis: PASS.
+- Scenario Story direct pointer/keyboard scrubbing: PASS.
+- Architecture semantic state trace `REQUEST → VALID → SCORE + CRM STATE → READY`: PASS.
+- Full guided-motion audit: PASS on 1440 and 390.
+- Post-fix 390 guided chapter timing: `LEAD JOURNEY` begins after camera settle, approximately +77ms in the full local audit.
+- Public immutable 390 timing: Workflow begins +96.1ms after settle.
+- Public canonical 390 timing: Workflow begins +57.7ms after settle.
+- Public root application assets on canonical and immutable match source `168ee88b...` byte-for-byte for `index.html`, `app.js`, `dashboard.js`, `storytelling.js`, `styles.css`, and `favicon.svg`.
+- Public `/v3/`, `/v2/`, `/v1/`, `/refine-brown/`, and `/refine-navy/` routes: PASS.
+- Public root / V3 / V2 APIs remain `deterministic-qualification-v2`; V1 remains `deterministic-qualification-v1`.
+- Sarah=92 and missing-name HTTP 400 on every public API version.
+
+Treat `168ee88b... / b7aac3eb...` as the current LeadFlow V4 production application freeze. This later handoff commit is documentation-only and does not change deployed application bytes.

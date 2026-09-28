@@ -1,0 +1,171 @@
+name: NOVA Visual QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-qa.yml"
+      - "nova/qa-trigger.txt"
+      - "nova/site/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore exact GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+
+      - name: Vendor Three.js GLTF runtime
+        run: |
+          set -euo pipefail
+          mkdir -p nova/site/vendor/addons/loaders nova/site/vendor/addons/utils
+          mkdir -p /tmp/nova-vendor && cd /tmp/nova-vendor
+          npm init -y >/dev/null 2>&1
+          npm install three@0.180.0 --no-audit --no-fund
+          cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
+
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Create QA script
+        run: |
+          cat > nova/qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          fs.mkdirSync('nova-qa',{recursive:true});
+          const browser = await chromium.launch({headless:true});
+          const errors=[];
+
+          async function audit(viewport, prefix, scenes){
+            const page=await browser.newPage({viewport});
+            const localErrors=[];
+            page.on('pageerror',e=>{ const v=prefix+': pageerror: '+e.message; errors.push(v); localErrors.push(v); });
+            page.on('console',m=>{ if(m.type()==='error'){ const v=prefix+': console: '+m.text(); errors.push(v); localErrors.push(v); }});
+            page.on('requestfailed',r=>{ const v=prefix+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||''); errors.push(v); localErrors.push(v); });
+            page.on('response',r=>{ if(r.status()>=400){ const v=prefix+': HTTP '+r.status()+' '+r.url(); errors.push(v); localErrors.push(v); }});
+
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+            let startupTimedOut=false;
+            try{
+              await page.waitForFunction(()=>document.body.dataset.modelState!=='loading',null,{timeout:20000});
+            }catch(e){
+              startupTimedOut=true;
+              localErrors.push(prefix+': startup timeout: '+e.message);
+            }
+            const startup=await page.evaluate(()=>({
+              model:document.body.dataset.modelState,
+              runtime:document.querySelector('#runtimeState')?.textContent,
+              sections:[...document.querySelectorAll('[data-scene]')].map(s=>s.dataset.scene),
+              viewport:{width:innerWidth,height:innerHeight},
+              resources:performance.getEntriesByType('resource')
+                .map(r=>({name:r.name,transferSize:r.transferSize}))
+                .filter(r=>/app\.js|vendor|gltf|webp/.test(r.name))
+            }));
+            if(startup.viewport.width!==viewport.width || startup.viewport.height!==viewport.height){
+              localErrors.push(prefix+': viewport mismatch '+JSON.stringify(startup.viewport)+' expected '+JSON.stringify(viewport));
+            }
+            if(startupTimedOut || startup.model!=='ready' || localErrors.length){
+              fs.writeFileSync('nova-qa/'+prefix+'_startup.json',JSON.stringify({startup,localErrors},null,2));
+              await page.screenshot({path:'nova-qa/'+prefix+'_startup.png',fullPage:false});
+              throw new Error(prefix+' model startup failed '+JSON.stringify({startup,localErrors}));
+            }
+
+            const captures=[];
+            for(const [scene,p] of scenes){
+              await page.evaluate(([name,progress])=>{
+                const s=document.querySelector('[data-scene="'+name+'"]');
+                const vh=innerHeight;
+                const travel=Math.max(0,s.offsetHeight-vh);
+                const y=s.offsetTop+progress*travel;
+                scrollTo(0,Math.max(0,y));
+              },[scene,p]);
+              await page.waitForTimeout(900);
+              await page.waitForFunction(expected=>document.body.dataset.activeScene===expected,scene,{timeout:3000});
+              const state=await page.evaluate(()=>({
+                active:document.body.dataset.activeScene,
+                model:document.body.dataset.modelState,
+                runtime:document.querySelector('#runtimeState')?.textContent,
+                scrollY,
+                docHeight:document.body.scrollHeight
+              }));
+              const file=prefix+'_'+scene+'_'+String(p).replace('.','')+'.png';
+              await page.screenshot({path:'nova-qa/'+file,fullPage:false});
+              captures.push({file,scene,progress:p,state});
+            }
+
+            await page.close();
+            return {startup,captures};
+          }
+
+          async function poseScan(){
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            for(const p of [0,.08,.16,.24,.32,.40,.48,.56,.64,.72,.80,.88,.96]){
+              await page.goto('http://127.0.0.1:4173/?orientation=negx&pose='+p,{waitUntil:'networkidle'});
+              await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+              await page.waitForTimeout(700);
+              await page.screenshot({path:'nova-qa/pose_'+String(p).replace('.','')+'.png',fullPage:false});
+            }
+            await page.close();
+          }
+          await poseScan();
+
+          async function orientationCompare(){
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            for(const mode of ['posx','negx']){
+              await page.goto('http://127.0.0.1:4173/?orientation='+mode,{waitUntil:'networkidle'});
+              await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+              await page.waitForTimeout(1200);
+              await page.screenshot({path:'nova-qa/orientation_'+mode+'.png',fullPage:false});
+            }
+            await page.close();
+          }
+          await orientationCompare();
+
+          const desktop=await audit({width:1440,height:1000},'desktop',[
+            ['hero',.15],['form',.48],['mechanism',.25],['mechanism',.68],
+            ['choreography',.5],['interaction',.5],['closing',.45]
+          ]);
+          const tablet=await audit({width:1024,height:768},'tablet',[
+            ['hero',.15],['form',.48],['mechanism',.55],['choreography',.5],['interaction',.5]
+          ]);
+          const mobile=await audit({width:390,height:844},'mobile',[
+            ['hero',.12],['form',.5],['mechanism',.55],['choreography',.5],['interaction',.5],['closing',.4]
+          ]);
+
+          fs.writeFileSync('nova-qa/audit.json',JSON.stringify({desktop,tablet,mobile,errors},null,2));
+          if(errors.length) throw new Error('Browser errors:\n'+errors.join('\n'));
+          await browser.close();
+          JS
+
+      - name: Run visual audit
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory nova/site >/tmp/nova-server.log 2>&1 &
+          SERVER=$!
+          trap 'kill $SERVER || true' EXIT
+          sleep 2
+          node nova/qa.mjs
+          cat nova-qa/audit.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-visual-qa
+          path: nova-qa
+          retention-days: 7

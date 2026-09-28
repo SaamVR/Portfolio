@@ -1,0 +1,88 @@
+name: Publish NOVA to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-pages-publish.yml"
+      - "NovaAG/publish-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Portfolio main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Download exact verified R13 production artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/nova-r13-site
+          mkdir -p /tmp/nova-r13-site
+          gh run download 36074433568             --repo "${GITHUB_REPOSITORY}"             --name nova-production-site             --dir /tmp/nova-r13-site
+
+      - name: Validate exact NOVA payload
+        run: |
+          set -euo pipefail
+          SITE="/tmp/nova-r13-site"
+          test -f "$SITE/index.html"
+          test -f "$SITE/styles.css"
+          test -f "$SITE/app.js"
+          test -f "$SITE/runtime/timeline.js"
+          test -f "$SITE/runtime/composer.js"
+          test -f "$SITE/runtime/render-adapter.js"
+          test -f "$SITE/runtime/environment.js"
+          test -f "$SITE/ui/product-ui.js"
+          test -f "$SITE/ui/ui-bootstrap.js"
+          test -f "$SITE/interactions/fold-controller.js"
+          test -f "$SITE/interactions/inspection-controller.js"
+          test -f "$SITE/interactions/hotspot-controller.js"
+          test -f "$SITE/interactions/mode-controller.js"
+          test -f "$SITE/assets/headphones-web.gltf"
+          test -f "$SITE/vendor/three.module.js"
+          test -f "$SITE/vendor/three.core.js"
+          test -f "$SITE/vendor/addons/loaders/GLTFLoader.js"
+          test -f "$SITE/vendor/addons/utils/BufferGeometryUtils.js"
+          python3 - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("/tmp/nova-r13-site")
+          g=json.loads((root/"assets/headphones-web.gltf").read_text())
+          assert len(g["meshes"]) == 14
+          assert len(g["skins"][0]["joints"]) == 36
+          assert len(g["animations"]) == 3
+          assert all((root/"assets"/img["uri"]).exists() for img in g["images"])
+          print("Verified R13 NOVA artifact:", len(g["meshes"]), "meshes,", len(g["skins"][0]["joints"]), "joints")
+          PY
+
+      - name: Publish under NovaAG
+        run: |
+          set -euo pipefail
+          rm -rf NovaAG
+          mkdir -p NovaAG
+          cp -a /tmp/nova-r13-site/. NovaAG/
+          touch .nojekyll
+
+          test -f NovaAG/index.html
+          test -f NovaAG/assets/headphones-web.gltf
+          test -f NovaAG/vendor/three.module.js
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A NovaAG .nojekyll
+          if git diff --cached --quiet; then
+            echo "NovaAG already matches verified R13 artifact."
+            exit 0
+          fi
+          git commit -m "publish(nova): GitHub Pages NovaAG"
+          git push origin HEAD:main
