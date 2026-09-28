@@ -75,12 +75,13 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       weight=1;
     },
     reset(){
-      // Reset the manual offset immediately, while the named product view
-      // returns through the critically damped model spring.
+      // Release manual inspection back to neutral through the same damping used
+      // after pointer release. Keep the current yaw/pitch as the starting state
+      // so Reset never creates a one-frame snap.
+      dragging=false;
+      pointerId=null;
       yawTarget=0;
       pitchTarget=0;
-      yaw=0;
-      pitch=0;
       dragVelocity=0;
       pitchVelocity=0;
       view='front';
