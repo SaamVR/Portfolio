@@ -115,7 +115,7 @@ assert.ok(behindMobile.product.scale < .78, 'Mobile Behind NOVA should keep the 
 
 
 const designPose=sampleTimeline(.20,'desktop').product.pose;
-assert.ok(designPose >= .16 && designPose <= .32,'Design should stay in an open design-study pose');
+assert.ok(designPose >= .365 && designPose <= .375,'Design should stay inside the clean open hinge pose');
 const designClosePoseA=sampleTimeline(.18,'desktop').product.pose;
 const designClosePoseB=sampleTimeline(.20,'desktop').product.pose;
 assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
@@ -123,7 +123,7 @@ assert.ok(Math.abs(designClosePoseB-designClosePoseA) <= .035,
 const commercialOpenSamples=[.34,.36,.44,.52,.64,.79,.90];
 for(const p of commercialOpenSamples){
   const pose=sampleTimeline(p,'desktop').product.pose;
-  assert.ok(pose >= .64 && pose <= .80,`commercial product pose must stay open at ${p}, got ${pose}`);
+  assert.ok(pose >= .365 && pose <= .395,`commercial product pose must stay inside the clean hinge window at ${p}, got ${pose}`);
 }
 
 
@@ -206,17 +206,17 @@ assert.ok(r13AdaptiveEnd.environment.adaptiveAmount-r13AdaptiveStart.environment
   'R13 Noise-control scene should communicate change through the environment');
 
 
-// R14 / V3 narrative articulation: concentrate source-clip motion into deliberate
-// physical beats instead of making the rig "breathe" open/closed under every chapter.
-const r14SoundStart=sampleTimeline(.34,'desktop').product.pose;
-const r14SoundEnd=sampleTimeline(.44,'desktop').product.pose;
-assert.ok(r14SoundEnd-r14SoundStart >= .08,
-  `R14 Sound should retain the expressive one-way opening action; delta=${r14SoundEnd-r14SoundStart}`);
+// V7 source-rig policy: camera/light tell the listening story. The skeleton
+// stays inside the verified hinge window and only articulates for Form.
+const v7SoundStart=sampleTimeline(.34,'desktop').product.pose;
+const v7SoundEnd=sampleTimeline(.44,'desktop').product.pose;
+assert.ok(Math.abs(v7SoundEnd-v7SoundStart) <= .006,
+  `V7 Sound should not scrub unrelated source animation; delta=${Math.abs(v7SoundEnd-v7SoundStart)}`);
 
-const r14AdaptiveStart=sampleTimeline(.45,'desktop').product.pose;
-const r14AdaptiveEnd=sampleTimeline(.58,'desktop').product.pose;
-assert.ok(r14AdaptiveStart-r14AdaptiveEnd >= .015 && r14AdaptiveStart-r14AdaptiveEnd <= .035,
-  `R14 Adaptive should settle the opened rig subtly in one direction; delta=${r14AdaptiveStart-r14AdaptiveEnd}`);
+const v7AdaptiveStart=sampleTimeline(.45,'desktop').product.pose;
+const v7AdaptiveEnd=sampleTimeline(.58,'desktop').product.pose;
+assert.ok(Math.abs(v7AdaptiveEnd-v7AdaptiveStart) <= .006,
+  `V7 Adaptive should keep the source rig stable; delta=${Math.abs(v7AdaptiveEnd-v7AdaptiveStart)}`);
 
 for(const [label,start,end,maxSpan] of [
   ['Inspect',.72,.86,.018],
@@ -233,17 +233,17 @@ const v7FormOpen=sampleTimeline(.62,'desktop').product.pose;
 const v7FormFold=sampleTimeline(.675,'desktop').product.pose;
 const v7FormHold=sampleTimeline(.69,'desktop').product.pose;
 const v7FormReopen=sampleTimeline(.72,'desktop').product.pose;
-assert.ok(v7FormOpen-v7FormFold >= .16,
-  `V7 Form should visibly fold the real rig; open=${v7FormOpen} folded=${v7FormFold}`);
+assert.ok(v7FormFold-v7FormOpen >= .045,
+  `V7 Form should traverse the verified hinge fold; open=${v7FormOpen} folded=${v7FormFold}`);
 assert.ok(Math.abs(v7FormHold-v7FormFold) <= .012,
   `V7 Form needs a readable folded plateau; folded=${v7FormFold} hold=${v7FormHold}`);
-assert.ok(v7FormReopen-v7FormHold >= .16,
+assert.ok(v7FormHold-v7FormReopen >= .045,
   `V7 Form should deliberately reopen before inspection; hold=${v7FormHold} reopen=${v7FormReopen}`);
 
 const r14BehindStart=sampleTimeline(.96,'desktop').product.pose;
 const r14BehindEnd=sampleTimeline(1,'desktop').product.pose;
-assert.ok(r14BehindStart-r14BehindEnd >= .07,
-  `R14 Behind handoff should retain a deliberate final closing/recession; delta=${r14BehindStart-r14BehindEnd}`);
+assert.ok(r14BehindEnd-r14BehindStart >= .05,
+  `V7 Behind handoff may close only through the clean hinge segment; delta=${r14BehindEnd-r14BehindStart}`);
 
 
 // V3 motion-continuity contract: no accordion reversals or abrupt rig scrubbing.
