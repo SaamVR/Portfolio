@@ -321,3 +321,16 @@ assert.ok(v4MobileDesign.camera.position[2] <= 4.78,
   `V4 mobile Design should not be pushed excessively far away; z=${v4MobileDesign.camera.position[2]}`);
 assert.ok(Math.abs(v4MobileDesign.product.yaw) < Math.abs(v4Hinge.product.yaw),
   'V4 mobile detail motion must remain shallower than desktop');
+
+
+// V4 crown-clearance contract: keep the larger product, but frame the headband
+// away from the top edge in the full-product chapters.
+const v4SpatialCrown=sampleTimeline(.36,'desktop');
+assert.ok(v4SpatialCrown.camera.target[1] >= -.16,
+  `V4 Sound should keep the enlarged crown inside frame; targetY=${v4SpatialCrown.camera.target[1]}`);
+const v4AdaptiveCrown=sampleTimeline(.52,'desktop');
+assert.ok(v4AdaptiveCrown.camera.target[1] >= .08,
+  `V4 Noise Control should shift the enlarged product downward; targetY=${v4AdaptiveCrown.camera.target[1]}`);
+const v4FormCrown=sampleTimeline(.65,'desktop');
+assert.ok(v4FormCrown.camera.target[1] >= .07,
+  `V4 Form should preserve crown clearance without shrinking the product; targetY=${v4FormCrown.camera.target[1]}`);
