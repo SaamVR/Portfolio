@@ -28,8 +28,8 @@ const KEYFRAMES = [
   {p:0.145, pose:.30, pos:[.16,.025,0], scale:1.075, yaw:.24, pitch:-.036, cam:[-.25,.12,4.02], target:[-.18,.055,0], fov:24.9, exposure:1.10, hemi:1.82, key:5.15, fill:1.12, rim:9.2, warm:5.0, keyColor:0xffead3, rimColor:0xcc7243, keyPos:[2.9,4.0,4.55], tone:.09, spatial:.01, spread:.52, adaptive:0, openness:.74, motion:.16},
   {p:0.16, pose:.30, pos:[.18,.02,0], scale:1.09, yaw:.31, pitch:-.048, cam:[-.33,.10,3.76], target:[-.20,.015,0], fov:24.2, exposure:1.11, hemi:1.72, key:5.45, fill:1.03, rim:9.8, warm:5.2, keyColor:0xffe7cd, rimColor:0xc96f40, keyPos:[2.68,3.9,4.35], tone:.12, spatial:.015, spread:.54, adaptive:0, openness:.75, motion:.15},
   {p:0.185, pose:.30, pos:[.18,.018,0], scale:1.09, yaw:.30, pitch:-.045, cam:[-.31,.11,3.80], target:[-.17,.025,0], fov:24.3, exposure:1.11, hemi:1.72, key:5.35, fill:1.05, rim:9.7, warm:5.2, keyColor:0xffe8cf, rimColor:0xca7041, keyPos:[2.75,3.95,4.4], tone:.13, spatial:.02, spread:.55, adaptive:0, openness:.75, motion:.14},
-  {p:0.205, pose:.30, pos:[.14,.015,0], scale:1.085, yaw:.18, pitch:-.018, cam:[-.18,.21,3.74], target:[-.04,.17,0], fov:24.3, exposure:1.10, hemi:1.74, key:5.5, fill:1.03, rim:10.0, warm:5.15, keyColor:0xffe8cf, rimColor:0xc86f42, keyPos:[2.55,4.25,4.4], tone:.14, spatial:.025, spread:.55, adaptive:0, openness:.75, motion:.13},
-  {p:0.225, pose:.30, pos:[.14,.012,0], scale:1.085, yaw:.17, pitch:-.015, cam:[-.16,.20,3.79], target:[-.03,.16,0], fov:24.5, exposure:1.10, hemi:1.78, key:5.35, fill:1.08, rim:9.7, warm:5.05, keyColor:0xffead2, rimColor:0xca7244, keyPos:[2.65,4.2,4.5], tone:.145, spatial:.03, spread:.56, adaptive:0, openness:.75, motion:.12},
+  {p:0.205, pose:.30, pos:[.14,.015,0], scale:1.085, yaw:.18, pitch:-.018, cam:[-.18,.21,3.74], target:[-.16,.17,0], fov:24.3, exposure:1.10, hemi:1.74, key:5.5, fill:1.03, rim:10.0, warm:5.15, keyColor:0xffe8cf, rimColor:0xc86f42, keyPos:[2.55,4.25,4.4], tone:.14, spatial:.025, spread:.55, adaptive:0, openness:.75, motion:.13},
+  {p:0.225, pose:.30, pos:[.14,.012,0], scale:1.085, yaw:.17, pitch:-.015, cam:[-.16,.20,3.79], target:[-.15,.16,0], fov:24.5, exposure:1.10, hemi:1.78, key:5.35, fill:1.08, rim:9.7, warm:5.05, keyColor:0xffead2, rimColor:0xca7244, keyPos:[2.65,4.2,4.5], tone:.145, spatial:.03, spread:.56, adaptive:0, openness:.75, motion:.12},
   {p:0.255, pose:.30, pos:[.19,.006,0], scale:1.09, yaw:.36, pitch:-.030, cam:[-.43,.06,3.82], target:[-.23,-.025,0], fov:24.4, exposure:1.11, hemi:1.76, key:5.55, fill:1.02, rim:10.1, warm:5.15, keyColor:0xffe6cc, rimColor:0xc76e40, keyPos:[2.72,3.78,4.35], tone:.155, spatial:.04, spread:.57, adaptive:0, openness:.76, motion:.13},
   {p:0.28, pose:.30, pos:[.14,.005,0], scale:1.075, yaw:.23, pitch:-.018, cam:[-.28,.10,4.18], target:[-.13,.04,0], fov:25.4, exposure:1.09, hemi:1.88, key:4.8, fill:1.22, rim:8.7, warm:4.9, keyColor:0xffead6, rimColor:0xce7648, keyPos:[3.08,4.0,4.85], tone:.18, spatial:.06, spread:.58, adaptive:0, openness:.76, motion:.15},
 
@@ -84,17 +84,12 @@ export function getRangeState(progress){
 }
 
 const PRODUCT_POSE_KEYFRAMES = [
-  // Product articulation is narrative-led:
-  // stable design -> one listening-open action -> fold/hold/reopen -> inspection -> final recession.
-  [0.000,.240],[0.045,.270],[0.090,.290],[0.120,.300],
-  [0.145,.300],[0.160,.300],[0.185,.300],[0.205,.300],[0.225,.300],[0.255,.300],[0.280,.300],
-  [0.300,.400],[0.320,.520],[0.340,.640],[0.360,.720],
-  [0.410,.730],[0.450,.740],
-  [0.490,.735],[0.540,.725],[0.580,.720],
-  [0.620,.720],[0.640,.660],[0.665,.560],[0.675,.500],[0.690,.500],[0.705,.610],[0.720,.720],
-  [0.760,.720],[0.790,.720],[0.830,.720],[0.860,.720],
-  [0.900,.720],[0.945,.720],[0.960,.720],
-  [0.985,.680],[1.000,.640]
+  // The supplied clip contains unrelated expansion/twist takes outside the
+  // clean hinge window. Keep the product mechanically stable at .37 and use
+  // only the verified .37 -> .43 segment for the fold demonstration.
+  [0.000,.370],[0.620,.370],
+  [0.645,.385],[0.675,.430],[0.690,.430],[0.705,.395],[0.720,.370],
+  [0.960,.370],[0.985,.400],[1.000,.430]
 ];
 
 function sampleProductPose(progress){
