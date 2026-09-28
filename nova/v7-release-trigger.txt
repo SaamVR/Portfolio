@@ -1,3 +1,3 @@
 NOVA V7 storytelling release gate
 2026-09-28
-revision 5: frame-rate-safe turntable verification
+revision 6: browser QA helper fix
