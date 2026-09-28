@@ -334,3 +334,13 @@ assert.ok(v4AdaptiveCrown.camera.target[1] >= .08,
 const v4FormCrown=sampleTimeline(.65,'desktop');
 assert.ok(v4FormCrown.camera.target[1] >= .07,
   `V4 Form should preserve crown clearance without shrinking the product; targetY=${v4FormCrown.camera.target[1]}`);
+
+
+// V4 mobile Design hotspot clearance: keep the enlarged product but bias the
+// composition left enough that real earcup anchors remain interactive.
+const v4MobileDesignCushion=sampleTimeline(.17,'mobile');
+const v4MobileDesignOffset=v4MobileDesignCushion.product.position[0]-v4MobileDesignCushion.camera.target[0];
+assert.ok(v4MobileDesignOffset <= .025,
+  `V4 mobile Design must keep the cushion/control anchors away from the right safe edge; lateral offset=${v4MobileDesignOffset}`);
+assert.ok(v4MobileDesignCushion.camera.position[2] <= 4.78,
+  `V4 mobile Design safety framing should remain visually close; z=${v4MobileDesignCushion.camera.position[2]}`);
