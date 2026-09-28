@@ -289,8 +289,12 @@ for(const [label,state,minScale,maxZ] of [
 }
 assert.ok(v4Hinge.camera.target[1] >= .13,
   `V4 hinge detail should visibly travel upward to the articulation; targetY=${v4Hinge.camera.target[1]}`);
-assert.ok(Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw) >= .45,
-  `V4 Design should reveal opposite hardware faces across the detail sequence; yaw delta=${Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw)}`);
+assert.ok(Math.abs(v4Hinge.camera.position[1]-v4Cushion.camera.position[1]) >= .10,
+  `V4 hinge detail should travel vertically through camera choreography; deltaY=${Math.abs(v4Hinge.camera.position[1]-v4Cushion.camera.position[1])}`);
+assert.ok(Math.abs(v4Controls.camera.position[0]-v4Hinge.camera.position[0]) >= .16,
+  `V4 controls detail should travel laterally through camera choreography; deltaX=${Math.abs(v4Controls.camera.position[0]-v4Hinge.camera.position[0])}`);
+assert.ok(Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw) <= .08,
+  `V4 Design rig should remain calm while the camera reveals details; yaw delta=${Math.abs(v4Controls.product.yaw-v4Cushion.product.yaw)}`);
 
 const v4Adaptive=sampleTimeline(.52,'desktop');
 assert.ok(v4Adaptive.product.scale >= 1.10 && v4Adaptive.camera.position[2] <= 4.18,
