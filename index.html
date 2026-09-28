@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio — Sam VR</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0f;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .card {
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
+        p  { color: #64748b; margin-bottom: 2rem; }
+        a.proj {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.5rem;
+            background: #111118;
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 1rem;
+            color: #f1f5f9;
+            text-decoration: none;
+            font-weight: 600;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        a.proj:hover {
+            border-color: rgba(99,102,241,0.45);
+            box-shadow: 0 0 24px rgba(99,102,241,0.1);
+        }
+        .tag {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(99,102,241,0.14);
+            color: #a5b4fc;
+            padding: 0.25rem 0.65rem;
+            border-radius: 9999px;
+        }
+        .arrow { color: #475569; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Portfolio</h1>
+        <p>A collection of design &amp; motion experiments.</p>
+        <a class="proj" href="./minianimations/">
+            <div style="text-align:left">
+                <div style="margin-bottom:0.4rem"><span class="tag">Motion Design</span></div>
+                <div>Lightweight Web &amp; App Motion</div>
+                <div style="font-size:0.8rem;color:#64748b;font-weight:400;margin-top:0.25rem">10 microanimations · Pure CSS/SVG</div>
+            </div>
+            <span class="arrow">→</span>
+        </a>
+    </div>
+</body>
+</html>
