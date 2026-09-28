@@ -40,9 +40,9 @@ const KEYFRAMES = [
   {p:0.58, pose:.74, pos:[0,-.05,0], scale:1.10, yaw:-.05, pitch:0, cam:[-.08,.04,4.25], target:[.02,-.03,0], fov:26.2, exposure:1.15, hemi:1.0, key:5.0, fill:.72, rim:10.5, warm:5.5, keyColor:0xffd8b1, rimColor:0xb9653d, keyPos:[2.9,3.5,4.8], tone:.9, spatial:.75, spread:.82, adaptive:.65, openness:.45, motion:.45},
 
   // Form and inspection are controlled physical studies, not decorative spins.
-  {p:0.62, pose:.72, pos:[.02,-.045,0], scale:1.12, yaw:.18, pitch:.025, cam:[-.30,.10,4.06], target:[-.12,0,0], fov:25.7, exposure:1.13, hemi:1.25, key:5.15, fill:.90, rim:9.8, warm:5.3, keyColor:0xffdfc1, rimColor:0xbd6840, keyPos:[3.0,3.65,4.8], tone:.70, spatial:.50, spread:.75, adaptive:.35, openness:.56, motion:.36},
-  {p:0.67, pose:.72, pos:[.02,-.04,0], scale:1.14, yaw:.22, pitch:.03, cam:[-.34,.12,3.94], target:[-.15,0,0], fov:25.4, exposure:1.12, hemi:1.45, key:5.0, fill:1.00, rim:9.3, warm:5.1, keyColor:0xffe2c7, rimColor:0xbf6c42, keyPos:[3.1,3.75,4.9], tone:.56, spatial:.36, spread:.70, adaptive:.24, openness:.62, motion:.31},
-  {p:0.72, pose:.32, pos:[0,-.04,0], scale:1.12, yaw:.12, pitch:0, cam:[-.26,.08,4.20], target:[-.10,-.02,0], fov:26.0, exposure:1.10, hemi:1.65, key:4.7, fill:1.1, rim:8.7, warm:5.0, keyColor:0xffe6ce, rimColor:0xc07045, keyPos:[3.2,3.8,5.0], tone:.42, spatial:.25, spread:.67, adaptive:.15, openness:.68, motion:.28},
+  {p:0.62, pose:.72, pos:[.02,-.045,0], scale:1.12, yaw:.18, pitch:.025, cam:[-.30,.10,4.06], target:[-.12,.08,0], fov:25.7, exposure:1.13, hemi:1.25, key:5.15, fill:.90, rim:9.8, warm:5.3, keyColor:0xffdfc1, rimColor:0xbd6840, keyPos:[3.0,3.65,4.8], tone:.70, spatial:.50, spread:.75, adaptive:.35, openness:.56, motion:.36},
+  {p:0.67, pose:.72, pos:[.02,-.04,0], scale:1.14, yaw:.22, pitch:.03, cam:[-.34,.12,3.94], target:[-.15,.10,0], fov:25.4, exposure:1.12, hemi:1.45, key:5.0, fill:1.00, rim:9.3, warm:5.1, keyColor:0xffe2c7, rimColor:0xbf6c42, keyPos:[3.1,3.75,4.9], tone:.56, spatial:.36, spread:.70, adaptive:.24, openness:.62, motion:.31},
+  {p:0.72, pose:.32, pos:[0,-.04,0], scale:1.12, yaw:.12, pitch:0, cam:[-.26,.08,4.20], target:[-.10,.06,0], fov:26.0, exposure:1.10, hemi:1.65, key:4.7, fill:1.1, rim:8.7, warm:5.0, keyColor:0xffe6ce, rimColor:0xc07045, keyPos:[3.2,3.8,5.0], tone:.42, spatial:.25, spread:.67, adaptive:.15, openness:.68, motion:.28},
   {p:0.76, pose:.28, pos:[.02,-.015,0], scale:1.14, yaw:.08, pitch:.02, cam:[-.16,.08,4.00], target:[-.14,.01,0], fov:25.4, exposure:1.10, hemi:1.72, key:4.9, fill:1.18, rim:8.8, warm:5.0, keyColor:0xffe8d2, rimColor:0xc37147, keyPos:[3.25,3.9,5.0], tone:.34, spatial:.18, spread:.63, adaptive:.08, openness:.70, motion:.24},
   {p:0.79, pose:.26, pos:[.04,0,0], scale:1.17, yaw:.04, pitch:.015, cam:[-.08,.08,3.78], target:[-.16,.02,0], fov:24.8, exposure:1.10, hemi:1.78, key:5.05, fill:1.20, rim:9.0, warm:5.05, keyColor:0xffead5, rimColor:0xc57348, keyPos:[3.3,3.95,5.0], tone:.28, spatial:.14, spread:.61, adaptive:.05, openness:.71, motion:.22},
   {p:0.83, pose:.24, pos:[.03,0,0], scale:1.15, yaw:0, pitch:0, cam:[-.04,.07,3.94], target:[-.15,.02,0], fov:25.3, exposure:1.09, hemi:1.84, key:4.8, fill:1.25, rim:8.5, warm:4.9, keyColor:0xffebd7, rimColor:0xc87549, keyPos:[3.35,4.0,5.1], tone:.22, spatial:.11, spread:.59, adaptive:.02, openness:.72, motion:.20},
@@ -115,13 +115,13 @@ function applyCompositionInfluences(state,p){
   // Keep the full product silhouette inside the viewport during the Sound pass.
   // The previous -.54 target shift pushed the headphone above the top edge,
   // especially on short desktop and mobile viewports.
-  state.camera.target[1] -= .16 * spatial;
+  state.camera.target[1] -= .10 * spatial;
   state.camera.position[2] += .26 * spatial;
 
   state.camera.target[0] += .58 * adaptive;
   // Keep the complete headband visible while the Control copy owns the right side.
   // The earlier downward target bias could push the crown above the viewport after damping.
-  state.camera.target[1] += .08 * adaptive;
+  state.camera.target[1] += .13 * adaptive;
   state.camera.position[2] += .18 * adaptive;
 
   state.camera.target[0] -= .72 * resolution;
