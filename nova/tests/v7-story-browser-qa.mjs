@@ -116,8 +116,7 @@ async function auditCandidate(viewport,mobile=false,label='desktop'){
   for(const p of [.90,.79,.69,.54,.41,.255,.16,.08,.02]){
     await gotoProgress(page,p);
     const state=await readState(page);
-    assert(document!==null,label+' unreachable');
-    assert(state.range,label+' reverse scroll lost range at '+p);
+    assert(Boolean(state.range),label+' reverse scroll lost range at '+p);
   }
 
   const metrics=await page.evaluate(()=>window.__NOVA_QA__?.storyMetrics?.()||null);
