@@ -76,13 +76,18 @@ async function auditCandidate(viewport,mobile=false,label='desktop'){
     assert(state.range===range, label+' range mismatch at '+p+': '+state.range+' vs '+range);
     assert(state.active===range, label+' active chapter mismatch at '+p+': '+state.active+' vs '+range);
     if(range!=='behind' && state.frame){
+      const arrivalMacro=range==='hero' && p<=.03;
       const intentionalCrop=range==='design';
-      const visible=intentionalCrop ? state.frame.nearViewport>=3 && state.frame.inViewport>=2 : state.frame.inViewport>=3;
+      const visible=arrivalMacro
+        ? state.frame.nearViewport>=1 && state.frame.inViewport>=1
+        : intentionalCrop
+          ? state.frame.nearViewport>=3 && state.frame.inViewport>=2
+          : state.frame.inViewport>=3;
       assert(visible,label+' product framing invalid at '+p+' '+JSON.stringify(state.frame));
-      assert(state.frame.earcupsInViewport>=1,label+' earcups left viewport at '+p);
+      if(!arrivalMacro) assert(state.frame.earcupsInViewport>=1,label+' earcups left viewport at '+p);
     }
     states.push({p,range,detail:state.detail,pose:state.visual?.product?.pose??null,frame:state.frame});
-    if([.08,.16,.205,.255,.41,.675,.69,.79,.90].includes(p)){
+    if([.02,.08,.16,.205,.255,.41,.675,.69,.79,.90].includes(p)){
       await page.screenshot({path:OUT+'/'+label+'_'+String(p).replace('.','_')+'.png'});
     }
   }
