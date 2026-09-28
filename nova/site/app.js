@@ -33,7 +33,7 @@ const forceStatic = query.get('static') === '1';
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
 const foldController = createFoldController({openPose:.37,foldedPose:.43,duration:.92});
-const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
+const inspectionController = createInspectionController({maxYaw:Math.PI,maxPitch:.12});
 const modeController = createModeController();
 
 let hotspotController = null;
@@ -386,10 +386,14 @@ function publishState(state){
     publishedRange=state.range;
   }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
+  const foldInfluence=interactionState.fold || {};
+  const authoredFoldState=state.range==='form' && !foldInfluence.active && (foldInfluence.weight||0)<.04
+    ? (state.product.pose>=.405 ? 'fold' : 'open')
+    : foldState;
   state.interaction={
     listeningMode,
     noiseMode,
-    foldState,
+    foldState:authoredFoldState,
     inspectionView:interactionState.inspection?.view || inspectionView
   };
   updateProductUI(state);
