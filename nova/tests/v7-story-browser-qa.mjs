@@ -10,7 +10,7 @@ const browser=await chromium.launch({headless:true});
 const errors=[];
 const report={baseline:BASELINE,candidate:CANDIDATE,viewports:{}};
 
-async function open(url,viewport,mobile=false,label='page'){
+async function openPage(url,viewport,mobile=false,label='page'){
   const context=await browser.newContext({viewport,hasTouch:mobile,isMobile:mobile});
   const page=await context.newPage();
   page.on('pageerror',e=>errors.push(label+' pageerror '+e.message));
@@ -60,7 +60,7 @@ function assert(condition,message){
 }
 
 async function auditCandidate(viewport,mobile=false,label='desktop'){
-  const {context,page}=await open(CANDIDATE,viewport,mobile,'candidate '+label);
+  const {context,page}=await openPage(CANDIDATE,viewport,mobile,'candidate '+label);
   const points=[
     [.02,'hero'],[.08,'hero'],
     [.16,'design'],[.205,'design'],[.255,'design'],
@@ -92,8 +92,8 @@ async function auditCandidate(viewport,mobile=false,label='desktop'){
   assert(byP.get(.205)?.detail==='hinge',label+' Design hinge beat missing');
   assert(byP.get(.255)?.detail==='controls',label+' Design controls beat missing');
 
-  const open=byP.get(.62)?.pose, folded=byP.get(.675)?.pose, hold=byP.get(.69)?.pose, reopened=byP.get(.72)?.pose;
-  assert(Number.isFinite(open)&&Number.isFinite(folded)&&folded-open>.045,label+' fold action did not traverse the clean hinge segment: '+JSON.stringify({open,folded}));
+  const openPose=byP.get(.62)?.pose, folded=byP.get(.675)?.pose, hold=byP.get(.69)?.pose, reopened=byP.get(.72)?.pose;
+  assert(Number.isFinite(openPose)&&Number.isFinite(folded)&&folded-openPose>.045,label+' fold action did not traverse the clean hinge segment: '+JSON.stringify({openPose,folded}));
   assert(Math.abs(hold-folded)<.02,label+' folded plateau missing: '+JSON.stringify({folded,hold}));
   assert(hold-reopened>.045,label+' reopen action missing: '+JSON.stringify({hold,reopened}));
 
@@ -130,7 +130,7 @@ async function auditCandidate(viewport,mobile=false,label='desktop'){
 }
 
 async function baselineContactSheet(){
-  const {context,page}=await open(BASELINE,{width:1440,height:1000},false,'baseline');
+  const {context,page}=await openPage(BASELINE,{width:1440,height:1000},false,'baseline');
   for(const p of [.08,.16,.205,.255,.41,.675,.79,.90]){
     await gotoProgress(page,p);
     await page.screenshot({path:OUT+'/baseline_v4_'+String(p).replace('.','_')+'.png'});
