@@ -350,7 +350,8 @@ Object.defineProperty(window,'__NOVA_QA__',{
     productFrame:measureProductFrame,
     storyMetrics:()=>scrollDirector.metrics(),
     currentProgress:()=>currentProgress(),
-    scrollForProgress:progress=>scrollDirector.scrollForProgress(progress)
+    scrollForProgress:progress=>scrollDirector.scrollForProgress(progress),
+    visualState:()=>currentComposedState
   },
   configurable:true
 });
