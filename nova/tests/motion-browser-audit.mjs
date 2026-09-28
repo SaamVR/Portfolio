@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 fs.mkdirSync('nova-motion-audit',{recursive:true});
 const browser=await chromium.launch({headless:true});
-const BASELINE='https://v3.nova-interactive-portfolio.pages.dev/';
+const BASELINE='https://v4.nova-interactive-portfolio.pages.dev/';
 const CANDIDATE='http://127.0.0.1:4173/';
 
 function scalarStats(values,epsilon=.02){
@@ -51,14 +51,22 @@ async function ready(url,viewport,mobile=false){
 async function setProgress(page,p,settle=420){
   await page.evaluate(progress=>{
     document.documentElement.style.scrollBehavior='auto';
-    const behind=document.querySelector('#behind');
-    const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
-    scrollTo(0,max*progress);
+    const qa=window.__NOVA_QA__;
+    const target=qa?.scrollForProgress ? qa.scrollForProgress(progress) : (()=>{
+      const behind=document.querySelector('#behind');
+      const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+      return max*progress;
+    })();
+    scrollTo(0,target);
   },p);
   await page.waitForFunction(progress=>{
-    const behind=document.querySelector('#behind');
-    const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
-    return Math.abs(scrollY/max-progress)<.004;
+    const qa=window.__NOVA_QA__;
+    const current=qa?.currentProgress ? qa.currentProgress() : (()=>{
+      const behind=document.querySelector('#behind');
+      const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+      return scrollY/max;
+    })();
+    return Math.abs(current-progress)<.004;
   },p,{timeout:4000});
   if(settle) await page.waitForTimeout(settle);
 }
@@ -77,19 +85,27 @@ async function collect(page,{frames=60,actions=[]}){
       if(action){
         if(action.type==='click') document.querySelector(action.selector)?.click();
         if(action.type==='scroll'){
-          const behind=document.querySelector('#behind');
-          const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
-          scrollTo(0,max*action.progress);
+          const qa=window.__NOVA_QA__;
+          const target=qa?.scrollForProgress ? qa.scrollForProgress(action.progress) : (()=>{
+            const behind=document.querySelector('#behind');
+            const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+            return max*action.progress;
+          })();
+          scrollTo(0,target);
         }
       }
       await new Promise(r=>requestAnimationFrame(r));
       const f=window.__NOVA_QA__?.productFrame?.();
       if(f?.points?.cushion&&f?.points?.headband&&f?.points?.controls){
-        const behind=document.querySelector('#behind');
-        const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+        const qa=window.__NOVA_QA__;
+        const progress=qa?.currentProgress ? qa.currentProgress() : (()=>{
+          const behind=document.querySelector('#behind');
+          const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+          return scrollY/max;
+        })();
         rows.push({
           i,
-          p:scrollY/max,
+          p:progress,
           range:document.body.dataset.range,
           points:{cushion:f.points.cushion,headband:f.points.headband,controls:f.points.controls}
         });
@@ -101,12 +117,16 @@ async function collect(page,{frames=60,actions=[]}){
 async function continuous(page,{frames=150,from=0,to=1}){
   return page.evaluate(async ({frames,from,to})=>{
     document.documentElement.style.scrollBehavior='auto';
-    const behind=document.querySelector('#behind');
-    const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
     const rows=[];
     for(let i=0;i<frames;i++){
       const p=from+(to-from)*(i/(frames-1));
-      scrollTo(0,max*p);
+      const qa=window.__NOVA_QA__;
+      const target=qa?.scrollForProgress ? qa.scrollForProgress(p) : (()=>{
+        const behind=document.querySelector('#behind');
+        const max=Math.max(1,behind.offsetTop+behind.offsetHeight-innerHeight);
+        return max*p;
+      })();
+      scrollTo(0,target);
       await new Promise(r=>requestAnimationFrame(r));
       const f=window.__NOVA_QA__?.productFrame?.();
       if(f?.points?.cushion&&f?.points?.headband&&f?.points?.controls){
