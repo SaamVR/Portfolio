@@ -219,7 +219,6 @@ assert.ok(r14AdaptiveStart-r14AdaptiveEnd >= .015 && r14AdaptiveStart-r14Adaptiv
   `R14 Adaptive should settle the opened rig subtly in one direction; delta=${r14AdaptiveStart-r14AdaptiveEnd}`);
 
 for(const [label,start,end,maxSpan] of [
-  ['Form',.58,.72,.025],
   ['Inspect',.72,.86,.018],
   ['Resolution',.86,.96,.018]
 ]){
@@ -229,6 +228,17 @@ for(const [label,start,end,maxSpan] of [
   assert.ok(span <= maxSpan,
     `R14 ${label} should keep physical articulation stable while its own interaction/camera system owns motion; pose span=${span}`);
 }
+
+const v7FormOpen=sampleTimeline(.62,'desktop').product.pose;
+const v7FormFold=sampleTimeline(.675,'desktop').product.pose;
+const v7FormHold=sampleTimeline(.69,'desktop').product.pose;
+const v7FormReopen=sampleTimeline(.72,'desktop').product.pose;
+assert.ok(v7FormOpen-v7FormFold >= .16,
+  `V7 Form should visibly fold the real rig; open=${v7FormOpen} folded=${v7FormFold}`);
+assert.ok(Math.abs(v7FormHold-v7FormFold) <= .012,
+  `V7 Form needs a readable folded plateau; folded=${v7FormFold} hold=${v7FormHold}`);
+assert.ok(v7FormReopen-v7FormHold >= .16,
+  `V7 Form should deliberately reopen before inspection; hold=${v7FormHold} reopen=${v7FormReopen}`);
 
 const r14BehindStart=sampleTimeline(.96,'desktop').product.pose;
 const r14BehindEnd=sampleTimeline(1,'desktop').product.pose;
@@ -258,3 +268,31 @@ const v3SettleA=sampleTimeline(.19,'desktop');
 const v3SettleB=sampleTimeline(.22,'desktop');
 assert.ok(Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw) <= .012,
   `V3 Design settle yaw drift must stay bounded for stable engineering annotations; delta=${Math.abs(v3SettleB.product.yaw-v3SettleA.product.yaw)}`);
+
+
+// V7 storytelling contract: the Design study must move the camera target between
+// real product details while keeping the source rig mechanically quiet.
+const v7Cushion=sampleTimeline(.16,'desktop');
+const v7Hinge=sampleTimeline(.205,'desktop');
+const v7Controls=sampleTimeline(.255,'desktop');
+assert.ok(Math.hypot(
+  v7Hinge.camera.target[0]-v7Cushion.camera.target[0],
+  v7Hinge.camera.target[1]-v7Cushion.camera.target[1]
+) >= .10,'V7 cushion -> hinge should be a meaningful camera study');
+assert.ok(Math.hypot(
+  v7Controls.camera.target[0]-v7Hinge.camera.target[0],
+  v7Controls.camera.target[1]-v7Hinge.camera.target[1]
+) >= .10,'V7 hinge -> controls should be a meaningful camera study');
+assert.ok(Math.max(
+  Math.abs(v7Cushion.product.pose-v7Hinge.product.pose),
+  Math.abs(v7Hinge.product.pose-v7Controls.product.pose)
+) <= .006,'V7 Design details should not scrub the source rig');
+
+const v7HeroMacro=sampleTimeline(.01,'desktop');
+const v7HeroResolved=sampleTimeline(.10,'desktop');
+assert.ok(v7HeroMacro.camera.position[2]+.55 < v7HeroResolved.camera.position[2],
+  'V7 Hero must begin as a macro arrival and pull back into the full product');
+assert.ok(v7HeroMacro.camera.fov < v7HeroResolved.camera.fov,
+  'V7 Hero macro should use tighter product-photography optics');
+
+console.log('timeline_contract_v7: PASS');
