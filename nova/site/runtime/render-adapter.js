@@ -73,6 +73,12 @@ export function createRenderAdapter({
   };
   return {
     snap,
+    getPose:()=>renderedPose,
+    isSettled(state){
+      const poseReady=renderedPose===null || Math.abs(renderedPose-state.product.pose)<.002;
+      const targetReady=renderedTarget===null || renderedTarget.every((v,i)=>Math.abs(v-state.camera.target[i])<.004);
+      return Boolean(poseReady&&targetReady);
+    },
     apply(state,dt=DEFAULT_DT){
       if(!state) return;
       const step=Math.max(.001,Math.min(.05,dt||DEFAULT_DT));
@@ -103,9 +109,12 @@ export function createRenderAdapter({
       presentation.rotation.y=damp(presentation.rotation.y,state.product.yaw,4.45*followBoost,step);
       presentation.rotation.z=damp(presentation.rotation.z,0,4.45*followBoost,step);
       if(splitInspection){
-        inspection.rotation.x=damp(inspection.rotation.x,state.product.inspectionPitch || 0,4.15,step);
-        inspection.rotation.y=damp(inspection.rotation.y,0,3.85,step);
-        inspection.rotation.z=damp(inspection.rotation.z,state.product.inspectionYaw || 0,3.85,step);
+        // The inspection controller already owns a critically damped spring and
+        // drag-release inertia. Applying another low-pass here creates visible
+        // input latency, so render its bounded turntable result directly.
+        inspection.rotation.x=state.product.inspectionPitch || 0;
+        inspection.rotation.y=0;
+        inspection.rotation.z=state.product.inspectionYaw || 0;
       }
       const s=state.product.scale;
       presentation.scale.x=damp(presentation.scale.x,s,3.75*followBoost,step);
