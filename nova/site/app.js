@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { getGlobalProgress, getRangeState, sampleTimeline } from './runtime/timeline.js';
+import { getRangeState, sampleTimeline } from './runtime/timeline.js';
+import { createScrollDirector } from './runtime/scroll-director.js';
 import { createInteractionState, composeVisualState } from './runtime/composer.js';
 import { createRenderAdapter } from './runtime/render-adapter.js';
 import { createEnvironment } from './runtime/environment.js';
@@ -18,6 +19,7 @@ const hotspotElements = Object.fromEntries(
 );
 const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
 const behindStageEl=document.querySelector('#behind');
+const scrollDirector=createScrollDirector({anchors:rangeStages,viewportHeight:()=>innerHeight});
 const caseStudyEl=document.querySelector('#case-study');
 let publishedRange=null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,13 +43,15 @@ let noiseMode = 'adaptive';
 let foldState = 'open';
 let inspectionView = 'front';
 let scrollActivityUntil = 0;
+let previousScrollY=scrollY;
+let scrollVelocity=0;
 
 let renderer=null;
 let rendererAvailable=false;
 try{
   if(forceStatic) throw new Error('forced static fallback');
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth <= 700 ? 1.35 : 1.6));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth <= 700 ? 1.20 : innerWidth <= 1100 ? 1.35 : 1.45));
   renderer.setSize(innerWidth,innerHeight,false);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -125,7 +129,7 @@ function cinematicTrackHeight(){
 }
 
 function currentProgress(){
-  return getGlobalProgress(scrollY,cinematicTrackHeight(),innerHeight);
+  return scrollDirector.progressFromScroll(scrollY);
 }
 
 function applyTextureQuality(root){
@@ -270,6 +274,7 @@ function loadModel(){
     model.updateMatrixWorld(true);
 
     buildHotspotController(size);
+    scrollDirector.refresh();
     rebuildAdapter();
 
     // Model readiness must not depend on network/load speed. Snap once to the
@@ -299,11 +304,13 @@ function loadModel(){
 function resize(){
   if(rendererAvailable){
     renderer.setSize(innerWidth,innerHeight,false);
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1,innerWidth<=700?1.35:1.6));
+    const pixelRatioCap=innerWidth<=700?1.20:innerWidth<=1100?1.35:1.45;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1,pixelRatioCap));
   }
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   environment.resize(innerWidth,innerHeight);
+  scrollDirector.refresh();
 }
 
 function measureProductFrame(){
@@ -339,7 +346,12 @@ function measureProductFrame(){
 }
 
 Object.defineProperty(window,'__NOVA_QA__',{
-  value:{productFrame:measureProductFrame},
+  value:{
+    productFrame:measureProductFrame,
+    storyMetrics:()=>scrollDirector.metrics(),
+    currentProgress:()=>currentProgress(),
+    scrollForProgress:progress=>scrollDirector.scrollForProgress(progress)
+  },
   configurable:true
 });
 
@@ -427,7 +439,17 @@ function render(now=performance.now()){
   const dt=Math.min(.05,Math.max(.001,(now-lastTime)/1000 || 1/60));
   lastTime=now;
 
+  const scrollDelta=Math.abs(scrollY-previousScrollY)/Math.max(1,innerHeight);
+  previousScrollY=scrollY;
+  const measuredVelocity=Math.min(3,scrollDelta/Math.max(.001,dt));
+  scrollVelocity=THREE.MathUtils.damp(scrollVelocity,measuredVelocity,8,dt);
+
   const base=sampleAuthoredState();
+  base.motion={
+    ...(base.motion || {}),
+    scrollVelocity,
+    scrollActive:now < scrollActivityUntil
+  };
   updateInteractionInfluences(base,dt,now);
   const composed=composeVisualState(base,interactionState);
   currentComposedState=composed;
@@ -440,8 +462,8 @@ function render(now=performance.now()){
 }
 
 function scrollToProgress(progress){
-  const max=Math.max(1,cinematicTrackHeight()-innerHeight);
-  scrollTo({top:max*Math.max(0,Math.min(1,progress)),behavior:reducedMotion?'auto':'smooth'});
+  const target=scrollDirector.scrollForProgress(Math.max(0,Math.min(1,progress)));
+  scrollTo({top:target,behavior:reducedMotion?'auto':'smooth'});
 }
 
 function scheduleTourDetail(callback){
