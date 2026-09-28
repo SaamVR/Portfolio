@@ -745,6 +745,8 @@ At minimum:
 - no interaction snap when ownership changes;
 - input does not fight scroll;
 - product orientation remains readable;
+- the headphone remains visually dominant with larger authored framing where composition permits;
+- close/detail motion reveals physical product details without decorative spinning;
 - no cable-based framing regression;
 - controls are keyboard/touch accessible.
 
@@ -772,15 +774,31 @@ The repository root contains another product and must not be rewritten as part o
 
 ### Production safety
 
-Do not overwrite live NOVA production with an unverified V2 build.
+Canonical final publication target:
+
+`https://saamvr.github.io/Portfolio/NovaAG/`
+
+Canonical repository publish directory:
+
+`NovaAG/`
+
+`NovaAG/` is generated deployment output. Development must remain under `nova/`.
+
+Do not overwrite the repository-root LeadFlow site or unrelated portfolio routes.
 
 Sequence:
 
-1. implement and test in repository;
-2. produce exact production bundle;
-3. deploy preview;
-4. public verification;
-5. production deployment only after preview acceptance.
+1. implement and test under `nova/`;
+2. complete the larger-scale/detail-motion refinement and manual screenshot review;
+3. produce the exact verified `nova-production-site` artifact;
+4. optionally deploy a preview/fallback host;
+5. copy only that exact accepted artifact into `NovaAG/` through the GitHub Pages publisher;
+6. verify `https://saamvr.github.io/Portfolio/NovaAG/` publicly;
+7. record the source SHA, artifact digest, workflow run ID, public URL, and rollback state.
+
+Detailed publish procedure: `nova/GITHUB_PAGES_PUBLISH.md`.
+
+Because NOVA is served from the project subpath `/Portfolio/NovaAG/`, runtime module, texture, GLTF, and vendor links must remain relative rather than root-absolute.
 
 ### Existing rollback
 
@@ -868,5 +886,6 @@ NOVA V2 is done when:
 - technical portfolio proof appears after the product journey;
 - full browser/interaction QA passes;
 - preview deployment matches verified local/hosted QA;
-- production is updated only from the verified bundle;
+- canonical GitHub Pages production at `https://saamvr.github.io/Portfolio/NovaAG/` is generated only from the verified bundle;
+- repository-root LeadFlow and unrelated portfolio routes remain unchanged;
 - rollback to V1 remains available.
