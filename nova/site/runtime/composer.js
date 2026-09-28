@@ -28,6 +28,10 @@ export function composeVisualState(baseState, interactionState=createInteraction
   const fold = interactionState.fold || {};
   const fw = clamp01(fold.weight);
   if(fold.active || fw > 0) out.product.pose = lerp(out.product.pose, Number.isFinite(fold.targetPose)?fold.targetPose:out.product.pose, fw);
+  out.motion = {
+    ...(baseState.motion || {}),
+    sourcePoseOwner:(fold.active || fw > .04) ? 'interaction' : 'timeline'
+  };
 
   const inspection = interactionState.inspection || {};
   const iw = clamp01(inspection.weight);
