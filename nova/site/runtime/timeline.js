@@ -150,13 +150,7 @@ function viewportAdjusted(state, viewportClass){
     state.product.pitch *= .58;
     state.camera.position[2] += .72;
     state.camera.fov += 1.4;
-    if(state.range === 'design'){
-      // Keep V4's larger mobile detail pass, but bias the hardware left so
-      // cushion/control anchors do not collapse against the right safe edge.
-      state.product.position[0] -= .095;
-      state.camera.target[0] += .01;
-      state.camera.position[2] += .08;
-    }
+
   } else if(viewportClass === 'tablet'){
     state.camera.position[0] *= .68;
     state.camera.target[0] *= .68;
