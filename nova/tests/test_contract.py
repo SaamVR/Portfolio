@@ -96,3 +96,12 @@ def test_case_study_progress_is_decoupled_from_global_document_height():
 def test_v3_form_scroll_does_not_release_explicit_fold_controller():
     app=(ROOT/"app.js").read_text()
     assert "foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil" in app
+
+
+def test_v4_detail_focus_moves_camera_closer():
+    assert "cameraOffset:[.18,-.03,-.28]" in js
+    assert "targetOffset:[.14,-.04,0]" in js
+    assert "cameraOffset:[-.05,.18,-.24]" in js
+    assert "targetOffset:[0,.16,0]" in js
+    assert "cameraOffset:[-.18,-.02,-.28]" in js
+    assert "targetOffset:[-.14,-.03,0]" in js
