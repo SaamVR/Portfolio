@@ -149,12 +149,30 @@ assert.ok(Math.abs(designDetail.product.pitch) >= .025, `Design detail pass shou
 assert.ok(designDetail.product.scale >= 1.04, `Design detail pass should keep the product dominant, got ${designDetail.product.scale}`);
 
 const inspectStudy=sampleTimeline(.79,'desktop');
-assert.ok(inspectStudy.camera.position[2] < 4.60, `Inspection should be the closest controlled full-product study, got z=${inspectStudy.camera.position[2]}`);
+assert.ok(inspectStudy.camera.position[2] > designDetail.camera.position[2]+1.15,
+  `Inspection must dolly back from the Design macro so the complete silhouette is readable; z=${inspectStudy.camera.position[2]}`);
+assert.ok(inspectStudy.camera.position[2] < 6.15,
+  `Inspection should remain product-dominant rather than becoming a distant catalog shot; z=${inspectStudy.camera.position[2]}`);
 assert.ok(inspectStudy.camera.fov <= 27.5, `Inspection should use a tighter study FOV, got ${inspectStudy.camera.fov}`);
 
 const resolutionHero=sampleTimeline(.92,'desktop');
-assert.ok(resolutionHero.camera.position[2] < 4.95, `Resolution should return to a stronger hero framing, got z=${resolutionHero.camera.position[2]}`);
-assert.ok(resolutionHero.product.scale >= 1.02, `Resolution should not shrink the product before Behind NOVA, got ${resolutionHero.product.scale}`);
+assert.ok(resolutionHero.camera.position[2] > 5.45 && resolutionHero.camera.position[2] < 6.35,
+  `Resolution should preserve a complete but dominant launch-poster silhouette; z=${resolutionHero.camera.position[2]}`);
+assert.ok(resolutionHero.product.scale >= 1.02, `Resolution should not shrink the physical product before Behind NOVA, got ${resolutionHero.product.scale}`);
+
+// V7 readability gate: feature chapters use optics to fit the whole product,
+// while Design alone owns the intentional macro crop.
+for(const [p,label,minZ] of [
+  [.34,'Sound',5.55],
+  [.52,'Control',5.45],
+  [.62,'Flexibility entry',5.30],
+  [.79,'360 inspection',5.30],
+  [.92,'Specifications',5.45]
+]){
+  const state=sampleTimeline(p,'desktop');
+  assert.ok(state.camera.position[2]>=minZ,
+    `V7 ${label} must use a full-product reading distance; z=${state.camera.position[2]}`);
+}
 
 const designDetailMobile=sampleTimeline(.18,'mobile');
 assert.ok(designDetailMobile.camera.position[2] < 5.35, `Mobile Design should gain presence without desktop-level crop, got z=${designDetailMobile.camera.position[2]}`);
