@@ -22,6 +22,9 @@ const behindStageEl=document.querySelector('#behind');
 const scrollDirector=createScrollDirector({anchors:rangeStages,viewportHeight:()=>innerHeight});
 const caseStudyEl=document.querySelector('#case-study');
 let publishedRange=null;
+let publishedCaseStudy=null;
+let publishedRangeProgress=null;
+let publishedMotionState=null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const query = new URLSearchParams(location.search);
 const orientationMode = query.get('orientation') || 'negx';
@@ -368,14 +371,21 @@ function sampleAuthoredState(){
 
 function publishState(state){
   const caseStudyActive=Boolean(caseStudyEl && scrollY>=Math.max(0,caseStudyEl.offsetTop-innerHeight*.18));
-  document.body.dataset.caseStudy=String(caseStudyActive);
-  document.body.dataset.range=state.range;
-  document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
-  document.body.dataset.settled=String(Boolean(state.ui.settled));
-  document.body.dataset.activeScene=state.range;
-  document.body.dataset.transition=state.ui.transition || 'none';
-  document.body.dataset.stageGating='true';
+  if(publishedCaseStudy!==caseStudyActive){
+    publishedCaseStudy=caseStudyActive;
+    document.body.dataset.caseStudy=String(caseStudyActive);
+  }
+  const roundedRangeProgress=Math.round(state.rangeProgress*100)/100;
+  if(publishedRangeProgress!==roundedRangeProgress){
+    publishedRangeProgress=roundedRangeProgress;
+    document.body.dataset.rangeProgress=roundedRangeProgress.toFixed(2);
+  }
+  const transition=state.ui.transition || 'none';
+  if(document.body.dataset.transition!==transition) document.body.dataset.transition=transition;
+  if(document.body.dataset.stageGating!=='true') document.body.dataset.stageGating='true';
   if(publishedRange!==state.range){
+    document.body.dataset.range=state.range;
+    document.body.dataset.activeScene=state.range;
     for(const stage of rangeStages){
       const active=stage.dataset.rangeAnchor===state.range;
       stage.classList.toggle('is-active',active);
@@ -385,7 +395,6 @@ function publishState(state){
     hotspotController?.clear();
     publishedRange=state.range;
   }
-  if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
   const foldInfluence=interactionState.fold || {};
   const authoredFoldState=state.range==='form' && !foldInfluence.active && (foldInfluence.weight||0)<.04
     ? (state.product.pose>=.405 ? 'fold' : 'open')
@@ -454,10 +463,16 @@ function render(now=performance.now()){
   scrollVelocity=THREE.MathUtils.damp(scrollVelocity,measuredVelocity,8,dt);
 
   const base=sampleAuthoredState();
+  const scrollActive=now < scrollActivityUntil;
+  const motionState=scrollActive ? 'tracking' : (scrollVelocity>.035 ? 'settling' : 'rest');
+  if(publishedMotionState!==motionState){
+    publishedMotionState=motionState;
+    document.body.dataset.motionState=motionState;
+  }
   base.motion={
     ...(base.motion || {}),
     scrollVelocity,
-    scrollActive:now < scrollActivityUntil
+    scrollActive
   };
   updateInteractionInfluences(base,dt,now);
   const composed=composeVisualState(base,interactionState);
@@ -598,7 +613,24 @@ canvas.addEventListener('pointercancel',event=>{
   inspectionController.pointerUp(event.pointerId);
 });
 
+let storyRefreshRaf=0;
+function scheduleStoryRefresh(){
+  if(storyRefreshRaf) cancelAnimationFrame(storyRefreshRaf);
+  storyRefreshRaf=requestAnimationFrame(()=>{
+    storyRefreshRaf=0;
+    scrollDirector.refresh();
+  });
+}
+if('ResizeObserver' in window){
+  const storyResizeObserver=new ResizeObserver(scheduleStoryRefresh);
+  rangeStages.forEach(stage=>storyResizeObserver.observe(stage));
+}
+document.fonts?.ready?.then(scheduleStoryRefresh).catch?.(()=>{});
+window.addEventListener('load',scheduleStoryRefresh,{once:true});
 window.addEventListener('resize',resize,{passive:true});
+if('onscrollend' in window){
+  window.addEventListener('scrollend',()=>{scrollActivityUntil=performance.now()+80;},{passive:true});
+}
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
     cancelAnimationFrame(frameRequest);
