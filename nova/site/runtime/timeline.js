@@ -115,23 +115,46 @@ function segment(progress){
 }
 
 function applyCompositionInfluences(state,p){
+  const heroFit=windowWeight(p,.045,.075,.11,.145);
+  const overviewFit=windowWeight(p,.255,.31,.635,.675);
+  const inspectionFit=windowWeight(p,.70,.755,.945,.965);
   const spatial=windowWeight(p,.28,.32,.43,.49);
   const adaptive=windowWeight(p,.42,.47,.535,.60);
+  const formEntry=windowWeight(p,.56,.595,.635,.675);
+  const inspection=windowWeight(p,.70,.755,.845,.875);
   const resolution=windowWeight(p,.82,.87,.915,.965);
   const behind=ramp(p,.962,.988);
 
-  // Environment chapters create negative space with optics/targeting rather than
-  // large product translations. Keep the crown and both earcups visible.
-  state.camera.target[1] -= .10 * spatial;
-  state.camera.position[2] += .20 * spatial;
+  // Story framing policy:
+  // - Hero opens as a recognizable macro and resolves to the complete silhouette.
+  // - Design stays deliberately close for material/hinge/control studies.
+  // - Sound, Control and the open Form entry become full-product reading shots.
+  // - 360° inspection and Specifications keep the whole silhouette inside frame.
+  // Camera distance does the work first so the headphone keeps physical scale.
+  state.camera.position[2] += .95 * heroFit;
+  state.camera.position[2] += 1.25 * overviewFit;
+  state.camera.position[2] += 1.55 * inspectionFit;
 
-  state.camera.target[0] += .52 * adaptive;
-  state.camera.target[1] += .07 * adaptive;
-  state.camera.position[2] += .14 * adaptive;
+  // Environment chapters create negative space with optics/targeting rather than
+  // large product translations. Keep the crown and both earcups readable.
+  state.camera.target[1] -= .08 * spatial;
+  state.product.position[1] += .08 * spatial;
+
+  // Noise-control copy lives on the right: bias the complete product left.
+  state.camera.target[0] += .48 * adaptive;
+  state.camera.target[1] += .05 * adaptive;
+
+  // Flexibility copy lives on the left while the open product begins the fold.
+  // As the rig becomes physically compact, this offset eases away.
+  state.product.position[0] += .20 * formEntry;
+
+  // Direct inspection needs a clean copy/product split before the visitor takes
+  // over the turntable.
+  state.product.position[0] += .28 * inspection;
 
   // Final launch poster keeps product to the right of the headline.
-  state.camera.target[0] -= .68 * resolution;
-  state.camera.position[2] += .06 * resolution;
+  state.camera.target[0] -= .66 * resolution;
+  state.product.position[0] += .10 * resolution;
   state.product.scale *= lerp(1,.985,resolution);
 
   // Only the technical handoff is allowed to make the product clearly secondary.
