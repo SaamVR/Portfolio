@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { getGlobalProgress, getRangeState, sampleTimeline } from './runtime/timeline.js';
-import { createInteractionState, composeVisualState } from './runtime/composer.js';
-import { createRenderAdapter } from './runtime/render-adapter.js';
+import { EXPERIENCE_RANGES, getSectionProgress, progressToScroll, getRangeState, sampleTimeline } from './runtime/launch-timeline.js';
+import { createInteractionState, composeVisualState } from './runtime/launch-composer.js';
+import { createRenderAdapter } from './runtime/launch-render-adapter.js';
 import { createEnvironment } from './runtime/environment.js';
 import { bindProductUI, updateProductUI, set3dAvailability } from './ui/product-ui.js';
 import { createFoldController } from './interactions/fold-controller.js';
@@ -17,10 +17,12 @@ const hotspotElements = Object.fromEntries(
   [...document.querySelectorAll('[data-hotspot]')].map(el => [el.dataset.hotspot, el])
 );
 const rangeStages=[...document.querySelectorAll('[data-range-anchor]')];
-const behindStageEl=document.querySelector('#behind');
+const behindStageEl=document.querySelector('#discover');
+let measuredSections=[];
 const caseStudyEl=document.querySelector('#case-study');
 let publishedRange=null;
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion=motionPreference.matches;
 const query = new URLSearchParams(location.search);
 const orientationMode = query.get('orientation') || 'negx';
 const orientationX = orientationMode === 'posx' ? Math.PI / 2 : orientationMode === 'raw' ? 0 : -Math.PI / 2;
@@ -119,14 +121,11 @@ function viewportClass(){
   return innerWidth <= 700 ? 'mobile' : innerWidth <= 1100 ? 'tablet' : 'desktop';
 }
 
-function cinematicTrackHeight(){
-  const stageBottom=(behindStageEl?.offsetTop||0)+(behindStageEl?.offsetHeight||0);
-  return Math.max(innerHeight+1,stageBottom);
+function measureSections(){
+  measuredSections=rangeStages.map((stage,i)=>({range:stage.dataset.rangeAnchor,top:stage.offsetTop,end:rangeStages[i+1]?.offsetTop??stage.offsetTop+stage.offsetHeight-innerHeight}));
 }
-
-function currentProgress(){
-  return getGlobalProgress(scrollY,cinematicTrackHeight(),innerHeight);
-}
+function cinematicTrackHeight(){return (measuredSections.at(-1)?.end||innerHeight)+innerHeight;}
+function currentProgress(){return getSectionProgress(scrollY,measuredSections);}
 
 function applyTextureQuality(root){
   const maxAniso=renderer.capabilities.getMaxAnisotropy();
@@ -151,7 +150,7 @@ function computePrimaryBounds(root){
   root.updateMatrixWorld(true);
   const box=new THREE.Box3();
   const childBox=new THREE.Box3();
-  root.traverse(obj=>{
+  root.traverseVisible(obj=>{
     if(!obj.isMesh || obj.name === 'Circle013_0' || obj.name === 'Circle.013_0') return;
     childBox.makeEmpty();
     childBox.setFromObject(obj,true);
@@ -240,33 +239,23 @@ function loadModel(){
       mixer=new THREE.AnimationMixer(model);
       const action=mixer.clipAction(clip);
       action.play();
-      mixer.setTime(clipDuration*.24);
+      mixer.setTime(clipDuration*.72);
       model.updateMatrixWorld(true);
     }
 
     const cable=model.getObjectByName('Circle013_0') || model.getObjectByName('Circle.013_0');
     if(cable) cable.visible = false;
 
-    // Preserve the released V3 visual-origin/normalization path exactly,
-    // then add an identity-at-rest inspection pivot inside that existing layer.
-    // This keeps authored Hero/Design/scroll composition unchanged while
-    // Side/Rear/manual inspection rotate around the product's local center.
+    // Normalize in model space. The pose and turntable pivot share one physical center.
+    presentation.position.set(0,0,0);presentation.rotation.set(0,0,0);presentation.scale.setScalar(1);
+    normalizationRoot.scale.setScalar(1);centerGroup.position.set(0,0,0);
+    pivotGroup.position.set(0,0,0);modelOffsetGroup.position.set(0,0,0);inspectionGroup.rotation.set(0,0,0);
+    scene.updateMatrixWorld(true);
     primaryProductBounds=computePrimaryBounds(model);
     const size=primaryProductBounds.getSize(new THREE.Vector3());
-    const centerWorld=primaryProductBounds.getCenter(new THREE.Vector3());
-    const pivotLocal=centerGroup.worldToLocal(centerWorld.clone());
-
-    // Legacy visual-origin behavior: the timeline and all framing QA were
-    // authored against this centerGroup offset.
-    centerGroup.position.copy(centerWorld).multiplyScalar(-1);
-
-    // T(C) * R * T(-C) is identity when R=0, so ordinary scroll frames are
-    // untouched; inspection rotation is centered only when the user invokes it.
-    pivotGroup.position.copy(pivotLocal);
-    modelOffsetGroup.position.copy(pivotLocal).multiplyScalar(-1);
-
-    const major=Math.max(size.x,size.y,size.z,1);
-    normalizationRoot.scale.setScalar(3.55/major);
+    const center=primaryProductBounds.getCenter(new THREE.Vector3());
+    modelOffsetGroup.position.copy(center).multiplyScalar(-1);
+    normalizationRoot.scale.setScalar(3.55/Math.max(size.x,size.y,size.z,1));
     model.updateMatrixWorld(true);
 
     buildHotspotController(size);
@@ -304,6 +293,7 @@ function resize(){
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   environment.resize(innerWidth,innerHeight);
+  measureSections();
 }
 
 function measureProductFrame(){
@@ -347,12 +337,14 @@ function sampleAuthoredState(){
   const progress=currentProgress();
   const range=getRangeState(progress);
   const authoredProgress=reducedMotion ? REDUCED_SETTLED[range.range] ?? progress : progress;
-  const state=sampleTimeline(authoredProgress,viewportClass());
+  const state=sampleTimeline(authoredProgress,viewportClass(),{width:innerWidth,height:innerHeight});
   state.progress=progress;
   state.range=range.range;
   state.rangeProgress=range.progress;
   state.ui.range=range.range;
   state.ui.settled=reducedMotion || state.ui.settled;
+  state.ui.opacity=reducedMotion?1:sampleTimeline(progress,viewportClass(),{width:innerWidth,height:innerHeight}).ui.opacity;
+  if(reducedMotion) state.environment.motion=0;
   if(poseOverride !== null) state.product.pose=poseOverride;
   return state;
 }
@@ -360,6 +352,12 @@ function sampleAuthoredState(){
 function publishState(state){
   const caseStudyActive=Boolean(caseStudyEl && scrollY>=Math.max(0,caseStudyEl.offsetTop-innerHeight*.18));
   document.body.dataset.caseStudy=String(caseStudyActive);
+  const tone=Math.max(0,Math.min(1,state.environment.tone));
+  const bg=[238,232,220].map((v,i)=>Math.round(v+([20,19,17][i]-v)*tone));
+  document.body.style.setProperty('--scene-bg','rgb('+bg.join(',')+')');
+  const activeStage=rangeStages.find(stage=>stage.dataset.rangeAnchor===state.range);
+  activeStage?.style.setProperty('--chapter-opacity',String(state.ui.opacity??1));
+  for(const stage of rangeStages){stage.inert=stage!==activeStage;stage.setAttribute('aria-hidden',String(stage!==activeStage));}
   document.body.dataset.range=state.range;
   document.body.dataset.rangeProgress=state.rangeProgress.toFixed(4);
   document.body.dataset.settled=String(Boolean(state.ui.settled));
@@ -371,6 +369,7 @@ function publishState(state){
     publishedRange=state.range;
   }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
+  if(!interactionState.fold.active && state.range==='form') foldState=state.product.pose<.60?'fold':'open';
   state.interaction={
     listeningMode,
     noiseMode,
@@ -386,12 +385,14 @@ function updateInteractionInfluences(base,dt,now){
   modeController.update(dt);
 
   const foldInfluenceBefore=foldController.getInfluence();
+  if(base.range!=='form' && foldInfluenceBefore.active){ foldController.update(1,{scrollActive:true,timelinePose:base.product.pose}); }
   foldController.update(dt,{
     scrollActive:foldInfluenceBefore.active && base.range!=='form' && now < scrollActivityUntil,
     timelinePose:base.product.pose
   });
 
   const modeInfluence=modeController.getInfluence();
+  if(reducedMotion){inspectionController.settle();foldController.settle();}
   interactionState.fold=foldController.getInfluence();
   interactionState.inspection=inspectionController.getInfluence();
   interactionState.listening=base.range==='spatial'
@@ -433,15 +434,14 @@ function render(now=performance.now()){
   currentComposedState=composed;
   publishState(composed);
   if(rendererAvailable && adapter){
-    adapter.apply(composed,dt);
+    if(reducedMotion) adapter.snap(composed); else adapter.apply(composed,dt);
     renderer.render(scene,camera);
   }
   requestAnimationFrame(render);
 }
 
 function scrollToProgress(progress){
-  const max=Math.max(1,cinematicTrackHeight()-innerHeight);
-  scrollTo({top:max*Math.max(0,Math.min(1,progress)),behavior:reducedMotion?'auto':'smooth'});
+  scrollTo({top:progressToScroll(progress,measuredSections),behavior:reducedMotion?'auto':'smooth'});
 }
 
 function scheduleTourDetail(callback){
@@ -529,6 +529,19 @@ const actions={
 bindProductUI(actions);
 set3dAvailability(rendererAvailable);
 
+// Navigation lands in the reading hold, after the incoming camera move.
+document.querySelectorAll('a[href^="#"]').forEach(link=>{
+  const target=document.getElementById(link.getAttribute('href').slice(1));
+  const range=target?.dataset.rangeAnchor;
+  if(!range) return;
+  link.addEventListener('click',event=>{
+    event.preventDefault();
+    const [start,end]=EXPERIENCE_RANGES[range];
+    scrollToProgress(range==='hero'?0:start+(end-start)*.36);
+    history.replaceState(null,'',link.getAttribute('href'));
+  });
+});
+
 window.addEventListener('pointermove',event=>{
   pointer.tx=(event.clientX/Math.max(1,innerWidth)-.5)*2;
   pointer.ty=(event.clientY/Math.max(1,innerHeight)-.5)*2;
@@ -569,6 +582,7 @@ canvas.addEventListener('pointercancel',event=>{
 
 window.addEventListener('resize',resize,{passive:true});
 
+motionPreference.addEventListener('change',event=>{reducedMotion=event.matches;});
 resize();
 loadModel();
 requestAnimationFrame(render);

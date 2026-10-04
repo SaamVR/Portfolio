@@ -75,12 +75,10 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
       weight=1;
     },
     reset(){
-      // Reset the manual offset immediately, while the named product view
-      // returns through the critically damped model spring.
+      // Preserve the visible angle while both manual offsets and the named
+      // view ease toward neutral; a click must not produce an orientation cut.
       yawTarget=0;
       pitchTarget=0;
-      yaw=0;
-      pitch=0;
       dragVelocity=0;
       pitchVelocity=0;
       view='front';
@@ -132,6 +130,10 @@ export function createInspectionController({maxYaw=.52,maxPitch=.12}={}){
         targetModelYaw=0;
         modelYawVelocity=0;
       }
+    },
+    settle(){
+      modelYaw=targetModelYaw;modelYawVelocity=0;
+      yaw=yawTarget;pitch=pitchTarget;dragVelocity=0;pitchVelocity=0;weight=active?1:0;
     },
     getInfluence(){
       return {weight,yaw,pitch,modelYaw,view,active,dragging};

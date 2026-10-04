@@ -13,12 +13,12 @@ const NAV_TARGET = {
 };
 
 const LISTENING_COPY = {
-  spatial:'LDAC is included in the reference codec set for compatible Bluetooth source devices.',
-  focus:'AAC is included in the reference codec set for practical playback across supported devices.',
-  ambient:'LC3 is included alongside SBC, AAC and LDAC in the reference Bluetooth codec set.'
+  spatial:'High-resolution wireless playback with compatible source devices.',
+  focus:'Everyday wireless playback across supported devices.',
+  ambient:'Bluetooth LE Audio codec support with compatible source devices.'
 };
 const NOISE_COPY = {
-  adaptive:'Noise Canceling is the reference mode for reducing outside sound during travel, work and focused listening.',
+  adaptive:'Noise canceling for focused listening, travel and work.',
   transparency:'Ambient Sound keeps useful surroundings available when awareness matters.'
 };
 
@@ -43,6 +43,9 @@ function setDialog({open,bodyKey,trigger,panel,shell,focusTarget}){
   trigger?.setAttribute('aria-expanded',String(open));
   panel?.setAttribute('aria-hidden',String(!open));
   shell?.setAttribute('aria-hidden',String(!open));
+  document.querySelector('main').inert=open;
+  document.querySelector('.masthead').inert=open;
+  document.body.style.overflow=open?'hidden':'';
   if(open) requestAnimationFrame(()=>focusTarget?.focus?.());
   else trigger?.focus?.();
 }
@@ -207,6 +210,15 @@ export function bindProductUI(nextActions={}){
   });
 
   document.addEventListener('keydown',event=>{
+    if(event.key==='Tab'){
+      const panel=document.body.dataset.productFacts==='open'?factsPanel:document.body.dataset.guidedTour==='open'?tourPanel:null;
+      if(panel){
+        const focusable=[...panel.querySelectorAll('button,a[href],input,summary,[tabindex="0"]')].filter(el=>!el.disabled&&el.getClientRects().length);
+        const first=focusable[0],last=focusable.at(-1);
+        if(event.shiftKey && (document.activeElement===first||document.activeElement===panel)){event.preventDefault();last?.focus();}
+        else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
+      }
+    }
     if(event.key!=='Escape') return;
     if(document.body.dataset.productFacts==='open') setFactsOpen(false);
     if(document.body.dataset.guidedTour==='open') setTourOpen(false);

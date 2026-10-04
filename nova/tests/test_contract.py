@@ -15,12 +15,13 @@ def test_cable_does_not_control_framing():
     assert "primaryProductBounds" in js
 
 def test_source_facts_are_gltf_facts():
-    assert ">36<" in html
-    assert ">14<" in html
-    assert ">3<" in html
-    assert "27.71 SEC" in html
-    assert "459" not in html
-    assert "180" not in html
+    import json
+    source=json.loads((ROOT / 'assets/headphones-web.gltf').read_text())
+    assert len(source['meshes']) == 14
+    assert len(source['animations']) == 3
+    assert len(source['skins'][0]['joints']) == 36
+    assert 'id="validation-evidence"' not in html
+
 
 def test_responsive_and_reduced_motion():
     assert "@media (max-width: 700px)" in css
@@ -40,9 +41,9 @@ def test_v2_runtime_contract_modules_exist():
 
 
 def test_v2_app_uses_global_runtime_not_scene_switches():
-    assert './runtime/timeline.js' in js
-    assert './runtime/composer.js' in js
-    assert './runtime/render-adapter.js' in js
+    assert './runtime/launch-timeline.js' in js
+    assert './runtime/launch-composer.js' in js
+    assert './runtime/launch-render-adapter.js' in js
     assert 'resolveScene(' not in js
     assert 'sceneProgress(' not in js
     assert 'sampleCamera(' not in js

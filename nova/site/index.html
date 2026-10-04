@@ -5,23 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#eee8dc" />
   <title>NOVA — Hear beyond.</title>
-  <meta name="description" content="NOVA is an independent interactive 3D headphone launch study with a final motion pass, using Sony WH-1000XM6 official specifications as a real-world hardware benchmark." />
+  <meta name="description" content="Discover NOVA: sculpted wireless headphones, explored through comfort, sound, control and movement. An independent product design with a disclosed hardware benchmark." />
   <meta property="og:title" content="NOVA — Hear beyond." />
-  <meta property="og:description" content="A responsive real-time 3D headphone launch study with refined inspection motion, bounded scroll choreography, and a disclosed real-world hardware benchmark." />
+  <meta property="og:description" content="Less noise. More you. Explore NOVA from every angle." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://v4.nova-interactive-portfolio.pages.dev/" />
+  <meta property="og:url" content="https://new.nova-interactive-portfolio.pages.dev/" />
   <meta name="twitter:card" content="summary" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./launch.css" />
   <script type="importmap">
   {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
   </script>
 </head>
-<body data-model-state="loading" data-range="hero" data-theme="light" data-release="v4">
+<body data-stage-gating="true" data-model-state="loading" data-range="hero" data-theme="light" data-release="new">
   <canvas id="webgl" aria-label="Interactive 3D NOVA headphone"></canvas>
   <div class="product-poster" aria-hidden="true">
     <div class="product-poster__halo"></div>
-    <div class="fallback-object"><i></i><i></i><i></i></div>
-    <div class="product-poster__meta"><span>NOVA</span><span>Static product view</span></div>
+    <img class="product-poster__image" src="./assets/product-poster.webp" alt="" width="1200" height="1200" fetchpriority="high" />
+
   </div>
   <div class="grain" aria-hidden="true"></div>
 
@@ -34,7 +35,7 @@
       <a href="#experience">Experience</a>
     </nav>
     <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-controls="mobileNavPanel" aria-expanded="false">Menu</button>
-    <a class="masthead-cta" href="#discover">Product summary ↗</a>
+    <a class="masthead-cta" href="#discover">Explore NOVA ↗</a>
   </header>
 
   <nav class="mobile-nav" id="mobileNavPanel" aria-label="NOVA mobile product navigation" aria-hidden="true">
@@ -55,221 +56,73 @@
   </div>
 
   <main id="top">
-    <section id="hero" class="stage stage--hero" data-range-anchor="hero">
+    <section id="hero" class="stage stage--hero is-active" data-range-anchor="hero" aria-labelledby="heroTitle">
       <div class="stage-inner hero-copy">
-        <p class="eyebrow">Spatial wireless headphones</p>
-        <h1>NOVA</h1>
-        <h2>Hear beyond.</h2>
-        <p class="lede">Immersive listening, adaptive quiet and effortless movement in one sculpted form.</p>
-        <div class="hero-actions">
-          <a class="button button--solid" href="#design">Explore NOVA <span>↘</span></a>
-          <button type="button" class="button button--ghost" id="guidedTourStart" aria-controls="guidedTourPanel" aria-expanded="false" aria-label="Three product moments guided tour">Guided tour</button>
-          <span class="gesture-hint">Scroll for the full experience or take the guided route</span>
-        </div>
+        <p class="eyebrow">01 / Meet NOVA — Wireless over-ear</p>
+        <h1 id="heroTitle">Less noise.<br /><em>More you.</em></h1>
+        <p class="lede">A little distance from the world.<br />A little closer to everything you love.</p>
+        <div class="hero-actions"><a class="button button--solid" href="#design">Discover NOVA <span>↘</span></a><a class="text-link" href="#discover">The essentials ↗</a></div>
+        <div class="hero-caption"><i></i><span>SCULPTED FOR SOUND. SHAPED FOR LIFE.</span></div>
       </div>
-      <div class="hero-index" aria-hidden="true"><span>01</span><span>PRODUCT / EXPERIENCE</span></div>
+      <div class="section-marker"><span>MEET NOVA</span><span>Scroll to discover ↓</span></div>
     </section>
-
-    <section id="design" class="stage stage--design" data-range-anchor="design">
+    <section id="design" class="stage stage--design" data-range-anchor="design" aria-labelledby="designTitle">
       <div class="stage-inner copy copy--left">
-        <p class="eyebrow">Fit / fold / control</p>
-        <h2>Made to <em>disappear.</em></h2>
-        <p>Over-ear cushion geometry, a folding hinge and an earcup control zone are presented as three separate engineering details instead of competing callouts.</p>
-        <p class="interaction-note">Explore cushion, hinge and controls one detail at a time.</p>
-        <div id="designDetailSequence" class="design-detail-sequence" aria-label="Design detail sequence">
-          <button type="button" data-detail-id="cushion" data-detail-target="cushion" aria-pressed="true"><span>01</span><strong>Cushion</strong><small>Over-ear contact surface and pad depth.</small></button>
-          <button type="button" data-detail-id="hinge" data-detail-target="headband" aria-pressed="false"><span>02</span><strong>Hinge</strong><small>Swivel and fold joint for compact storage.</small></button>
-          <button type="button" data-detail-id="controls" data-detail-target="controls" aria-pressed="false"><span>03</span><strong>Touch controls</strong><small>Playback/volume gestures plus the physical NC/AMB mode control.</small></button>
+        <p class="eyebrow">02 / Feel the fit</p><h2 id="designTitle">Comfort.<br /><em>Considered.</em></h2>
+        <p>The curve of the headband. The depth of the cushion. The way the earcups turn. Every detail comes together around you.</p>
+        <div id="designDetailSequence" class="design-detail-sequence" aria-label="Explore design details">
+          <button type="button" data-detail-id="cushion" data-detail-target="cushion" aria-pressed="true"><span>01</span><strong>Cushion</strong><small>A closer look at the over-ear contact surface.</small></button>
+          <button type="button" data-detail-id="hinge" data-detail-target="headband" aria-pressed="false"><span>02</span><strong>Articulation</strong><small>Swivel, fold, and find your fit.</small></button>
+          <button type="button" data-detail-id="controls" data-detail-target="controls" aria-pressed="false"><span>03</span><strong>Finish</strong><small>Follow the sculpted earcup surface.</small></button>
         </div>
-      </div>
-      <div class="section-marker" aria-hidden="true"><span>DESIGN</span><i></i></div>
+      </div><div class="section-marker"><span>SHAPED AROUND YOU</span><span>02 / 07</span></div>
     </section>
-
-    <section id="sound" class="stage stage--sound" data-range-anchor="spatial">
-      <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-      <div class="stage-inner copy copy--center">
-        <p class="eyebrow">Wireless audio / codec support</p>
-        <h2>Choose the<br /><em>wireless link.</em></h2>
-        <p>The reference hardware benchmark supports SBC, AAC, LDAC and LC3 over Bluetooth 5.3, giving the product story a practical compatibility layer instead of invented listening modes.</p>
-        <div class="segmented" role="group" aria-label="Wireless codec reference">
-          <button type="button" data-listening-mode="spatial" aria-pressed="true">LDAC</button>
-          <button type="button" data-listening-mode="focus" aria-pressed="false">AAC</button>
-          <button type="button" data-listening-mode="ambient" aria-pressed="false">LC3</button>
-        </div>
-        <p class="mode-description" id="listeningModeDescription" aria-live="polite"><strong>LDAC</strong> is included in the reference codec set alongside AAC, SBC and LC3 for compatible source devices.</p>
-      </div>
+    <section id="sound" class="stage stage--sound" data-range-anchor="spatial" aria-labelledby="soundTitle">
+      <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="stage-inner copy copy--left">
+        <p class="eyebrow">03 / Hear the detail</p><h2 id="soundTitle">Get lost.<br /><em>In the music.</em></h2>
+        <p>From the first note to the final fade. Explore the wireless connections that bring your listening closer.</p>
+        <div class="segmented" role="group" aria-label="Explore wireless codecs"><button type="button" data-listening-mode="spatial" aria-pressed="true">LDAC</button><button type="button" data-listening-mode="focus" aria-pressed="false">AAC</button><button type="button" data-listening-mode="ambient" aria-pressed="false">LC3</button></div>
+        <p class="mode-description" id="listeningModeDescription" aria-live="polite"><strong>LDAC</strong> — High-resolution wireless audio with compatible devices.</p>
+        <span class="chapter-footnote">Codec support follows the disclosed hardware benchmark.</span>
+      </div><div class="section-marker"><span>EVERY NOTE, CLOSER</span><span>03 / 07</span></div>
     </section>
-
-    <section id="control" class="stage stage--control" data-range-anchor="adaptive">
+    <section id="control" class="stage stage--control" data-range-anchor="adaptive" aria-labelledby="controlTitle">
       <div class="stage-inner copy copy--right">
-        <p class="eyebrow">Noise control / awareness</p>
-        <h2>Quiet when<br /><em>you need it.</em></h2>
-        <p>Use active noise canceling for travel or focused work, then switch to Ambient Sound when voices, announcements or traffic need to remain audible.</p>
-        <div class="segmented segmented--light" role="group" aria-label="Noise control mode">
-          <button type="button" data-noise-mode="adaptive" aria-pressed="true">Noise Canceling</button>
-          <button type="button" data-noise-mode="transparency" aria-pressed="false">Ambient Sound</button>
-        </div>
-        <p class="mode-description mode-description--light" id="noiseModeDescription" aria-live="polite"><strong>Noise Canceling</strong> pairs with the 30-hour NC-on reference battery target. Ambient Sound keeps useful surroundings in the mix.</p>
-      </div>
-      <div class="control-field" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="eyebrow">04 / Take control</p><h2 id="controlTitle">Your world.<br /><em>Your volume.</em></h2>
+        <p>Find your focus. Let the world back in. Explore noise canceling and ambient awareness with a change of mode.</p>
+        <div class="segmented" role="group" aria-label="Noise control mode"><button type="button" data-noise-mode="adaptive" aria-pressed="true">Quiet</button><button type="button" data-noise-mode="transparency" aria-pressed="false">Aware</button></div>
+        <p class="mode-description" id="noiseModeDescription" aria-live="polite"><strong>Quiet</strong> — Noise canceling for focused listening.</p>
+        <div class="gesture-guide"><span>Double tap <strong>Play / pause</strong></span><span>Swipe up / down <strong>Volume</strong></span><span>NC / AMB button <strong>Noise mode</strong></span></div>
+      </div><div class="section-marker"><span>STAY IN YOUR ELEMENT</span><span>04 / 07</span></div>
     </section>
-
-    <section id="form" class="stage stage--form" data-range-anchor="form">
-      <div class="stage-inner copy copy--left copy--compact">
-        <p class="eyebrow">Articulated form</p>
-        <h2>Made to <em>move.</em></h2>
-        <p>Fold the earcups inward for a compact travel profile. The reference hardware includes a carrying case, so the movement is presented as a practical pack-and-go action rather than a decorative transform.</p>
-        <p class="interaction-note">Hold the folded pose long enough to read the hinge, then reopen it when you are ready.</p>
-        <div class="segmented segmented--light" role="group" aria-label="Headphone form">
-          <button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button>
-          <button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button>
-        </div>
-      </div>
+    <section id="form" class="stage stage--form" data-range-anchor="form" aria-labelledby="formTitle">
+      <div class="stage-inner copy copy--left">
+        <p class="eyebrow">05 / Pack and go</p><h2 id="formTitle">Big sound.<br /><em>Small footprint.</em></h2>
+        <p>The day keeps moving. So does NOVA. Follow the fold, then explore the open and compact forms yourself.</p>
+        <div class="segmented segmented--light" role="group" aria-label="Headphone form"><button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button><button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button></div>
+        <p class="interaction-note">A smaller form. A new point of departure.</p>
+      </div><div class="section-marker"><span>READY FOR WHAT'S NEXT</span><span>05 / 07</span></div>
     </section>
-
-    <section id="experience" class="stage stage--inspect" data-range-anchor="inspect">
-      <div class="stage-inner inspect-copy">
-        <p class="eyebrow">Direct inspection</p>
-        <h2>Look closer.</h2>
-        <p>Explore cushion, hinge and controls one detail at a time, then use Front, Side and Rear views to understand the complete over-ear form.</p>
-        <div class="inspection-views" role="group" aria-label="Inspection view">
-          <button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button>
-          <button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button>
-          <button type="button" data-requires-3d="true" data-inspection-view="rear" aria-pressed="false">Rear</button>
-        </div>
-        <div class="inspect-meta">
-          <span class="desktop-only">DRAG TO FINE-TUNE</span>
-          <span class="mobile-only">SWIPE TO FINE-TUNE</span>
-          <button type="button" id="inspectionReset" data-requires-3d="true">Reset view</button>
-        </div>
-      </div>
+    <section id="experience" class="stage stage--inspect" data-range-anchor="inspect" aria-labelledby="inspectTitle">
+      <div class="stage-inner copy copy--right inspect-copy">
+        <p class="eyebrow">06 / Every angle</p><h2 id="inspectTitle">Nothing<br /><em>to hide.</em></h2>
+        <p>Take a turn around the complete form. Switch views, or drag the product to find your own angle.</p>
+        <div class="inspection-views" role="group" aria-label="Inspection view"><button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button><button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button><button type="button" data-requires-3d="true" data-inspection-view="rear" aria-pressed="false">Rear</button></div>
+        <div class="inspect-meta"><span>Drag to explore</span><button type="button" id="inspectionReset" data-requires-3d="true">Reset view ↺</button></div>
+      </div><div class="section-marker"><span>DESIGNED FROM EVERY SIDE</span><span>06 / 07</span></div>
     </section>
-
-    <section id="discover" class="stage stage--resolution" data-range-anchor="resolution">
-      <div class="stage-inner resolution-copy">
-        <p class="eyebrow">NOVA / Spatial wireless headphones</p>
-        <h2>Hear beyond.</h2>
-        <p>A 30-hour NC-on reference, Bluetooth 5.3, multipoint device switching and wired passive playback give the launch story the practical details buyers actually compare.</p>
-        <div class="feature-strip" aria-label="NOVA reference specification summary">
-          <span>30 hrs NC on</span>
-          <span>40 hrs NC off</span>
-          <span>Bluetooth 5.3</span>
-          <span>Multipoint</span>
-          <span>8.96 oz</span>
-        </div>
-        <div class="resolution-actions">
-          <button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Specifications</button>
-          <a class="button button--ghost" href="#case-study">Behind the build <span>↘</span></a>
-        </div>
-      </div>
+    <section id="discover" class="stage stage--resolution" data-range-anchor="resolution" aria-labelledby="discoverTitle">
+      <div class="stage-inner copy copy--left resolution-copy">
+        <p class="eyebrow">07 / The essentials</p><h2 id="discoverTitle">Make room<br /><em>for your music.</em></h2>
+        <p>Comfort, control and a form that moves with you. Meet the details behind the experience.</p>
+        <div class="feature-strip" aria-label="Hardware benchmark highlights"><span><strong>30 h</strong>NC-on battery*</span><span><strong>5.3</strong>Bluetooth*</span><span><strong>2</strong>Device multipoint*</span></div>
+        <div class="resolution-actions"><button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Full specifications ↗</button><button type="button" class="text-link" id="replay">Experience again ↺</button></div>
+        <p class="chapter-footnote">*Sony WH-1000XM6 hardware benchmark. See specifications for conditions and sources.</p>
+      </div><div class="section-marker"><span>NOVA / HEAR BEYOND</span><span>07 / 07</span></div>
     </section>
-
-    <section id="behind" class="stage stage--behind" data-range-anchor="behind" aria-labelledby="caseStudyTitle">
-      <div class="behind-transition">
-        <div class="behind-transition__copy">
-          <p class="eyebrow">Behind the experience / portfolio case study</p>
-          <h2 id="caseStudyTitle">Designed like a launch.<br /><em>Built like a product.</em></h2>
-          <p class="behind-lede">One live GLTF becomes the product story, responsive camera system, interaction layer and graceful fallback—without hiding behind pre-rendered video.</p>
-          <a class="button button--outline" href="#case-study">Role, challenge, build, result <span>↘</span></a>
-        </div>
-      </div>
-    </section>
-
-    <section id="case-study" class="case-study" aria-labelledby="caseStudyTitle">
-      <div class="case-study__inner">
-        <div class="case-study__grid">
-          <article>
-            <span class="case-index">01 / Role</span>
-            <h3>Role</h3>
-            <p>Creative direction, interaction design, front-end prototyping and real-time 3D choreography across desktop, tablet and mobile.</p>
-          </article>
-          <article>
-            <span class="case-index">02 / Challenge</span>
-            <h3>Challenge</h3>
-            <p>Make one GLTF feel like a premium product campaign without hiding behind pre-rendered video, while keeping direct interactions legible and responsive.</p>
-          </article>
-          <article>
-            <span class="case-index">03 / Build</span>
-            <h3>What I built</h3>
-            <p>A scroll-driven Three.js experience with authored camera choreography, state-based lighting, skinned-surface hotspots, bounded inspection and responsive composition rules.</p>
-          </article>
-          <article>
-            <span class="case-index">04 / Result</span>
-            <h3>Result</h3>
-            <p>A portfolio piece that behaves like a launch experience first, then reveals the implementation decisions and technical constraints behind the presentation.</p>
-          </article>
-        </div>
-
-        <section id="validation-evidence" class="validation-evidence" aria-labelledby="validationEvidenceTitle">
-          <div class="validation-evidence__intro">
-            <p class="eyebrow">Verified browser QA</p>
-            <h3 id="validationEvidenceTitle">Built to survive<br /><em>real conditions.</em></h3>
-            <p>This portfolio build is checked as an experience, not only as a screenshot. The evidence below reflects the browser states actually covered by the automated release gates.</p>
-          </div>
-          <div class="validation-evidence__grid">
-            <div><strong>1440 × 1000</strong><span>desktop journey</span></div>
-            <div><strong>1024 × 768</strong><span>tablet journey</span></div>
-            <div><strong>390 × 844</strong><span>mobile journey</span></div>
-            <div><strong>WebGL fallback</strong><span>static product experience</span></div>
-            <div><strong>Reduced motion</strong><span>settled interaction states</span></div>
-            <div><strong>GLTF failure</strong><span>product story remains usable</span></div>
-          </div>
-        </section>
-
-        <div class="case-study__technical">
-          <div>
-            <p class="eyebrow">Runtime anatomy</p>
-            <p>The same headphone explored above runs from the live skinned GLTF and its authored source animation. Product framing, lighting and interaction state are composed at runtime.</p>
-          </div>
-          <div>
-            <div class="fact-grid">
-              <div><strong>36</strong><span>skeletal joints</span></div>
-              <div><strong>14</strong><span>skinned meshes</span></div>
-              <div><strong>3</strong><span>source clips</span></div>
-              <div><strong>42</strong><span>principal clip channels</span></div>
-              <div><strong>27.71 SEC</strong><span>principal source clip</span></div>
-            </div>
-            <div class="tech-strip">
-              <span>Three.js</span><span>GLTF runtime</span><span>Scroll choreography</span><span>Responsive 3D</span><span>Real-time lighting</span>
-            </div>
-          </div>
-        </div>
-
-        <footer class="project-footer case-study__footer">
-          <span>NOVA / INTERACTIVE PRODUCT EXPERIENCE</span>
-          <div class="project-footer__actions">
-            <a href="/v1/" aria-label="Open NOVA version 1 archive">V1 archive ↗</a>
-            <a href="#services">Client capabilities ↘</a>
-            <button type="button" id="replay">Replay experience ↗</button>
-          </div>
-        </footer>
-      </div>
-    </section>
-
-    <section id="services" class="services" aria-labelledby="servicesTitle">
-      <div class="services__inner">
-        <p class="eyebrow">For client work</p>
-        <h2 id="servicesTitle">Turn a product into<br /><em>an experience.</em></h2>
-        <p class="services__lede">NOVA demonstrates a workflow that can be adapted to real products, campaign launches and commerce experiences.</p>
-        <div class="services__grid">
-          <article><span>01</span><h3>Interactive product launches</h3><p>Scroll-led launch pages that combine product storytelling, motion and responsive interaction.</p></article>
-          <article><span>02</span><h3>Product configurators</h3><p>Commercial interfaces for exploring options, details and product states when credible source assets are available.</p></article>
-          <article><span>03</span><h3>Responsive 3D integration</h3><p>Real-time product presentation designed around desktop, tablet, mobile, reduced motion and graceful fallback.</p></article>
-          <article><span>04</span><h3>Campaign experiences</h3><p>High-impact microsites that connect brand direction, interaction design and production-ready front-end systems.</p></article>
-        </div>
-        <div class="services__cta">
-          <div>
-            <span class="case-index">Discuss a 3D product website</span>
-            <h3>Bring your real product, assets and conversion goal.</h3>
-            <p>Copy a ready-to-send project brief, then paste it into the portfolio platform where you found this project.</p>
-          </div>
-          <button type="button" class="button button--solid" id="copyProjectBrief">Copy project brief</button>
-          <span id="projectBriefStatus" class="services__status" aria-live="polite"></span>
-        </div>
-      </div>
-    </section>
+    <footer class="launch-footer"><a class="brand" href="#hero">NOVA</a><p>Independent product design. Hardware specifications use the disclosed Sony WH-1000XM6 benchmark.</p><a href="https://github.com/SaamVR/Portfolio/tree/nova/new-product-launch-20261004" target="_blank" rel="noreferrer">Project ↗</a><a href="https://v4.nova-interactive-portfolio.pages.dev/">V4 archive ↗</a></footer>
   </main>
-
   <div class="tour-shell" aria-hidden="true">
     <button class="tour-backdrop" type="button" data-tour-close aria-label="Close guided product tour"></button>
     <aside id="guidedTourPanel" class="guided-tour" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="guidedTourTitle" tabindex="-1">
@@ -304,8 +157,8 @@
       </div>
       <div class="facts-panel__body">
         <p class="eyebrow">Reference hardware benchmark</p>
-        <h2 id="productFactsTitle">Reference specifications,<br /><em>source disclosed.</em></h2>
-        <p class="reference-disclosure">Hardware benchmark: <strong>Sony WH-1000XM6</strong>. NOVA is an independent portfolio launch study using the official specification envelope as a realistic product-content reference; it is not affiliated with Sony.</p>
+        <h2 id="productFactsTitle">The details.<br /><em>All together.</em></h2>
+        <p class="reference-disclosure">Hardware benchmark: <strong>Sony WH-1000XM6</strong>. NOVA is an independent product design. These specifications describe the Sony benchmark, rather than measured NOVA hardware. There is no affiliation with Sony.</p>
         <dl class="concept-facts">
           <div><dt>Weight</dt><dd>Approx. 254 g / 8.96 oz</dd></div>
           <div><dt>Driver</dt><dd>30 mm / 1.18 in dynamic driver / closed over-ear format</dd></div>
@@ -333,11 +186,11 @@
     </aside>
   </div>
 
-  <div class="model-status" aria-live="polite">
+  <div class="model-status" role="status">
     <i></i><span id="runtimeState">Loading NOVA</span>
   </div>
-  <noscript><div class="noscript">NOVA's product story remains available, but JavaScript is required for the live 3D experience.</div></noscript>
-  <script type="module" src="./ui/ui-bootstrap.js"></script>
+  <noscript><style>.stage>*{opacity:1!important;pointer-events:auto!important}.stage+.stage{margin-top:0}.stage{min-height:100svh}.stage-inner{position:relative}.product-poster{position:absolute}#webgl{display:none}.model-status{display:none}</style><div class="noscript">NOVA's product story remains available, but JavaScript is required for the live 3D experience.</div></noscript>
+
   <script type="module" src="./app.js"></script>
 </body>
 </html>

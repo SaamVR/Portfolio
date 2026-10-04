@@ -1,0 +1,10 @@
+{
+  "name": "nova-product-launch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tools/run-launch-checks.mjs",
+    "model-check": "node tools/verify-launch-model.mjs",
+    "poster": "node tools/verify-launch-model.mjs && python3 tools/render-launch-poster.py"
+  }
+}

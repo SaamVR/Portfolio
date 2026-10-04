@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {createRenderAdapter} from '../site/runtime/launch-render-adapter.js';
+import {sampleTimeline} from '../site/runtime/launch-timeline.js';
+import {createInspectionController} from '../site/interactions/inspection-controller.js';
+import {createFoldController} from '../site/interactions/fold-controller.js';
+const vector=()=>({x:0,y:0,z:0});
+function setup(){
+  const camera={position:vector(),fov:32,updateProjectionMatrix(){},lookAt(...values){this.target=values;}};
+  const presentation={position:vector(),scale:vector(),rotation:vector()},inspection={rotation:vector()};
+  const THREE={MathUtils:{damp:(a,b,k,dt)=>a+(b-a)*(1-Math.exp(-k*dt))}};
+  const adapter=createRenderAdapter({THREE,camera,presentation,inspection,renderer:{toneMappingExposure:1},lights:{}});
+  return {adapter,camera,presentation,inspection};
+}
+const initial=sampleTimeline(.06),target=sampleTimeline(.52);
+const sixty=setup(),thirty=setup();
+sixty.adapter.snap(initial);thirty.adapter.snap(initial);
+for(let i=0;i<60;i++)sixty.adapter.apply(target,1/60);
+for(let i=0;i<30;i++)thirty.adapter.apply(target,1/30);
+for(const key of ['x','y','z'])assert.ok(Math.abs(sixty.camera.position[key]-thirty.camera.position[key])<1e-9,'Frame rate must not alter the camera');
+const settling=setup();settling.adapter.snap(initial);settling.adapter.apply(target,1/60);
+const aimFraction=(settling.camera.target[0]-initial.camera.target[0])/(target.camera.target[0]-initial.camera.target[0]);
+const positionFraction=(settling.camera.position.z-initial.camera.position[2])/(target.camera.position[2]-initial.camera.position[2]);
+assert.ok(Math.abs(aimFraction-positionFraction)<1e-9,'Camera aim and position must retain the same phase');
+assert.equal(settling.inspection.rotation.z,target.product.inspectionYaw,'The inspection spring must not be damped a second time');
+settling.adapter.snap(target);
+assert.deepEqual(settling.camera.target,target.camera.target,'Reduced motion must settle immediately');
+const inspection=createInspectionController();inspection.setActive(true);inspection.setView('rear');
+assert.equal(typeof inspection.settle,'function','Reduced motion needs an immediate named-view endpoint');
+inspection.settle();assert.equal(inspection.getInfluence().modelYaw,Math.PI);
+const fold=createFoldController({openPose:.72,foldedPose:.50});fold.begin('fold',.72);
+assert.equal(typeof fold.settle,'function','Reduced motion needs an immediate fold endpoint');
+fold.settle();assert.equal(fold.getInfluence().targetPose,.50);
+console.log('launch-render: PASS (30/60 fps equivalence, coordinated aim, immediate turntable ownership, reduced motion)');
