@@ -1,16 +1,20 @@
 # NOVA product launch
 
-The `new` Pages branch presents seven product chapters: introduction, comfort,
-sound, control, portability, inspection, and specifications. V4 remains at
+The `new1` Pages branch presents eight product chapters: introduction, comfort,
+flexibility, sound, control, portability, inspection, and specifications. V4 remains at
 `https://v4.nova-interactive-portfolio.pages.dev/` and is preserved in Git at
 `preserve/nova-v4-20261004` (source commit
 `3c9b2d49d650503d3d0f3f693070615392a2eeb1`).
 
 ## Motion direction
 
-Each chapter has one camera move followed by a reading hold. The scroll mapping
+Each chapter has an incoming camera move, a gentle reading orbit, and a small
+continuous float. The type stays anchored. Ambient motion can be paused and
+stops during inspection or a selected detail. The scroll mapping
 uses measured chapter offsets rather than a guessed total page height. Camera
-position, aim, scale and exposure use time-based damping. Folding uses a spring
+position, aim, scale and exposure use time-based damping. Joints blend in model
+space after sampling a requested gesture, so handoffs do not scrub unrelated
+source animation between bending and folding. Folding uses a spring
 that preserves velocity when reversed; inspection reset eases to its target.
 Navigation lands after the incoming move. Reduced-motion mode uses settled
 compositions and immediate control endpoints.
@@ -59,8 +63,19 @@ Run on the authenticated samvr machine from the repository root:
 
 ```sh
 npx -y wrangler@4.45.0 pages deploy nova/site \
-  --project-name nova-interactive-portfolio --branch new
+  --project-name nova-interactive-portfolio --branch new1
 ```
 
-This publishes the preview alias `https://new.nova-interactive-portfolio.pages.dev/`
-without updating the production or v4 branches.
+This publishes the preview alias `https://new1.nova-interactive-portfolio.pages.dev/`
+without updating the production or v4 branches. The earlier `new` release is
+preserved at commit `c270c075cfe53e75c3e99a4030b6461414c8d0e5`.
+
+
+## Flexibility refinement — 5 October 2026
+
+The source headband bend is isolated at normalized clip positions 0.24–0.30.
+The compact fold uses 0.82–0.92; the earlier 0.50 frame was a different gesture.
+These are animation demonstrations, not measurements of material durability.
+Rest/Flex and Open/Fold controls retain ownership until their chapter is left.
+The eight-second fallback float has the same pause control as the live scene.
+Both motions respect the system reduced-motion preference.

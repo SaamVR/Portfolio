@@ -1,7 +1,9 @@
 // Camera, aim, model scale and orientation share one time constant.
 // Named inspection views have already been spring-integrated by their controller.
-export function createRenderAdapter({THREE,camera,presentation,inspection,mixer,clipDuration,renderer,lights,environment,orientationX=-Math.PI/2}){
+import {createArticulation} from './articulation.js';
+export function createRenderAdapter({THREE,camera,presentation,inspection,mixer,model,clipDuration,renderer,lights,environment,orientationX=-Math.PI/2}){
   let pose=null,look=null;
+  const articulation=createArticulation({root:model,mixer,clipDuration});
   const damp=(a,b,dt)=>THREE.MathUtils.damp(a,b,7,dt);
   const applyVector=(object,values,dt,snap)=>{
     for(const [i,key] of ['x','y','z'].entries()) object[key]=snap?values[i]:damp(object[key],values[i],dt);
@@ -23,7 +25,9 @@ export function createRenderAdapter({THREE,camera,presentation,inspection,mixer,
       inspection.rotation.y=0;
       inspection.rotation.z=state.product.inspectionYaw||0;
     }
-    if(mixer){
+    if(articulation){
+      articulation.apply(state.product.pose,dt,{snap});
+    }else if(mixer){
       pose=pose===null||snap||state.product.controlled?state.product.pose:damp(pose,state.product.pose,dt);
       mixer.setTime(pose*clipDuration);
     }

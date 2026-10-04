@@ -95,3 +95,17 @@ body[data-theme="dark"] .facts-panel,body[data-theme="dark"] .guided-tour{color:
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}.stage{min-height:175svh}}
 body[data-no-js="true"] .stage>*{opacity:1!important}
+
+/* Secondary movement stays below the product's deliberate chapter motion. */
+.motion-toggle{position:fixed;z-index:18;bottom:14px;right:var(--pad);padding:8px 12px;border:1px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:500 9px/1.2 var(--mono);cursor:pointer;opacity:.65}
+.motion-toggle:hover,.motion-toggle:focus-visible{opacity:1}.motion-toggle[hidden]{display:none}
+.product-poster__image{animation:product-float 8s ease-in-out infinite alternate;transform-origin:50% 60%}
+.product-poster__image--flex{display:none}
+body[data-range="flex"] .product-poster__image--rest{display:none}
+body[data-range="flex"] .product-poster__image--flex{display:block;left:1.5vw;right:auto;width:min(54vw,760px)}
+body[data-ambient-paused="true"] .product-poster__image,body[data-range="inspect"] .product-poster__image{animation-play-state:paused}
+@keyframes product-float{from{transform:translateY(6px) rotate(-1.5deg)}to{transform:translateY(-8px) rotate(1.5deg)}}
+@media(min-width:1101px){.product-nav{gap:25px}}
+@media(max-width:700px){body[data-range="flex"] .product-poster__image--flex{width:94vw;left:3vw;height:38svh;top:8svh}.motion-toggle{font-size:8px;bottom:8px;padding:6px 9px}.model-status{display:none}}
+@media(max-width:700px) and (max-height:720px){body[data-range="flex"] .product-poster__image--flex{height:32svh;top:7svh}}
+@media(prefers-reduced-motion:reduce){.product-poster__image{animation:none!important;transform:none}}

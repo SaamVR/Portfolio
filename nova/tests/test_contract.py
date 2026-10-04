@@ -86,7 +86,7 @@ def test_v2_earcup_hotspots_drop_legacy_screen_offsets():
     assert "screenOffset:[-.038,.22]" not in js
 
 def test_r10_fold_pose_prefers_engineered_compact_state():
-    assert "createFoldController({openPose:.72,foldedPose:.50,duration:.92})" in js
+    assert "createFoldController({openPose:.82,foldedPose:.92,duration:.92})" in js
 
 def test_case_study_progress_is_decoupled_from_global_document_height():
     assert "cinematicTrackHeight" in js

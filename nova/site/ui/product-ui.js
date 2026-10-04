@@ -5,6 +5,7 @@ const INSPECTION = new Set(['front','side','rear']);
 const TOUR_ORDER = ['comfort','fold','controls'];
 const NAV_TARGET = {
   design:'#design',
+  flex:'#flexibility',
   spatial:'#sound',
   adaptive:'#control',
   form:'#form',
@@ -85,6 +86,13 @@ export function bindProductUI(nextActions={}){
       setPressed('[data-noise-mode]',mode,'noiseMode');
       setDescription('#noiseModeDescription',button.textContent.trim(),NOISE_COPY[mode]);
       actions.setNoiseMode?.(mode);
+    });
+  });
+
+  document.querySelectorAll('[data-flex-state]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      if(button.disabled) return;
+      actions.setFlexState?.(button.dataset.flexState);
     });
   });
 
@@ -253,6 +261,7 @@ export function updateProductUI(state){
     setPressed('[data-listening-mode]',state.interaction.listeningMode,'listeningMode');
     setPressed('[data-noise-mode]',state.interaction.noiseMode,'noiseMode');
     setPressed('[data-fold-state]',state.interaction.foldState,'foldState');
+    setPressed('[data-flex-state]',state.interaction.flexState,'flexState');
     setPressed('[data-inspection-view]',state.interaction.inspectionView || 'front','inspectionView');
   }
 }

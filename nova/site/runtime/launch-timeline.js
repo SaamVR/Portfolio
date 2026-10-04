@@ -1,5 +1,5 @@
 // One measured chapter, one product benefit, one move and a deliberate hold.
-export const EXPERIENCE_RANGES={hero:[0,.12],design:[.12,.28],spatial:[.28,.45],adaptive:[.45,.58],form:[.58,.72],inspect:[.72,.86],resolution:[.86,1]};
+export const EXPERIENCE_RANGES={hero:[0,.12],design:[.12,.24],flex:[.24,.36],spatial:[.36,.50],adaptive:[.50,.62],form:[.62,.75],inspect:[.75,.88],resolution:[.88,1]};
 const clamp=v=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
 const mix=(a,b,t)=>a+(b-a)*t;
 const vec=(a,b,t)=>a.map((v,i)=>mix(v,b[i],t));
@@ -8,6 +8,7 @@ const color=(a,b,t)=>[16,8,0].reduce((n,shift)=>n+(Math.round(mix((a>>shift)&255
 const SHOTS={
   hero:{pos:[0,0,0],scale:1,yaw:0,pitch:0,turn:-.42,cam:[0,.04,9.2],target:[-1.65,0,0],fov:32,tone:0,spatial:0,adaptive:0},
   design:{pos:[0,0,0],scale:1.03,yaw:0,pitch:0,turn:-.68,cam:[-.08,.04,9.0],target:[-1.75,-.02,0],fov:32,tone:0,spatial:0,adaptive:0},
+  flex:{pos:[0,0,0],scale:.90,yaw:0,pitch:0,turn:-.12,cam:[0,.05,10.8],target:[1.55,0,0],fov:32,tone:0,spatial:0,adaptive:0},
   spatial:{pos:[0,0,0],scale:1,yaw:0,pitch:0,turn:-.20,cam:[0,.05,9.4],target:[-1.65,0,0],fov:32,tone:1,spatial:1,adaptive:0},
   adaptive:{pos:[0,0,0],scale:1,yaw:0,pitch:0,turn:1.18,cam:[0,.05,9.2],target:[1.6,0,0],fov:32,tone:1,spatial:.22,adaptive:1},
   form:{pos:[0,0,0],scale:1,yaw:0,pitch:0,turn:-.50,cam:[0,.05,9.2],target:[-1.65,0,0],fov:32,tone:0,spatial:0,adaptive:0},
@@ -47,15 +48,22 @@ export function sampleTimeline(progress,viewport='desktop',dimensions={}){
     ui:{range,dark:dark>.5,settled:local>.24&&local<.88,transition:'none',opacity:range==='hero'?1-ease((local-.88)/.12):ease(local/.16)*(range==='resolution'?1:1-ease((local-.88)/.12))}
   };
   if(range==='hero') state.camera.position[2]-=.18*ease(local);
+  // An unhurried orbit continues through the reading beat, then resolves.
+  if(range!=='inspect') state.product.inspectionYaw+=.18*Math.sin(Math.PI*local)*ease(local/.24)*ease((1-local)/.12);
+  if(range==='flex'){
+    const bend=ease((local-.18)/.24)*(1-ease((local-.66)/.22));
+    state.product.pose=mix(.24,.30,bend);
+  }
   if(range==='form'){
     // Fold -> hold -> reopen. Manual controls can take ownership at any point.
     const folded=ease((local-.28)/.18)*(1-ease((local-.70)/.16));
-    state.product.pose=mix(.72,.50,folded);
+    state.product.pose=mix(.82,.92,folded);
   }
   if(viewport==='mobile'){
     state.camera.position=[0,.04,12.8];state.camera.target=[0,-1.9,0];state.camera.fov=36;
-    state.product.scale=.72;state.product.inspectionYaw*=.8;
-    if(dimensions.height && dimensions.height<720){state.product.scale=.64;state.camera.target[1]=-2.0;}
+    const mobileFactor=mix(names[index-1]==='flex'?.83:1,range==='flex'?.83:1,t);
+    state.product.scale=.72*mobileFactor;state.product.inspectionYaw*=.8;
+    if(dimensions.height && dimensions.height<720){state.product.scale=.64*mobileFactor;state.camera.target[1]=-2.0;}
   }else if(viewport==='tablet'){
     state.camera.position[2]+=.4;state.camera.target[0]*=.65;state.product.scale=.94;
   }

@@ -9,7 +9,7 @@
   <meta property="og:title" content="NOVA — Hear beyond." />
   <meta property="og:description" content="Less noise. More you. Explore NOVA from every angle." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://new.nova-interactive-portfolio.pages.dev/" />
+  <meta property="og:url" content="https://new1.nova-interactive-portfolio.pages.dev/" />
   <meta name="twitter:card" content="summary" />
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./launch.css" />
@@ -17,11 +17,12 @@
   {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
   </script>
 </head>
-<body data-stage-gating="true" data-model-state="loading" data-range="hero" data-theme="light" data-release="new">
+<body data-stage-gating="true" data-model-state="loading" data-range="hero" data-theme="light" data-release="new1">
   <canvas id="webgl" aria-label="Interactive 3D NOVA headphone"></canvas>
   <div class="product-poster" aria-hidden="true">
     <div class="product-poster__halo"></div>
-    <img class="product-poster__image" src="./assets/product-poster.webp" alt="" width="1200" height="1200" fetchpriority="high" />
+    <img class="product-poster__image product-poster__image--rest" src="./assets/product-poster.webp" alt="" width="1200" height="1200" fetchpriority="high" />
+    <img class="product-poster__image product-poster__image--flex" src="./assets/flex-poster.webp" alt="" width="1200" height="1200" loading="lazy" />
 
   </div>
   <div class="grain" aria-hidden="true"></div>
@@ -30,6 +31,7 @@
     <a class="brand" href="#hero" aria-label="NOVA home">NOVA</a>
     <nav class="product-nav" aria-label="NOVA product navigation">
       <a href="#design">Design</a>
+      <a href="#flexibility">Flexibility</a>
       <a href="#sound">Sound</a>
       <a href="#control">Control</a>
       <a href="#experience">Experience</a>
@@ -40,12 +42,15 @@
 
   <nav class="mobile-nav" id="mobileNavPanel" aria-label="NOVA mobile product navigation" aria-hidden="true">
     <a href="#design">Design <span>01</span></a>
-    <a href="#sound">Sound <span>02</span></a>
-    <a href="#control">Control <span>03</span></a>
-    <a href="#form">Portability <span>04</span></a>
-    <a href="#experience">Inspect <span>05</span></a>
-    <a href="#discover">Product facts <span>06</span></a>
+    <a href="#flexibility">Flexibility <span>03</span></a>
+    <a href="#sound">Sound <span>04</span></a>
+    <a href="#control">Control <span>05</span></a>
+    <a href="#form">Portability <span>06</span></a>
+    <a href="#experience">Inspect <span>07</span></a>
+    <a href="#discover">Product facts <span>08</span></a>
   </nav>
+
+  <button type="button" class="motion-toggle" id="motionToggle" aria-pressed="false" title="Pause or resume the ambient product motion">Pause motion</button>
 
   <div class="experience-progress" aria-hidden="true"><i id="experienceProgress"></i></div>
 
@@ -75,51 +80,60 @@
           <button type="button" data-detail-id="hinge" data-detail-target="headband" aria-pressed="false"><span>02</span><strong>Articulation</strong><small>Swivel, fold, and find your fit.</small></button>
           <button type="button" data-detail-id="controls" data-detail-target="controls" aria-pressed="false"><span>03</span><strong>Finish</strong><small>Follow the sculpted earcup surface.</small></button>
         </div>
-      </div><div class="section-marker"><span>SHAPED AROUND YOU</span><span>02 / 07</span></div>
+      </div><div class="section-marker"><span>SHAPED AROUND YOU</span><span>02 / 08</span></div>
+    </section>
+    <section id="flexibility" class="stage stage--flex" data-range-anchor="flex" aria-labelledby="flexTitle">
+      <div class="stage-inner copy copy--right">
+        <p class="eyebrow">03 / A little give</p><h2 id="flexTitle">Made to move.<br /><em>With you.</em></h2>
+        <p>Watch the headband open, find its shape, and return. A closer look at the flexibility built into the design.</p>
+        <div class="segmented" role="group" aria-label="Headband flexibility"><button type="button" data-requires-3d="true" data-flex-state="rest" aria-pressed="true">Rest</button><button type="button" data-requires-3d="true" data-flex-state="flex" aria-pressed="false">Flex</button></div>
+        <p class="interaction-note">Scroll to follow the bend. Take control to explore it yourself.</p>
+        <p class="chapter-footnote">Model articulation shown. Material durability has not been measured.</p>
+      </div><div class="section-marker"><span>A LITTLE GIVE, A DIFFERENT SHAPE</span><span>03 / 08</span></div>
     </section>
     <section id="sound" class="stage stage--sound" data-range-anchor="spatial" aria-labelledby="soundTitle">
       <div class="sound-field" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="stage-inner copy copy--left">
-        <p class="eyebrow">03 / Hear the detail</p><h2 id="soundTitle">Get lost.<br /><em>In the music.</em></h2>
+        <p class="eyebrow">04 / Hear the detail</p><h2 id="soundTitle">Get lost.<br /><em>In the music.</em></h2>
         <p>From the first note to the final fade. Explore the wireless connections that bring your listening closer.</p>
         <div class="segmented" role="group" aria-label="Explore wireless codecs"><button type="button" data-listening-mode="spatial" aria-pressed="true">LDAC</button><button type="button" data-listening-mode="focus" aria-pressed="false">AAC</button><button type="button" data-listening-mode="ambient" aria-pressed="false">LC3</button></div>
         <p class="mode-description" id="listeningModeDescription" aria-live="polite"><strong>LDAC</strong> — High-resolution wireless audio with compatible devices.</p>
         <span class="chapter-footnote">Codec support follows the disclosed hardware benchmark.</span>
-      </div><div class="section-marker"><span>EVERY NOTE, CLOSER</span><span>03 / 07</span></div>
+      </div><div class="section-marker"><span>EVERY NOTE, CLOSER</span><span>04 / 08</span></div>
     </section>
     <section id="control" class="stage stage--control" data-range-anchor="adaptive" aria-labelledby="controlTitle">
       <div class="stage-inner copy copy--right">
-        <p class="eyebrow">04 / Take control</p><h2 id="controlTitle">Your world.<br /><em>Your volume.</em></h2>
+        <p class="eyebrow">05 / Take control</p><h2 id="controlTitle">Your world.<br /><em>Your volume.</em></h2>
         <p>Find your focus. Let the world back in. Explore noise canceling and ambient awareness with a change of mode.</p>
         <div class="segmented" role="group" aria-label="Noise control mode"><button type="button" data-noise-mode="adaptive" aria-pressed="true">Quiet</button><button type="button" data-noise-mode="transparency" aria-pressed="false">Aware</button></div>
         <p class="mode-description" id="noiseModeDescription" aria-live="polite"><strong>Quiet</strong> — Noise canceling for focused listening.</p>
         <div class="gesture-guide"><span>Double tap <strong>Play / pause</strong></span><span>Swipe up / down <strong>Volume</strong></span><span>NC / AMB button <strong>Noise mode</strong></span></div>
-      </div><div class="section-marker"><span>STAY IN YOUR ELEMENT</span><span>04 / 07</span></div>
+      </div><div class="section-marker"><span>STAY IN YOUR ELEMENT</span><span>05 / 08</span></div>
     </section>
     <section id="form" class="stage stage--form" data-range-anchor="form" aria-labelledby="formTitle">
       <div class="stage-inner copy copy--left">
-        <p class="eyebrow">05 / Pack and go</p><h2 id="formTitle">Big sound.<br /><em>Small footprint.</em></h2>
+        <p class="eyebrow">06 / Pack and go</p><h2 id="formTitle">Big sound.<br /><em>Small footprint.</em></h2>
         <p>The day keeps moving. So does NOVA. Follow the fold, then explore the open and compact forms yourself.</p>
         <div class="segmented segmented--light" role="group" aria-label="Headphone form"><button type="button" data-requires-3d="true" data-fold-state="open" aria-pressed="true">Open</button><button type="button" data-requires-3d="true" data-fold-state="fold" aria-pressed="false">Fold</button></div>
         <p class="interaction-note">A smaller form. A new point of departure.</p>
-      </div><div class="section-marker"><span>READY FOR WHAT'S NEXT</span><span>05 / 07</span></div>
+      </div><div class="section-marker"><span>READY FOR WHAT'S NEXT</span><span>06 / 08</span></div>
     </section>
     <section id="experience" class="stage stage--inspect" data-range-anchor="inspect" aria-labelledby="inspectTitle">
       <div class="stage-inner copy copy--right inspect-copy">
-        <p class="eyebrow">06 / Every angle</p><h2 id="inspectTitle">Nothing<br /><em>to hide.</em></h2>
+        <p class="eyebrow">07 / Every angle</p><h2 id="inspectTitle">Nothing<br /><em>to hide.</em></h2>
         <p>Take a turn around the complete form. Switch views, or drag the product to find your own angle.</p>
         <div class="inspection-views" role="group" aria-label="Inspection view"><button type="button" data-requires-3d="true" data-inspection-view="front" aria-pressed="true">Front</button><button type="button" data-requires-3d="true" data-inspection-view="side" aria-pressed="false">Side</button><button type="button" data-requires-3d="true" data-inspection-view="rear" aria-pressed="false">Rear</button></div>
         <div class="inspect-meta"><span>Drag to explore</span><button type="button" id="inspectionReset" data-requires-3d="true">Reset view ↺</button></div>
-      </div><div class="section-marker"><span>DESIGNED FROM EVERY SIDE</span><span>06 / 07</span></div>
+      </div><div class="section-marker"><span>DESIGNED FROM EVERY SIDE</span><span>07 / 08</span></div>
     </section>
     <section id="discover" class="stage stage--resolution" data-range-anchor="resolution" aria-labelledby="discoverTitle">
       <div class="stage-inner copy copy--left resolution-copy">
-        <p class="eyebrow">07 / The essentials</p><h2 id="discoverTitle">Make room<br /><em>for your music.</em></h2>
+        <p class="eyebrow">08 / The essentials</p><h2 id="discoverTitle">Make room<br /><em>for your music.</em></h2>
         <p>Comfort, control and a form that moves with you. Meet the details behind the experience.</p>
         <div class="feature-strip" aria-label="Hardware benchmark highlights"><span><strong>30 h</strong>NC-on battery*</span><span><strong>5.3</strong>Bluetooth*</span><span><strong>2</strong>Device multipoint*</span></div>
         <div class="resolution-actions"><button type="button" class="button button--solid" id="productFactsTrigger" aria-controls="productFactsPanel" aria-expanded="false">Full specifications ↗</button><button type="button" class="text-link" id="replay">Experience again ↺</button></div>
         <p class="chapter-footnote">*Sony WH-1000XM6 hardware benchmark. See specifications for conditions and sources.</p>
-      </div><div class="section-marker"><span>NOVA / HEAR BEYOND</span><span>07 / 07</span></div>
+      </div><div class="section-marker"><span>NOVA / HEAR BEYOND</span><span>08 / 08</span></div>
     </section>
     <footer class="launch-footer"><a class="brand" href="#hero">NOVA</a><p>Independent product design. Hardware specifications use the disclosed Sony WH-1000XM6 benchmark.</p><a href="https://github.com/SaamVR/Portfolio/tree/nova/new-product-launch-20261004" target="_blank" rel="noreferrer">Project ↗</a><a href="https://v4.nova-interactive-portfolio.pages.dev/">V4 archive ↗</a></footer>
   </main>

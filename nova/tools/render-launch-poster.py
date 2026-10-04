@@ -1,4 +1,4 @@
-import json,numpy as np
+import os,json,numpy as np
 from PIL import Image,ImageFilter
 from pathlib import Path
 assets=Path(__file__).resolve().parents[1]/'site/assets'
@@ -28,6 +28,6 @@ for m in meshes:
   patch=canvas[y0:y1+1,x0:x1+1];patch[mask,:3]=pixels[mask];patch[mask,3]=255;depth[y0:y1+1,x0:x1+1][mask]=z[mask]
 img=Image.fromarray(canvas);box=img.getbbox();img=img.crop((max(0,box[0]-35),max(0,box[1]-35),min(W,box[2]+35),min(H,box[3]+35)))
 img.thumbnail((1050,1050),getattr(Image,'Resampling',Image).LANCZOS);out=Image.new('RGBA',(1200,1200));out.alpha_composite(img,((1200-img.width)//2,(1200-img.height)//2))
-out.save(assets/'product-poster.webp',lossless=True)
+out.save(assets/os.environ.get('NOVA_POSTER_OUTPUT','product-poster.webp'),lossless=True)
 preview=Image.new('RGBA',out.size,(238,232,220,255));preview.alpha_composite(out);preview.convert('RGB').save('/tmp/nova-poster-preview.jpg')
-print('Poster:',box,'bytes:',(assets/'product-poster.webp').stat().st_size)
+print('Poster:',box,'bytes:',(assets/os.environ.get('NOVA_POSTER_OUTPUT','product-poster.webp')).stat().st_size)

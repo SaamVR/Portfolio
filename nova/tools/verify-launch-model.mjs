@@ -6,6 +6,7 @@ const site=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../site');
 import * as THREE from '../site/vendor/three.module.js';
 import {GLTFLoader} from '../site/vendor/addons/loaders/GLTFLoader.js';
 import {sampleTimeline,EXPERIENCE_RANGES} from '../site/runtime/launch-timeline.js';
+import {applyLivingMotion} from '../site/runtime/living-motion.js';
 globalThis.ProgressEvent=class{constructor(type,args){Object.assign(this,args);}};
 const file=path.join(site,'assets/headphones-web.gltf');
 const source=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -31,15 +32,19 @@ const point=new THREE.Vector3();
 const report=[];
 for(const [viewport,w,h]of[['desktop',1440,900],['tablet',1024,768],['mobile',390,844],['mobile',375,667],['desktop',1440,700]]){
  for(const[range,[a,b]]of Object.entries(EXPERIENCE_RANGES)){
-  const s=sampleTimeline((a+b)/2,viewport,{width:w,height:h}),camera=setState(s,w,h);let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const local of [0,.16,.28,.40,.52,.70,.86,.999]) for(const time of [0,3,6]){
+  const s=applyLivingMotion(sampleTimeline(a+(b-a)*local,viewport,{width:w,height:h}),time),camera=setState(s,w,h);let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   for(const mesh of meshes){for(let i=0;i<mesh.geometry.attributes.position.count;i++){mesh.getVertexPosition(i,point);point.applyMatrix4(mesh.matrixWorld).project(camera);const x=(point.x+1)*w/2,y=(1-point.y)*h/2;minX=Math.min(x,minX);maxX=Math.max(x,maxX);minY=Math.min(y,minY);maxY=Math.max(y,maxY);}}
-  report.push({viewport,w,h,range,box:[minX,minY,maxX,maxY].map(v=>Math.round(v))});
+  report.push({viewport,w,h,range,local,time,box:[minX,minY,maxX,maxY].map(v=>Math.round(v))});
+  }
  }
 }
 for(const row of report){const [l,t,r,b]=row.box;assert.ok(l>=0&&r<=row.w&&t>=0&&b<=row.h,JSON.stringify(row));if(row.viewport==='mobile')assert.ok(b<row.h*.46,'Product must clear mobile copy: '+JSON.stringify(row));}
 console.log('model-framing: PASS ('+report.length+' full skinned-mesh projections)');fs.writeFileSync('/tmp/nova-model-framing.json',JSON.stringify(report,null,2));
 // A transparent poster rendered from the same skinned geometry, not a substitute model.
 const posterState=sampleTimeline(.08);posterState.camera.target=[0,0,0];posterState.camera.position=[0,0,6.5];posterState.camera.fov=36;
+posterState.product.pose=Number(process.env.NOVA_POSTER_POSE??.72);
+if(process.env.NOVA_POSTER_POSE) posterState.camera.position[2]=9.5;
 const camera=setState(posterState,1200,1200),geometry=[];
 for(const mesh of meshes){const vertices=[],uvs=[],normals=[],normalMatrix=new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
  for(let i=0;i<mesh.geometry.attributes.position.count;i++){mesh.getVertexPosition(i,point);point.applyMatrix4(mesh.matrixWorld).project(camera);vertices.push([(point.x+1)*600,(1-point.y)*600,point.z]);const uv=mesh.geometry.attributes.uv;uvs.push(uv?[uv.getX(i),uv.getY(i)]:[0,0]);const normal=mesh.geometry.attributes.normal;const v=new THREE.Vector3(normal.getX(i),normal.getY(i),normal.getZ(i)).applyMatrix3(normalMatrix).normalize();normals.push(v.toArray());}

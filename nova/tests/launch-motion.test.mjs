@@ -14,15 +14,17 @@ for(const viewport of ['desktop','tablet','mobile']){
     const s=sampleTimeline(p,viewport);
     assert.ok([...s.camera.position,...s.camera.target,s.camera.fov,s.product.pose,s.product.scale].every(Number.isFinite));
     assert.ok(s.product.scale>0 && s.camera.fov>15 && s.camera.fov<45);
-    if(p<.58 || p>.72) assert.ok(Math.abs(s.product.pose-.72)<1e-6,'Articulation must belong to the portability chapter');
+    if(!['form','flex'].includes(s.range)) assert.ok(Math.abs(s.product.pose-.72)<1e-6,'Articulation must belong to its feature chapter');
+    if(s.range==='flex') assert.ok(s.product.pose>=.24 && s.product.pose<=.30);
+    if(s.range==='form') assert.ok(s.product.pose>=.82 && s.product.pose<=.92);
   }
 }
 for(const [start,end] of Object.values(EXPERIENCE_RANGES)){
   const mid=(start+end)/2;
   const a=sampleTimeline(mid-.001),b=sampleTimeline(mid+.001);
-  assert.ok(Math.abs(a.product.inspectionYaw-b.product.inspectionYaw)<.006,'Product must hold while feature copy is read');
+  assert.ok(Math.abs(a.product.inspectionYaw-b.product.inspectionYaw)<.02,'Reading orbit must stay gentle');
 }
 const html=await readFile(new URL('../site/index.html',import.meta.url),'utf8');
-assert.equal((html.match(/data-range-anchor=/g)||[]).length,7,'Launch must have seven product chapters');
+assert.equal((html.match(/data-range-anchor=/g)||[]).length,8,'Launch must have eight product chapters');
 assert.ok(!html.includes('id="services"')&&!html.includes('id="case-study"'),'Buyer journey must end with the product');
-console.log('launch-motion: PASS (measured chapter timing, reversible tour mapping, stable poses, seven chapters)');
+console.log('launch-motion: PASS (measured chapter timing, reversible tour mapping, stable poses, eight chapters)');

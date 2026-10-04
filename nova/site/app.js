@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EXPERIENCE_RANGES, getSectionProgress, progressToScroll, getRangeState, sampleTimeline } from './runtime/launch-timeline.js';
 import { createInteractionState, composeVisualState } from './runtime/launch-composer.js';
+import {applyLivingMotion} from './runtime/living-motion.js';
 import { createRenderAdapter } from './runtime/launch-render-adapter.js';
 import { createEnvironment } from './runtime/environment.js';
 import { bindProductUI, updateProductUI, set3dAvailability } from './ui/product-ui.js';
@@ -32,7 +33,10 @@ const forceStatic = query.get('static') === '1';
 
 const pointer = {x:0,y:0,tx:0,ty:0};
 const interactionState = createInteractionState();
-const foldController = createFoldController({openPose:.72,foldedPose:.50,duration:.92});
+const foldController = createFoldController({openPose:.82,foldedPose:.92,duration:.92});
+const flexController=createFoldController({openPose:.24,foldedPose:.30,duration:1.2});
+let flexState='rest',ambientTime=0,ambientPaused=false;
+const motionToggle=document.querySelector('#motionToggle');
 const inspectionController = createInspectionController({maxYaw:.52,maxPitch:.12});
 const modeController = createModeController();
 
@@ -114,7 +118,7 @@ let adapter=rendererAvailable?createRenderAdapter({
 let lastTime=performance.now();
 
 const REDUCED_SETTLED={
-  hero:.10,design:.20,spatial:.36,adaptive:.52,form:.65,inspect:.79,resolution:.92,behind:.985
+  hero:.08,design:.18,flex:.30,spatial:.43,adaptive:.56,form:.69,inspect:.815,resolution:.94
 };
 
 function viewportClass(){
@@ -215,7 +219,7 @@ function hideHotspots(){
 function rebuildAdapter(){
   if(!rendererAvailable) return;
   adapter=createRenderAdapter({
-    THREE,camera,presentation,inspection:inspectionGroup,mixer,clipDuration,renderer,lights,environment,orientationX
+    THREE,camera,presentation,inspection:inspectionGroup,mixer,model,clipDuration,renderer,lights,environment,orientationX
   });
 }
 
@@ -369,8 +373,10 @@ function publishState(state){
     publishedRange=state.range;
   }
   if(progressEl) progressEl.style.width=`${Math.round(state.progress*100)}%`;
-  if(!interactionState.fold.active && state.range==='form') foldState=state.product.pose<.60?'fold':'open';
+  if(!interactionState.fold.active && state.range==='form') foldState=state.product.pose>.87?'fold':'open';
+  if(!interactionState.fold.active && state.range==='flex') flexState=state.product.pose>.275?'flex':'rest';
   state.interaction={
+    flexState,
     listeningMode,
     noiseMode,
     foldState,
@@ -393,7 +399,11 @@ function updateInteractionInfluences(base,dt,now){
 
   const modeInfluence=modeController.getInfluence();
   if(reducedMotion){inspectionController.settle();foldController.settle();}
-  interactionState.fold=foldController.getInfluence();
+  const flexBefore=flexController.getInfluence();
+  if(base.range!=='flex' && flexBefore.active) flexController.update(1,{scrollActive:true,timelinePose:base.product.pose});
+  flexController.update(dt,{scrollActive:false,timelinePose:base.product.pose});
+  if(reducedMotion) flexController.settle();
+  interactionState.fold=base.range==='flex'?flexController.getInfluence():foldController.getInfluence();
   interactionState.inspection=inspectionController.getInfluence();
   interactionState.listening=base.range==='spatial'
     ? modeInfluence.listening
@@ -431,6 +441,8 @@ function render(now=performance.now()){
   const base=sampleAuthoredState();
   updateInteractionInfluences(base,dt,now);
   const composed=composeVisualState(base,interactionState);
+  if(!ambientPaused && !document.hidden && !reducedMotion) ambientTime+=dt;
+  applyLivingMotion(composed,ambientTime,{reducedMotion,inspectionWeight:interactionState.inspection.weight,hotspotWeight:interactionState.hotspot.weight});
   currentComposedState=composed;
   publishState(composed);
   if(rendererAvailable && adapter){
@@ -449,7 +461,8 @@ function scheduleTourDetail(callback){
   window.setTimeout(callback,delay);
 }
 
-const DESIGN_DETAIL_PROGRESS={cushion:.16,hinge:.205,controls:.255};
+const chapterProgress=(range,local=.5)=>{const [a,b]=EXPERIENCE_RANGES[range];return a+(b-a)*local;};
+const DESIGN_DETAIL_PROGRESS={cushion:chapterProgress('design',.28),hinge:chapterProgress('design',.50),controls:chapterProgress('design',.72)};
 
 const actions={
   setListeningMode(mode){
@@ -459,6 +472,10 @@ const actions={
   setNoiseMode(mode){
     noiseMode=mode;
     modeController.setNoise(mode);
+  },
+  setFlexState(state){
+    flexState=state;
+    flexController.begin(state==='flex'?'fold':'open',currentComposedState?.product.pose??.24);
   },
   setFoldState(state){
     foldState=state;
@@ -496,14 +513,14 @@ const actions={
       foldController.begin('open',currentComposedState?.product.pose ?? .24);
       inspectionView='front';
       inspectionController.reset();
-      scrollToProgress(.20);
+      scrollToProgress(chapterProgress('design'));
       if(rendererAvailable) scheduleTourDetail(()=>hotspotController?.focus('cushion'));
       return;
     }
     if(step==='fold'){
       inspectionView='front';
       inspectionController.reset();
-      scrollToProgress(.65);
+      scrollToProgress(chapterProgress('form'));
       if(rendererAvailable) scheduleTourDetail(()=>{
         foldState='fold';
         foldController.begin('fold',currentComposedState?.product.pose ?? .72);
@@ -513,7 +530,7 @@ const actions={
     if(step==='controls'){
       foldState='open';
       foldController.begin('open',currentComposedState?.product.pose ?? .50);
-      scrollToProgress(.79);
+      scrollToProgress(chapterProgress('inspect'));
       if(rendererAvailable) scheduleTourDetail(()=>{
         inspectionView='side';
         inspectionController.setView('side');
@@ -582,7 +599,22 @@ canvas.addEventListener('pointercancel',event=>{
 
 window.addEventListener('resize',resize,{passive:true});
 
-motionPreference.addEventListener('change',event=>{reducedMotion=event.matches;});
+function updateMotionPreference(){
+  motionToggle.hidden=reducedMotion;
+  document.body.dataset.ambientPaused=String(ambientPaused||reducedMotion);
+}
+motionToggle.addEventListener('click',()=>{
+  ambientPaused=!ambientPaused;
+  motionToggle.setAttribute('aria-pressed',String(ambientPaused));
+  motionToggle.textContent=ambientPaused?'Resume motion':'Pause motion';
+  updateMotionPreference();
+});
+motionPreference.addEventListener('change',event=>{reducedMotion=event.matches;updateMotionPreference();});
+updateMotionPreference();
 resize();
+window.addEventListener('load',()=>{
+  const range=document.getElementById(location.hash.slice(1))?.dataset.rangeAnchor;
+  if(range) scrollTo({top:progressToScroll(range==='hero'?0:chapterProgress(range,.36),measuredSections),behavior:'instant'});
+},{once:true});
 loadModel();
 requestAnimationFrame(render);
