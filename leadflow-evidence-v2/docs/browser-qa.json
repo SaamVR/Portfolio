@@ -1,0 +1,26 @@
+{
+  "url": "https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "verifiedAt": "2026-10-12T14:48:49.333Z",
+  "qualified": {
+    "score": "96/100",
+    "count": 1,
+    "events": 8,
+    "contract": "{\n  \"adapter\": \"sandbox\",\n  \"externalWrite\": false,\n  \"attempts\": 1,\n  \"payload\": {\n    \"external_id\": \"sample-qualified\",\n    \"display_name\": \"Alex Morgan\",\n    \"company\": \"Northstar Dental\",\n    \"source\": \"Website enquiry\",\n    \"qualification_score\": 96,\n    \"qualification_lane\": \"sales\",\n    \"next_action\": \"Sales review required\",\n    \"idempotency_key\": \"lfv2-47e6d0f55df149cbb62afc\"\n  },\n  \"followup\": \"draft-only\",\n  \"durability\": \"client-local-only\"\n}"
+  },
+  "dimensions": {
+    "inner": 390,
+    "scroll": 390,
+    "body": 390
+  },
+  "checks": [
+    "desktop flow",
+    "qualified score",
+    "local record",
+    "replay dedupe",
+    "timeout injection",
+    "mobile no overflow",
+    "mobile review",
+    "JS errors"
+  ],
+  "errors": []
+}

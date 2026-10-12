@@ -1,0 +1,36 @@
+{
+  "checked_date_bdt": "2026-10-13",
+  "source_media_commit": "f1a5b0d6f9568f1cdd37e02917d6b62c796c03fb",
+  "review_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/#reels",
+  "tool": "Authorized Samai Chromium headless browser; real HTMLVideoElement metadata and playback",
+  "checks": {
+    "qualified": {
+      "url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-qualified.mp4",
+      "http": 200,
+      "content_type": "video/mp4",
+      "duration_seconds": 25.4,
+      "width": 1200,
+      "height": 678,
+      "playback_advanced_seconds": 0.85617
+    },
+    "timeout": {
+      "url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-timeout.mp4",
+      "http": 200,
+      "content_type": "video/mp4",
+      "duration_seconds": 25.4,
+      "width": 1200,
+      "height": 678,
+      "playback_advanced_seconds": 0.817871
+    },
+    "mobile_390px": {
+      "viewport_width": 390,
+      "body_scroll_width": 390,
+      "document_scroll_width": 390,
+      "video_elements": 2,
+      "horizontal_overflow": false
+    },
+    "uncaught_browser_javascript_errors": 0
+  },
+  "result": "PASS",
+  "scope_limitations": "Playback checks verify the hosted MP4s load, decode, and advance in Chromium, and that the 390px layout fits. Audio was muxed as original synthesized AAC, but subjective sound-design quality remains for owner review. Upwork portfolio is not published."
+}

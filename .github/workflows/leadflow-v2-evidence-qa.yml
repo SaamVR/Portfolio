@@ -1,0 +1,38 @@
+name: LeadFlow V2 Evidence QA
+on:
+  push:
+    branches: [feat/leadflow-v2-evidence-20261012]
+    paths:
+      - "leadflow-evidence-v2/**"
+      - ".github/workflows/leadflow-v2-evidence-qa.yml"
+  pull_request:
+    paths:
+      - "leadflow-evidence-v2/**"
+      - ".github/workflows/leadflow-v2-evidence-qa.yml"
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Execute contract and boundary tests
+        working-directory: leadflow-evidence-v2
+        run: npm test && npm run check && npm run build
+      - name: Check output surface
+        run: |
+          test -f leadflow-evidence-v2/.output/index.html
+          test -f leadflow-evidence-v2/.output/functions/api/execute.js
+          test -f leadflow-evidence-v2/.output/functions/lib/engine.mjs
+          ! grep -q "externalCrm: true" leadflow-evidence-v2/functions/api/execute.js
+      - name: Upload build for isolated review
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-v2-isolated-pages-build
+          path: leadflow-evidence-v2/.output/
+          if-no-files-found: error
+          include-hidden-files: true

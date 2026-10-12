@@ -1,0 +1,144 @@
+# LeadFlow V2 — Verified Evidence Register
+
+Scope: **isolated V2 portfolio preview**, never the original V1 production.
+Git branch: feat/leadflow-v2-evidence-20261012
+Review URL: https://evidence-review.leadflow-evidence-v2.pages.dev/
+Original URL: https://leadflow-ai-bhy.pages.dev/
+Draft PR: https://github.com/SaamVR/Portfolio/pull/35
+
+## Verification observed 2026-10-12 (BDT)
+
+### Edge HTTP acceptance
+- GET / — 200
+- GET /styles.css — 200
+- GET /app.js — 200
+- GET /api/execute — 200, mode=synthetic-sandbox; externalCrm=false; llm=false
+- POST unknown scenario — 400 invalid_scenario
+- POST qualified — 96/100 sales; sandbox adapter 1 attempt; 7 server events
+- POST review — 60/100 review; sandbox adapter 1 attempt; 8 events
+- POST nurture — 27/100 nurture; sandbox adapter 1 attempt; 8 events
+- POST timeout — 81/100 sales; sandbox adapter 3 attempts; 11 events (two injected faults)
+- Times observed: qualified 48ms, review 48ms, nurture 48ms, timeout 144ms. **These are single isolated server samples, not benchmark distributions.**
+
+### Automated frontend acceptance (Chromium 154)
+- Desktop HTML title, run control, API health
+- Qualified scenario scored 96; one synthetic browser-local record stored; event stream rendered; sandbox payload visible
+- Replaying same lead did not add another unique browser-local record
+- Timeout scenario produced 2 visible fault events + 1 eventual sandbox acceptance
+- 390px viewport: document and body scrollWidth = 390, no horizontal overflow
+- Mobile review scenario scored 60, completed
+- No uncaught browser JavaScript errors
+
+### Node and GitHub
+- 6/6 Node contract tests passed
+- Syntax checks and isolated asset build passed
+- GitHub V2 Evidence QA run 38264737129 PASS (source/test/build artifact)
+- Draft PR #35 open; merge and original deployment unchanged
+
+## Trust / limitations
+- Server executes real API code. Qualification is deterministic, **not LLM-powered**.
+- CRM output is a **contract-tested sandbox adapter**, not a third-party account.
+- Faults are injected on the sandbox adapter, not actual provider downtime.
+- CRM records and record deduplication are **browser-local**, not durable server-side operations.
+- No outbound email, SMS, payment, CRM write or other paid provider call.
+- Samples use generated/synthetic names and organizations; no client data.
+- The review URL is a Cloudflare branch alias; no claim of an independent production launch or customer acquisition.
+
+## Portfolio media order
+1. `portfolio-media/01-hero.png` — original V2 product cover screenshot
+2. `portfolio-media/02-qualified-run.png` — server-backed qualification and event stream
+3. `portfolio-media/03-timeout-recovery.png` — injected failure and retry trace
+4. `portfolio-media/04-architecture.png` — disclosed system responsibilities
+5. `portfolio-media/05-mobile.png` — actual mobile interaction state
+
+## Additional features that would require further development
+- Authenticated and rate-limited public/API accounts
+- Provider-verified CRM OAuth/token integration with write receipts
+- Durable server-side idempotency and transactional outbox
+- Bounded structured-output model inference with measured failure cases
+- Sandbox integration acceptance, observability, and operations alerts
+
+These are **future options** and must not be described as implemented.
+
+
+## Motion enhancement acceptance — 2026-10-12 (BDT)
+
+Revision: `cead360685394d160e707bacbcd469094133fc34`, draft PR #35.
+CI: workflow run `38271145296`, PASS. Original Cloudflare project unchanged.
+
+A Chromium/Puppeteer interaction run tested:
+- Stage explorer selection and purely visual walkthrough without executing API
+- Pointer-sensitive depth and return to neutral
+- Artificial network delay before the real API POST: no completed-stage motion before success
+- Correct score-factor bars rendered from server-returned scoring factors
+- Four post-response timeline stages, animated trace, and no extra POST on visual replay
+- Switching scenarios clears stale API result, scoring factors, and old download availability
+- Two explicitly simulated fault events and sandbox recovery, not real provider outage
+- Reduced motion via OS setting and manual on/off control
+- Successful reduced-motion workflow and 390px mobile with no horizontal overflow
+- Forced network failure: no falsely successful stage, and receipt download disabled
+- Zero uncaught JavaScript errors across the above tests
+
+Receipts: `docs/motion-browser-qa.json`; runnable harness: `tests/browser-motion-qa.cjs`.
+Capture set: `portfolio-media/06-motion-hero.png`, `07-motion-interactive-stage.png`,
+`08-motion-confirmed-workflow.png`, `09-motion-retry-evidence.png`.
+
+The browser implementation intentionally uses WAAPI, transforms, opacity,
+passive scroll events and requestAnimationFrame rather than expensive WebGL
+effects in the operational data console.
+
+
+## Director's Cut — staged animation proof (2026-10-12)
+
+Review: https://evidence-review.leadflow-evidence-v2.pages.dev/
+The new 24.4s five-act film is a **post-execution playback**, not a 24-second network request.
+An actual server receipt gates playback. The browser then reconstructs verified
+lead, score, factors, routing, sandbox timeouts and draft approval states.
+
+Desktop, network-fault, fault-specific and 390px reduced-motion browser acceptance:
+- 24 verified assertions, zero uncaught browser JS errors
+- Native pause, scrub, replay, chapter navigation and skip
+- 5 acts, data-derived score and simulated fault sequence only when receipt contains those faults
+- No autoplay success or player controls before confirmed server receipt
+- No horizontal overflow at 390px; reduced motion jumps to the confirmed ending
+
+See `docs/directors-treatment.md`, `docs/directors-cut-browser-qa.json`,
+`tests/browser-directors-cut.cjs`, and `portfolio-media/directors-cut/` for evidence.
+
+## Recorded film delivery — 2026-10-13
+
+Both encoded films use actual captured frames of the V2 five-act StoryDirector,
+driven by fresh confirmed Cloudflare server API receipts. A deterministic browser
+capture sampled each frame along the authored cinematic timeline; original
+algorithmically synthesized audio was added as a separate soundtrack.
+The cinematic duration is 24.4 seconds plus a 1-second ending hold.
+These films do not represent real-time network latency.
+
+- Qualified journey: media/leadflow-v2-qualified.mp4; 96/100 sales-review route
+- Failure story: media/leadflow-v2-timeout.mp4; two deliberately injected
+  sandbox timeouts and a third-attempt sandbox acceptance
+- 1200x678 at 20fps, H.264/AAC, MP4 faststart
+- Native controls, no autoplay, isolated Pages review only
+- No real external CRM, LLM, or outbound message is presented or claimed.
+
+## Director's Cut composition refinement — 2026-10-13
+
+The isolated refinement-review was accepted by 14/14 deterministic unit tests
+and 32 headless browser assertions. The added cues are motivated by actual
+server-receipt state: the carrier follows the SVG route while the paper lead
+floats above it; the routing verdict follows the score evidence; a distinct
+validation acceptance follows the scan; and the retry strip shows individual
+attempt states only for the confirmed fault-injection scenario.
+The visible camera moves were corrected from imperceptible sub-1% movement.
+
+Two newly encoded 25.4-second films replace the earlier film media on the
+isolated review branch. Each frame was captured deterministically in
+Chromium from an actual server-confirmed synthetic workflow run. The films use
+the same original synthesized soundtrack with different fault/recovery cues.
+No external CRM provider, LLM, or outbound action is claimed.
+
+Preview: https://refinement-review.leadflow-evidence-v2.pages.dev/#film
+Evidence: docs/directors-cut-refinement-browser-qa.json
+Screenshots: portfolio-media/directors-cut-refined/
+Media: media/leadflow-v2-qualified.mp4; media/leadflow-v2-timeout.mp4
+Upwork draft and existing V1 portfolio remain unpublished/unchanged.

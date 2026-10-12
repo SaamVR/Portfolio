@@ -1,0 +1,95 @@
+{
+  "status": "DRAFT_ONLY_DO_NOT_PUBLISH",
+  "title": "LeadFlow V2 — API-Based Lead Qualification & Workflow Automation",
+  "role": "Full-Stack Developer & Workflow Automation Engineer",
+  "description": "Built LeadFlow V2, an API-backed lead qualification workflow and interactive CRM demonstration. Cloudflare Pages Functions validate synthetic leads, apply explainable scoring, route decisions, and return timed execution traces. I engineered the responsive frontend, sandbox CRM contract, browser-local upserts, JSON receipts, and fault-injection tests. A five-act cinematic player turns verified server results into an interactive story with scrubbing, replay, and reduced-motion support. External CRM writes, LLM inference, and messaging are not connected.",
+  "skills": [
+    "API Integration",
+    "Workflow Automation",
+    "JavaScript",
+    "CRM Automation",
+    "Full-Stack Development"
+  ],
+  "live_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "original_upwork_url": "https://www.upwork.com/freelancers/shusmoyb?p=2104418123950473216",
+  "gallery": [
+    {
+      "path": "portfolio-media/01-hero.png",
+      "caption": "LeadFlow V2 engineering case study — real Cloudflare edge API with documented sandbox boundaries",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/01-hero.png"
+    },
+    {
+      "path": "portfolio-media/02-qualified-run.png",
+      "caption": "Qualified test lead: server-backed 96/100 score, timed event stream and local record proof",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/02-qualified-run.png"
+    },
+    {
+      "path": "portfolio-media/03-timeout-recovery.png",
+      "caption": "Two injected CRM sandbox timeouts and third-attempt recovery with observable trace",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/03-timeout-recovery.png"
+    },
+    {
+      "path": "portfolio-media/04-architecture.png",
+      "caption": "Explicit system responsibility and trust boundary diagram",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/04-architecture.png"
+    },
+    {
+      "path": "portfolio-media/05-mobile.png",
+      "caption": "Mobile execution view verified at 390px with no horizontal overflow",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/05-mobile.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/arrival.png",
+      "caption": "Act I: a synthetic enquiry arrives on a continuous physical arc",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/arrival.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/decision.png",
+      "caption": "Act III: verified server score with explainable factors and directional staging",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/decision.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/handoff-fault.png",
+      "caption": "Act IV: two explicitly simulated sandbox timeout setbacks and recovery",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/handoff-fault.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/resolution.png",
+      "caption": "Act V: the draft-only action settles into human approval",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/resolution.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/mobile-reduced.png",
+      "caption": "Reduced-motion accessible final state on a real 390px viewport",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/mobile-reduced.png"
+    }
+  ],
+  "verification": {
+    "node_tests": "12/12",
+    "browser_qa": "24 interactive Director's Cut assertions passed; reduced motion at 390px",
+    "cloudflare_http": "GET and POST verified",
+    "external_crm": "not_connected",
+    "llm": "not_connected"
+  },
+  "publication_approval_required": true,
+  "cinematic_timing": "24.4-second authored post-result film plus 1-second ending hold; not API latency",
+  "recordings_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/#reels",
+  "recordings": [
+    {
+      "title": "LeadFlow V2 — Qualified lead journey",
+      "source_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-qualified.mp4",
+      "path": "media/leadflow-v2-qualified.mp4",
+      "format": "MP4, H.264/AAC, 1200x678, 20fps",
+      "length_seconds": 25.4,
+      "claim": "Verified server receipt, 96/100 deterministic score, human-approved draft; no CRM writes"
+    },
+    {
+      "title": "LeadFlow V2 — Injected sandbox timeout and recovery",
+      "source_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-timeout.mp4",
+      "path": "media/leadflow-v2-timeout.mp4",
+      "format": "MP4, H.264/AAC, 1200x678, 20fps",
+      "length_seconds": 25.4,
+      "claim": "Two deliberately injected sandbox timeouts, third-attempt acceptance; not a real provider outage"
+    }
+  ]
+}

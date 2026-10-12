@@ -1,0 +1,18 @@
+import { mkdir, cp, rm } from "node:fs/promises";
+import { resolve, join } from "node:path";
+const root = resolve(new URL("..", import.meta.url).pathname);
+const dist = join(root, ".output");
+await rm(dist, { recursive: true, force: true });
+await mkdir(join(dist,"assets"),{recursive:true});
+await cp(join(root,"index.html"),join(dist,"index.html"));
+await cp(join(root,"styles.css"),join(dist,"styles.css"));
+await cp(join(root,"motion.css"),join(dist,"motion.css"));
+await cp(join(root,"motion.js"),join(dist,"motion.js"));
+await cp(join(root,"storyboard.js"),join(dist,"storyboard.js"));
+await cp(join(root,"storyboard-core.mjs"),join(dist,"storyboard-core.mjs"));
+await cp(join(root,"storyboard.css"),join(dist,"storyboard.css"));
+await cp(join(root,"app.js"),join(dist,"app.js"));
+await cp(join(root,"assets","icon.svg"),join(dist,"assets","icon.svg"));
+await cp(join(root,"functions"),join(dist,"functions"),{recursive:true});
+await cp(join(root,"media"),join(dist,"media"),{recursive:true});
+console.log("Build complete: " + dist);
