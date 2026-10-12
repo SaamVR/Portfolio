@@ -1,0 +1,82 @@
+name: LeadFlow V2 Cinematic Render (Artifact Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: Existing deployed isolated LeadFlow V2 Pages preview
+        type: string
+        required: true
+        default: https://refinement-review.leadflow-evidence-v2.pages.dev/
+      fps:
+        description: Deterministic frames per second
+        type: choice
+        options: ["20", "24", "15"]
+        default: "20"
+  push:
+    branches:
+      - feat/leadflow-v2-reproducible-capture-20261013
+    paths:
+      - ".github/workflows/leadflow-v2-record-films.yml"
+      - "leadflow-evidence-v2/scripts/render-recorded-film.cjs"
+      - "leadflow-evidence-v2/scripts/synthesize-film-score.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leadflow-film-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  record:
+    name: "Film ${{ matrix.scenario }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [qualified, timeout]
+    defaults:
+      run:
+        working-directory: leadflow-evidence-v2
+    env:
+      LEADFLOW_CAPTURE_URL: ${{ inputs.preview_url || 'https://refinement-review.leadflow-evidence-v2.pages.dev/' }}
+      LEADFLOW_CAPTURE_FPS: ${{ inputs.fps || '20' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated browser harness
+        run: npm install --no-save --no-package-lock --no-audit --no-fund puppeteer-core@24
+      - name: Install headless Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+      - name: Verify deterministic source
+        run: npm test && npm run check
+      - name: Render confirmed synthetic server journey
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          set -euo pipefail
+          mkdir -p capture-output
+          node scripts/render-recorded-film.cjs "${{ matrix.scenario }}" "$LEADFLOW_CAPTURE_URL" "$LEADFLOW_CAPTURE_FPS" capture-output
+      - name: Score, mux and decode video
+        run: |
+          set -euo pipefail
+          python3 scripts/synthesize-film-score.py "${{ matrix.scenario }}" capture-output/soundtrack.wav
+          ffmpeg -hide_banner -nostdin -loglevel error -y -i "capture-output/leadflow-v2-${{ matrix.scenario }}-silent.mp4" -i capture-output/soundtrack.wav -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -t 25.4 -movflags +faststart "capture-output/leadflow-v2-${{ matrix.scenario }}.mp4"
+          ffmpeg -v error -i "capture-output/leadflow-v2-${{ matrix.scenario }}.mp4" -f null - 2> capture-output/decode.log
+          test -s "capture-output/leadflow-v2-${{ matrix.scenario }}.mp4"
+          ffprobe -v error -show_entries format=duration,size -of json "capture-output/leadflow-v2-${{ matrix.scenario }}.mp4"
+      - name: Upload review-only artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: leadflow-v2-${{ matrix.scenario }}-cinematic-review
+          path: |
+            leadflow-evidence-v2/capture-output/leadflow-v2-${{ matrix.scenario }}.mp4
+            leadflow-evidence-v2/capture-output/${{ matrix.scenario }}-receipt.json
+            leadflow-evidence-v2/capture-output/${{ matrix.scenario }}-shot-*.jpg
+          if-no-files-found: error
+          retention-days: 14
