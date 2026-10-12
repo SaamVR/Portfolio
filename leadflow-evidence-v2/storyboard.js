@@ -39,6 +39,13 @@ export class StoryDirector {
     this.routeLine = $('film-route-line'); this.routeProgress = $('film-route-progress');
     this.stations = [...document.querySelectorAll('[data-film-station]')];
     this.scan = $('film-scan'); this.scanBand = $('film-scan-band');
+    this.beacon = $('film-beacon'); this.validation = $('film-validation');
+    this.routeStamp = $('film-route-stamp');
+    this.routeDecision = $('film-route-decision');
+    this.attemptPanel = $('film-attempt-panel');
+    this.attemptRow = $('film-attempt-row');
+    this.attemptTotal = $('film-attempt-total');
+    this.approvalSeal = $('film-approval-seal');
     this.score = $('film-score'); this.scoreNumber = $('film-score-number');
     this.scoreLane = $('film-score-lane'); this.factors = $('film-factor-list');
     this.fault = $('film-fault'); this.faultLabel = $('film-fault-label');
@@ -138,6 +145,8 @@ export class StoryDirector {
     setText(this.packetCompany, receipt.lead.company);
     setText(this.scoreLane, receipt.qualification.lane.toUpperCase());
     setText(this.approvalAction, receipt.qualification.action);
+    setText(this.routeDecision, receipt.qualification.action);
+    this.prepareAttemptCards(receipt);
     setText(this.endingLabel, `${receipt.qualification.score}/100 · ${receipt.qualification.action}`);
     setText(this.badge, `SERVER RECEIPT / ${receipt.runId.slice(0,8)} / SYNTHETIC`);
     setText(this.announce, 'Confirmed server receipt received. Five-act visual story ready.');
@@ -167,6 +176,20 @@ export class StoryDirector {
       const points = document.createElement('strong'); points.className='film-factor-value'; points.textContent = `${factor.points>=0 ? '+' : ''}${factor.points}`;
       row.append(name,rail,points);
       this.factors.append(row);
+    }
+  }
+
+  prepareAttemptCards(receipt) {
+    if (!this.attemptRow) return;
+    this.attemptRow.replaceChildren();
+    const attempts = Math.min(3, Math.max(1, Number(receipt.crm.attempts) || 1));
+    setText(this.attemptTotal, attempts + (attempts === 1 ? ' ATTEMPT' : ' ATTEMPTS'));
+    for (let i = 0; i < attempts; i++) {
+      const card = document.createElement('span'); card.className = 'film-attempt';
+      card.dataset.attempt = String(i+1);
+      const number = document.createElement('b'); number.textContent = '0' + (i+1);
+      const state = document.createElement('strong'); state.textContent = 'AWAITING';
+      card.append(number,state); this.attemptRow.append(card);
     }
   }
 
@@ -255,24 +278,46 @@ export class StoryDirector {
     const actChanged = frame.actIndex !== this.lastAct;
     if (actChanged) this.setAct(frame);
     this.stage.dataset.act=frame.act.id;
-    this.stage.style.setProperty('--film-camera-x',`${(-frame.cameraX/100).toFixed(3)}%`);
-    this.stage.style.setProperty('--film-camera-y',`${(frame.cameraY/100).toFixed(3)}%`);
+    // Film framing is expressed in ACTUAL percent units. The prior /100
+    // conversion made every camera move virtually imperceptible (<1%).
+    this.stage.style.setProperty('--film-camera-x', `${(-frame.cameraX).toFixed(2)}%`);
+    this.stage.style.setProperty('--film-camera-y', `${frame.cameraY.toFixed(2)}%`);
+    this.stage.style.setProperty('--film-camera-scale', frame.cameraScale.toFixed(4));
     const length = this.pathLength || 1;
     const point = this.routeLine.getPointAtLength(length*frame.route);
     const nextPoint = this.routeLine.getPointAtLength(length*Math.min(.999,frame.route+.003));
     const tilt = clamp(Math.atan2(nextPoint.y-point.y,nextPoint.x-point.x)*180/Math.PI,-20,20);
     const x = point.x/10, y=point.y/4.6;
-    this.packet.style.left=`${x}%`;
-    this.packet.style.top=`${y}%`;
+    // A small light carrier remains exactly on the SVG spline. The identity
+    // card rides ABOVE it with a subtle tether so nodes cannot be obscured.
+    if (this.beacon) {
+      this.beacon.style.left = x + '%'; this.beacon.style.top = y + '%';
+      this.beacon.style.opacity = String(frame.beaconReveal);
+      setTransform(this.beacon, 'translate(-50%,-50%) scale(' +
+        (0.9 + Math.sin(frame.t/420)*.09).toFixed(3) + ')');
+    }
+    this.packet.style.left = x+'%';
+    this.packet.style.top = y+'%';
     this.packet.style.opacity=String(frame.packetOpacity);
-    setTransform(this.packet,`translate(-50%,-50%) rotate(${tilt*.32}deg) scale(${frame.packetScale.toFixed(3)})`);
+    const travelX = frame.cardHorizontalOffset || 0;
+    const tiltDeg = tilt*.12 + frame.cardYaw;
+    const recoil = frame.impact || 0;
+    setTransform(this.packet,`translate(calc(-50% + ${travelX+recoil}px), calc(-50% - ${frame.cardLift.toFixed(1)}px)) rotate(${tiltDeg.toFixed(2)}deg) scale(${frame.packetScale.toFixed(3)})`);
     this.routeProgress.style.strokeDashoffset=String((1-frame.route)*length);
     this.scan.style.opacity=String(frame.scanOpacity);
     this.scan.style.left=`${(20+frame.scan*65).toFixed(2)}%`;
     setTransform(this.scanBand,`translateX(${(-100+frame.scan*200).toFixed(1)}%)`);
+    if (this.validation) {
+      this.validation.style.opacity = String(Math.max(0,frame.validationReveal));
+      setTransform(this.validation,`translate3d(0,${((1-Math.min(1,frame.validationReveal))*15).toFixed(1)}px,0)`);
+    }
     this.score.style.opacity=String(frame.scorePanelOpacity);
     setTransform(this.score,`translate3d(0,${((1-frame.scoreReveal)*27).toFixed(1)}px,0) scale(${(.95+.05*frame.scoreReveal).toFixed(3)})`);
     setText(this.scoreNumber, String(frame.scoreDisplayed).padStart(2,'0'));
+    if (this.routeStamp) {
+      this.routeStamp.style.opacity = String(Math.max(0,Math.min(1,frame.routeDecisionReveal)));
+      setTransform(this.routeStamp,`translate3d(0,${((1-frame.routeDecisionReveal)*12).toFixed(1)}px,0)`);
+    }
     this.factors.querySelectorAll('.film-factor').forEach((row,index) => {
       const factor=frame.factorRows[index];
       if (!factor) return;
@@ -281,12 +326,27 @@ export class StoryDirector {
       const fill=row.querySelector('.film-factor-fill');
       if (fill) fill.style.transform=`scaleX(${(factor.amount*factor.reveal).toFixed(3)})`;
     });
+    if (this.attemptPanel) {
+      this.attemptPanel.style.opacity = String(Math.max(0,Math.min(1,frame.retryReveal)));
+      setTransform(this.attemptPanel,`translate3d(0,${((1-frame.retryReveal)*14).toFixed(1)}px,0)`);
+      [...this.attemptRow.children].forEach((card,i) => {
+        const state = frame.attemptStates[i] || 'waiting';
+        card.dataset.state=state;
+        card.querySelector('strong').textContent =
+          state==='simulated-fault' ? 'SIMULATED FAULT' :
+          state==='accepted' ? 'ACCEPTED' :
+          state==='processing' ? 'RETRY CHECK' : 'WAITING';
+      });
+    }
     this.approval.style.opacity=String(frame.approvalReveal);
+    if (this.approvalSeal) setTransform(this.approvalSeal,
+      `scale(${Math.max(.01,frame.approvalSealReveal).toFixed(3)}) rotate(${((1-frame.approvalSealReveal)*-34).toFixed(1)}deg)`);
     setTransform(this.approval,`translate3d(0,${((1-frame.approvalReveal)*33).toFixed(1)}px,0) rotate(${((1-frame.approvalReveal)*-6).toFixed(2)}deg)`);
     this.ending.style.opacity=String(frame.endReveal);
     this.curtain.style.opacity=String(frame.endReveal*.87);
     this.fault.style.opacity=frame.isFault?'1':'0';
     this.fault.dataset.active=frame.isFault?'true':'false';
+    this.stage.dataset.incident=frame.isFault ? 'simulated' : 'none';
     if (frame.isFault) setText(this.faultLabel,`SIMULATED CRM TIMEOUT / ATTEMPT ${frame.faultSequence} OF ${frame.attempts}`);
     if (this.chip) {
       this.chip.className='film-chip'+(frame.isFault?' is-fault':frame.connectorAccepted?' is-accepted':'');
