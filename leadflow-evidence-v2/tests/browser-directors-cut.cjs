@@ -54,11 +54,31 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   return f;
  };
  const arrival=await seek(2550,'arrival');
+ yes(await page.$eval('#film-beacon',e=>Number(e.style.opacity))>.5,'light carrier rides on the actual spline');
+ const routeLegibility=await page.evaluate(()=>{
+  const lead=document.querySelector('#film-packet').getBoundingClientRect();
+  const station=document.querySelector('[data-film-station="0"] .film-station-ring').getBoundingClientRect();
+  return lead.bottom<station.bottom+10;
+ });
+ yes(routeLegibility,'identity card floats above station, not covering the node');
+
  const verificationAct=await seek(6600,'verification');
+ await page.$eval('#film-progress',el=>{el.value='7920';el.dispatchEvent(new Event('input',{bubbles:true}))});
+ await sleep(170);
+ yes(await page.$eval('#film-validation',e=>Number(e.style.opacity))>.5,'validation acceptance visually follows the scan');
+
  const decision=await seek(11700,'decision');
  yes(decision.score!=='00','confirmed server score counted during decision act');
+ await page.$eval('#film-progress',el=>{el.value='13200';el.dispatchEvent(new Event('input',{bubbles:true}))});
+ await sleep(170);
+ yes(await page.$eval('#film-route-stamp',e=>Number(e.style.opacity))>.7,'verified routing verdict lands after the scoring sequence');
+ yes(await page.$eval('#film-route-decision',e=>e.textContent.includes('Sales review')),'routing verdict matches the real server response');
+
  const handoff=await seek(16800,'handoff');
  yes(handoff.fault==='false','normal execution does not invent provider failure');
+ yes(await page.$eval('#film-attempt-row .film-attempt',els=>els.length)===1,'normal receipt shows precisely one connector attempt');
+ yes(await page.$eval('#film-attempt-panel',e=>Number(e.style.opacity))>.6,'connector proof enters the handoff staging');
+
  const final=await seek(22600,'resolution');
  yes(Number(final.approval)>.9,'approval card appears after transfer');
  await page.click('#film-skip');
@@ -80,6 +100,13 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  await sleep(200);
  yes(await page.$eval('#film-fault',e=>e.dataset.active)==='true','confirmed sandbox faults create the choreographed setback');
  yes((await page.$eval('#film-fault-label',e=>e.textContent)).includes('SIMULATED'),'fault is clearly disclosed');
+ yes(await page.$eval('#film-attempt-row .film-attempt',els=>els.length)===3,'fault receipt shows three verified sandbox attempts');
+ yes(await page.$eval('#film-attempt-row [data-attempt="1"]',e=>e.dataset.state)==='simulated-fault','first visible setback is clearly simulated');
+ await page.$eval('#film-progress',el=>{el.value='18550';el.dispatchEvent(new Event('input',{bubbles:true}))});
+ await sleep(160);
+ yes(await page.$eval('#film-attempt-row [data-attempt="3"]',e=>e.dataset.state)==='accepted','third sandbox attempt visibly recovers');
+ await page.$eval('#film-progress',el=>{el.value='16700';el.dispatchEvent(new Event('input',{bubbles:true}))});
+
  await (await page.$('#film-stage')).screenshot({path:output+'/handoff-fault.png'});
  // Motion-reduced: immediate final result and full transcript.
  const reduced=await browser.newPage();
