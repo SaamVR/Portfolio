@@ -1,8 +1,8 @@
 {
   "status": "DRAFT_ONLY_DO_NOT_PUBLISH",
-  "title": "LeadFlow V2 \u2014 API-Based Lead Qualification & Workflow Automation",
+  "title": "LeadFlow V2 — API-Based Lead Qualification & Workflow Automation",
   "role": "Full-Stack Developer & Workflow Automation Engineer",
-  "description": "Designed and engineered LeadFlow V2 as an animated API-backed lead workflow case study. An authored five-act, 24-second cinematic journey shows real server-confirmed qualification, explainable score factors, routing decisions, sandbox CRM handoff, explicitly simulated timeouts, and draft-only human approval. The interactive film supports play, pause, chapter selection, scrubbing, replay, skip, speed adjustment and reduced-motion access. A Cloudflare Pages Function supplies the actual verified event receipt, while the UI exposes a trace, JSON export and contract tests. No live external CRM write, LLM inference, or outbound message is claimed.",
+  "description": "Built LeadFlow V2, an API-backed lead qualification workflow and interactive CRM demonstration. Cloudflare Pages Functions validate synthetic leads, apply explainable scoring, route decisions, and return timed execution traces. I engineered the responsive frontend, sandbox CRM contract, browser-local upserts, JSON receipts, and fault-injection tests. A five-act cinematic player turns verified server results into an interactive story with scrubbing, replay, and reduced-motion support. External CRM writes, LLM inference, and messaging are not connected.",
   "skills": [
     "API Integration",
     "Workflow Automation",
@@ -15,7 +15,7 @@
   "gallery": [
     {
       "path": "portfolio-media/01-hero.png",
-      "caption": "LeadFlow V2 engineering case study \u2014 real Cloudflare edge API with documented sandbox boundaries",
+      "caption": "LeadFlow V2 engineering case study — real Cloudflare edge API with documented sandbox boundaries",
       "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/01-hero.png"
     },
     {
@@ -65,12 +65,31 @@
     }
   ],
   "verification": {
-    "node_tests": "6/6",
-    "browser_qa": "passed",
+    "node_tests": "12/12",
+    "browser_qa": "24 interactive Director's Cut assertions passed; reduced motion at 390px",
     "cloudflare_http": "GET and POST verified",
     "external_crm": "not_connected",
     "llm": "not_connected"
   },
   "publication_approval_required": true,
-  "cinematic_timing": "24.4 second post-result explanatory film; not network execution duration"
+  "cinematic_timing": "24.4-second authored post-result film plus 1-second ending hold; not API latency",
+  "recordings_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/#reels",
+  "recordings": [
+    {
+      "title": "LeadFlow V2 — Qualified lead journey",
+      "source_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-qualified.mp4",
+      "path": "media/leadflow-v2-qualified.mp4",
+      "format": "MP4, H.264/AAC, 1200x678, 20fps",
+      "length_seconds": 25.4,
+      "claim": "Verified server receipt, 96/100 deterministic score, human-approved draft; no CRM writes"
+    },
+    {
+      "title": "LeadFlow V2 — Injected sandbox timeout and recovery",
+      "source_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/media/leadflow-v2-timeout.mp4",
+      "path": "media/leadflow-v2-timeout.mp4",
+      "format": "MP4, H.264/AAC, 1200x678, 20fps",
+      "length_seconds": 25.4,
+      "claim": "Two deliberately injected sandbox timeouts, third-attempt acceptance; not a real provider outage"
+    }
+  ]
 }
