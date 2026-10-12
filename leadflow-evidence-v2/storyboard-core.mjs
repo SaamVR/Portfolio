@@ -72,6 +72,8 @@ export function frameAt(timeMs, receipt) {
 
   const intro = range(time, 280, 1550, powerOut);
   const scoreReveal = range(time, 9400, 11750, powerOut);
+  // Rack focus: remove the policy card as attention moves into the CRM handoff.
+  const scorePanelOpacity = scoreReveal * (1 - range(time, 13500, 14900, smooth));
   const routeReveal = range(time, 11600, 13000, backOut);
   const approvalReveal = range(time, 21100, 22600, backOut);
   const curtain = range(time, 23100, DURATION_MS, smooth);
@@ -95,7 +97,7 @@ export function frameAt(timeMs, receipt) {
     fraction: time / DURATION_MS,
     actIndex, act, org, recordName,
     route: clamp(route),
-    packetOpacity: clamp(range(time,700,1360,powerOut) * (1-range(time,23100,24000,smooth))),
+    packetOpacity: clamp(range(time,700,1360,powerOut) * (1-range(time,21400,23000,smooth))),
     packetScale: time < 2900 ? lerp(.55,1,range(time,780,2400,backOut)) : 1 + .075 * Math.sin(Math.PI * range(time,21000,23200)) * (time>21000 ? 1 : 0),
     cameraX: 22*range(time,3800,8550) + 22*range(time,8550,13700) + 20*range(time,13700,19000) + 15*range(time,19000,23500),
     cameraY: 8*Math.sin(time/3200),
@@ -103,6 +105,7 @@ export function frameAt(timeMs, receipt) {
     scan: range(time,4700,7400,powerInOut),
     scanOpacity: clamp(range(time,4300,4860) * (1-range(time,7500,8400))),
     scoreReveal,
+    scorePanelOpacity,
     scoreDisplayed: Math.round(lerp(0, score, scoreReveal)),
     routeReveal,
     factorRows: details,
