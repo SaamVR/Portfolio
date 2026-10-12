@@ -81,10 +81,10 @@ export function frameAt(timeMs, receipt) {
   // The routing lane is revealed only AFTER the factor bars and verified score
   // resolve; otherwise the story would disclose the verdict before the proof.
   const routeDecisionReveal = range(time, 12150, 13250, backOut);
-  const validationReveal = range(time, 7160, 7770, backOut) *
-    (1 - range(time, 8720, 9350));
-  const retryReveal = range(time, 14200, 14850, powerOut) *
-    (1 - range(time, 19300, 20400));
+  const validationReveal = clamp(range(time, 7160, 7770, backOut) *
+    (1 - range(time, 8720, 9350)));
+  const retryReveal = clamp(range(time, 14200, 14850, powerOut) *
+    (1 - range(time, 19300, 20400)));
   const approvalReveal = range(time, 21100, 22600, backOut);
   const curtain = range(time, 23100, DURATION_MS, smooth);
   const approval = receipt.qualification.action;
@@ -125,8 +125,8 @@ export function frameAt(timeMs, receipt) {
       7*range(time,8500,14000) -
       5*range(time,19300,22100),
     // Rack focus keeps the illustrated identity card out of the policy UI.
-    cardHorizontalOffset: -34 * range(time,8700,10800,powerOut) *
-      (1-range(time,13500,14850,smooth)),
+    cardHorizontalOffset: (-34 * range(time,8700,10800,powerOut) *
+      (1-range(time,13500,14850,smooth))) || 0,
     cardYaw: time < 3000 ? lerp(-9,0,range(time,780,2900,powerOut)) :
       hasFailure && time>=16400 && time<18400 ? -5*Math.sin((time-16400)*.025) : 0,
     beaconReveal: range(time,760,1570,powerOut) * (1-range(time,22300,23800)),
