@@ -120,3 +120,25 @@ These films do not represent real-time network latency.
 - 1200x678 at 20fps, H.264/AAC, MP4 faststart
 - Native controls, no autoplay, isolated Pages review only
 - No real external CRM, LLM, or outbound message is presented or claimed.
+
+## Director's Cut composition refinement — 2026-10-13
+
+The isolated refinement-review was accepted by 14/14 deterministic unit tests
+and 32 headless browser assertions. The added cues are motivated by actual
+server-receipt state: the carrier follows the SVG route while the paper lead
+floats above it; the routing verdict follows the score evidence; a distinct
+validation acceptance follows the scan; and the retry strip shows individual
+attempt states only for the confirmed fault-injection scenario.
+The visible camera moves were corrected from imperceptible sub-1% movement.
+
+Two newly encoded 25.4-second films replace the earlier film media on the
+isolated review branch. Each frame was captured deterministically in
+Chromium from an actual server-confirmed synthetic workflow run. The films use
+the same original synthesized soundtrack with different fault/recovery cues.
+No external CRM provider, LLM, or outbound action is claimed.
+
+Preview: https://refinement-review.leadflow-evidence-v2.pages.dev/#film
+Evidence: docs/directors-cut-refinement-browser-qa.json
+Screenshots: portfolio-media/directors-cut-refined/
+Media: media/leadflow-v2-qualified.mp4; media/leadflow-v2-timeout.mp4
+Upwork draft and existing V1 portfolio remain unpublished/unchanged.
