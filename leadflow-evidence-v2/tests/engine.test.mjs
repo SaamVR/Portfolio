@@ -1,5 +1,5 @@
 import { webcrypto } from "node:crypto";
-globalThis.crypto = webcrypto;
+if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 import assert from "node:assert/strict";
 import test from "node:test";
 import { SCENARIOS, validateCommand, qualifyLead, crmContract, runSyntheticWorkflow } from "../functions/lib/engine.mjs";
