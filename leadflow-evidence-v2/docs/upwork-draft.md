@@ -40,3 +40,16 @@ trace, and simulated-fault choreography with reduced-motion accessibility.
 The motion is presentation-only and does not create extra CRM actions or LLM calls.
 Use only actual screenshots/video of the new review site for the second Upwork
 project, and **do not replace the existing V1 listing without approval**.
+
+
+## New: authored 24-second Director's Cut (unpublished)
+
+The interactive cinematic film now adds a five-act narrative using animation
+principles—staging, anticipation, easing, arcs, overlap, holds, recovery and resolution.
+Its score, lane, CRM sandbox fault branch, and human approval are read from a real
+confirmed Cloudflare response. Full transport (play, pause, seek, skip, replay, speed)
+and reduced-motion narration make the experience usable as well as visual.
+
+Recommended Upwork media: `portfolio-media/directors-cut/arrival.png`,
+`decision.png`, `handoff-fault.png`, `resolution.png`, with a genuine screen
+capture of the film if available. The original V1 portfolio item is unchanged.

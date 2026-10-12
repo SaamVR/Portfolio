@@ -86,3 +86,21 @@ Capture set: `portfolio-media/06-motion-hero.png`, `07-motion-interactive-stage.
 The browser implementation intentionally uses WAAPI, transforms, opacity,
 passive scroll events and requestAnimationFrame rather than expensive WebGL
 effects in the operational data console.
+
+
+## Director's Cut — staged animation proof (2026-10-12)
+
+Review: https://evidence-review.leadflow-evidence-v2.pages.dev/
+The new 24.4s five-act film is a **post-execution playback**, not a 24-second network request.
+An actual server receipt gates playback. The browser then reconstructs verified
+lead, score, factors, routing, sandbox timeouts and draft approval states.
+
+Desktop, network-fault, fault-specific and 390px reduced-motion browser acceptance:
+- 24 verified assertions, zero uncaught browser JS errors
+- Native pause, scrub, replay, chapter navigation and skip
+- 5 acts, data-derived score and simulated fault sequence only when receipt contains those faults
+- No autoplay success or player controls before confirmed server receipt
+- No horizontal overflow at 390px; reduced motion jumps to the confirmed ending
+
+See `docs/directors-treatment.md`, `docs/directors-cut-browser-qa.json`,
+`tests/browser-directors-cut.cjs`, and `portfolio-media/directors-cut/` for evidence.

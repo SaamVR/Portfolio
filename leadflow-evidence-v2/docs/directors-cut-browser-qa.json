@@ -1,0 +1,45 @@
+{
+  "verifiedAt": "2026-10-12T16:39:48.718Z",
+  "url": "https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "passed": [
+    "five visually staged stations",
+    "five chapter navigation buttons",
+    "controls gated before server confirmation",
+    "poster waits for validated API",
+    "story only after receipt",
+    "poster removed after receipt",
+    "player controls enabled after verified execution",
+    "pause freezes actual timeline",
+    "chapter arrival renders at 2550ms",
+    "chapter verification renders at 6600ms",
+    "chapter decision renders at 11700ms",
+    "confirmed server score counted during decision act",
+    "chapter handoff renders at 16800ms",
+    "normal execution does not invent provider failure",
+    "chapter resolution renders at 22600ms",
+    "approval card appears after transfer",
+    "skip goes to verified outcome",
+    "replay restarts full performance",
+    "original functional API console remains intact",
+    "confirmed sandbox faults create the choreographed setback",
+    "fault is clearly disclosed",
+    "reduced-motion skips animation to verified final outcome",
+    "390px does not overflow horizontally",
+    "no browser JavaScript errors: "
+  ],
+  "errors": [],
+  "mobile": {
+    "width": 390,
+    "body": 390,
+    "doc": 390
+  },
+  "screenshots": [
+    "arrival.png",
+    "decision.png",
+    "handoff-fault.png",
+    "handoff.png",
+    "mobile-reduced.png",
+    "resolution.png",
+    "verification.png"
+  ]
+}

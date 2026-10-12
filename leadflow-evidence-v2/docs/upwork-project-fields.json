@@ -1,8 +1,8 @@
 {
   "status": "DRAFT_ONLY_DO_NOT_PUBLISH",
-  "title": "LeadFlow V2 — API-Based Lead Qualification & Workflow Automation",
+  "title": "LeadFlow V2 \u2014 API-Based Lead Qualification & Workflow Automation",
   "role": "Full-Stack Developer & Workflow Automation Engineer",
-  "description": "Built an API-backed lead qualification and CRM workflow demonstration using Cloudflare Pages Functions. Four synthetic scenarios run through server validation, explainable scoring, routing policy and a timed event trace. I implemented the responsive frontend, endpoint, sandbox CRM contract, browser-local records, draft-only follow-ups and timeout/retry simulations, with automated tests. No external CRM or LLM is represented as connected. Live review: https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "description": "Designed and engineered LeadFlow V2 as an animated API-backed lead workflow case study. An authored five-act, 24-second cinematic journey shows real server-confirmed qualification, explainable score factors, routing decisions, sandbox CRM handoff, explicitly simulated timeouts, and draft-only human approval. The interactive film supports play, pause, chapter selection, scrubbing, replay, skip, speed adjustment and reduced-motion access. A Cloudflare Pages Function supplies the actual verified event receipt, while the UI exposes a trace, JSON export and contract tests. No live external CRM write, LLM inference, or outbound message is claimed.",
   "skills": [
     "API Integration",
     "Workflow Automation",
@@ -15,7 +15,7 @@
   "gallery": [
     {
       "path": "portfolio-media/01-hero.png",
-      "caption": "LeadFlow V2 engineering case study — real Cloudflare edge API with documented sandbox boundaries",
+      "caption": "LeadFlow V2 engineering case study \u2014 real Cloudflare edge API with documented sandbox boundaries",
       "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/01-hero.png"
     },
     {
@@ -37,6 +37,31 @@
       "path": "portfolio-media/05-mobile.png",
       "caption": "Mobile execution view verified at 390px with no horizontal overflow",
       "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/05-mobile.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/arrival.png",
+      "caption": "Act I: a synthetic enquiry arrives on a continuous physical arc",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/arrival.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/decision.png",
+      "caption": "Act III: verified server score with explainable factors and directional staging",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/decision.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/handoff-fault.png",
+      "caption": "Act IV: two explicitly simulated sandbox timeout setbacks and recovery",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/handoff-fault.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/resolution.png",
+      "caption": "Act V: the draft-only action settles into human approval",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/resolution.png"
+    },
+    {
+      "path": "portfolio-media/directors-cut/mobile-reduced.png",
+      "caption": "Reduced-motion accessible final state on a real 390px viewport",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/directors-cut/mobile-reduced.png"
     }
   ],
   "verification": {
@@ -46,5 +71,6 @@
     "external_crm": "not_connected",
     "llm": "not_connected"
   },
-  "publication_approval_required": true
+  "publication_approval_required": true,
+  "cinematic_timing": "24.4 second post-result explanatory film; not network execution duration"
 }
