@@ -1,3 +1,5 @@
+import { motion } from "./motion.js";
+
 /* LeadFlow V2 — browser controller. Backend is authoritative for qualification.
    Local CRM is an explicitly labeled portfolio-only persistence adapter. */
 const $ = id => document.getElementById(id);
@@ -142,7 +144,9 @@ async function execute(replay = false) {
   }
   if (!lastCommand) return;
   const command = { ...lastCommand, replay };
-  setBusy(true); labelStatus("running");
+  setBusy(true); labelStatus("running"); motion.onStart();
+  setText("score-value","—/100");
+  $("download-button").disabled = true;
   setText("run-id","connecting"); setText("duration-value","— ms");
   setText("action-value","Processing");
   const list = $("trace-list");
@@ -164,7 +168,12 @@ async function execute(replay = false) {
     previous = data;
     const localState = persistSyntheticRecord(data);
     showRun(data,localState);
+    motion.onSuccess(data);
   } catch (error) {
+    motion.onError();
+    last = null;
+    $("download-button").disabled = true;
+    $("replay-button").disabled = true;
     labelStatus("error");
     setText("action-value","Could not complete");
     list.replaceChildren();
@@ -204,12 +213,27 @@ document.querySelectorAll("[data-scenario]").forEach(button => {
     last = null; lastCommand = null;
     $("replay-button").disabled = true;
     renderSelection();
+    motion.onScenarioSelected();
+    labelStatus("idle");
+    setText("run-id","—");
+    setText("score-value","—/100");
+    setText("action-value","Awaiting input");
+    setText("duration-value","— ms");
+    setText("event-count","0 events");
+    $("download-button").disabled = true;
+    $("crm-payload").textContent = "Run a sample to see the validated adapter payload.";
+    const trace = $("trace-list");
+    trace.replaceChildren();
+    const blank = document.createElement("li");
+    blank.className="empty-trace";
+    blank.textContent="Select Execute workflow to generate a new server trace.";
+    trace.append(blank);
   });
 });
 $("run-button").addEventListener("click",()=>execute(false));
 $("replay-button").addEventListener("click",()=>execute(true));
 $("failure-button").addEventListener("click",()=>{
-  selected="timeout"; last=null; lastCommand=null;renderSelection();
+  selected="timeout"; last=null; lastCommand=null;renderSelection();motion.onScenarioSelected();
   document.getElementById("lab").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
   execute(false);
 });
@@ -220,4 +244,4 @@ $("show-local-button").addEventListener("click",()=>{
   $("show-local-button").textContent = isLocalExpanded ? "Hide local records ↑" : "Inspect local records →";
 });
 $("download-button").addEventListener("click",downloadReceipt);
-renderSelection();renderLocal();checkAPI();
+renderSelection();renderLocal();motion.init();checkAPI();

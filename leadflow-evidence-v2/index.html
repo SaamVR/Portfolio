@@ -10,9 +10,11 @@
   <title>LeadFlow V2 — Engineering Case Study</title>
   <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./motion.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
+<div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
 <a href="#main" class="skip-link">Skip to content</a>
 <div class="banner" role="note"><span class="status-dot"></span> PUBLIC PORTFOLIO SANDBOX <span class="banner-divider">/</span> Synthetic leads only · No email, SMS or external CRM writes</div>
 <header class="site-header">
@@ -24,7 +26,7 @@
     <nav class="nav" aria-label="Primary navigation">
       <a href="#lab">Live workflow</a><a href="#architecture">Architecture</a><a href="#reliability">Reliability</a><a href="#comparison">V1 vs V2</a>
     </nav>
-    <a class="header-action" href="#lab">Inspect the system <span aria-hidden="true">↗</span></a>
+    <div class="header-controls"><button id="motion-toggle" class="motion-toggle" type="button" aria-pressed="true">MOTION <span class="motion-toggle-state">ON</span></button><a class="header-action" href="#lab">Inspect the system <span aria-hidden="true">↗</span></a></div>
   </div>
 </header>
 <main id="main">
@@ -42,15 +44,19 @@
   <div class="hero-visual" aria-label="Visual overview of the LeadFlow execution pipeline">
     <div class="visual-head"><span class="caps">WORKFLOW / LF-02</span><span class="live-tag"><span class="status-dot"></span> OPERATIONAL</span></div>
     <div class="flow-preview">
-      <div class="flow-node"><span class="num">01</span><span class="node-icon">↳</span><div><strong>Receive lead</strong><small>Validated synthetic input</small></div><span class="node-check">✓</span></div>
+      <button type="button" data-stage-index="0" aria-pressed="false" class="flow-node"><span class="num">01</span><span class="node-icon">↳</span><div><strong>Receive lead</strong><small>Validated synthetic input</small></div><span class="node-check">·</span></button>
       <div class="flow-wire"><span></span></div>
-      <div class="flow-node"><span class="num">02</span><span class="node-icon">◈</span><div><strong>Apply policy</strong><small>Explainable server-side scoring</small></div><span class="node-check">✓</span></div>
+      <button type="button" data-stage-index="1" aria-pressed="false" class="flow-node"><span class="num">02</span><span class="node-icon">◈</span><div><strong>Apply policy</strong><small>Explainable server-side scoring</small></div><span class="node-check">·</span></button>
       <div class="flow-wire"><span></span></div>
-      <div class="flow-node emphasis"><span class="num">03</span><span class="node-icon">⌘</span><div><strong>Build CRM action</strong><small>Contract-validated sandbox payload</small></div><span class="node-check">✓</span></div>
+      <button type="button" data-stage-index="2" aria-pressed="false" class="flow-node emphasis"><span class="num">03</span><span class="node-icon">⌘</span><div><strong>Build CRM action</strong><small>Contract-validated sandbox payload</small></div><span class="node-check">·</span></button>
       <div class="flow-wire"><span></span></div>
-      <div class="flow-node"><span class="num">04</span><span class="node-icon">⇥</span><div><strong>Human approval</strong><small>No automated outreach</small></div><span class="node-check">✓</span></div>
+      <button type="button" data-stage-index="3" aria-pressed="false" class="flow-node"><span class="num">04</span><span class="node-icon">⇥</span><div><strong>Human approval</strong><small>No automated outreach</small></div><span class="node-check">·</span></button>
     </div>
-    <div class="visual-foot"><span>POLICY-GATED AUTOMATION</span><span>04 STAGES <span class="tiny-square">■</span></span></div>
+    <div class="stage-inspector" aria-live="polite" aria-atomic="true">
+      <div><span id="stage-label" class="stage-kicker">01 — VALIDATED INPUT</span><strong id="stage-title">Lead intake</strong><p id="stage-description">Choose a stage to explore its responsibilities.</p></div>
+      <button class="stage-next" id="stage-advance" type="button" aria-label="Inspect the next workflow stage">→</button>
+    </div>
+    <div class="visual-foot"><span>POLICY-GATED AUTOMATION</span><button id="replay-stages" class="explore-stages" type="button" aria-label="Explore all four stages of the workflow">Explore stages ↗</button></div>
   </div>
 </section>
 <section class="proof-strip" aria-label="Technology and verification boundaries">
@@ -80,14 +86,25 @@
     </div>
     <div class="panel monitor-panel" aria-live="polite" aria-atomic="false">
       <div class="monitor-head"><div><span class="caps">LIVE EXECUTION MONITOR</span><h3>Run trace <span class="muted-inline" id="run-id">—</span></h3></div><span class="monitor-state" id="run-status">NOT STARTED</span></div>
+      <div class="execution-signal" id="execution-signal" data-state="idle"><span class="signal-pulse" aria-hidden="true"></span><span id="execution-signal-text">Choose a scenario to execute on the server</span></div>
+      <div class="execution-map" id="execution-map" aria-label="Confirmed execution stage visualization">
+        <div class="execution-map-head"><span>VISUAL RUN SEQUENCE</span><span id="execution-map-label">AWAITING FIRST RUN</span></div>
+        <div class="execution-map-track">
+          <div class="execution-phase" data-execution-phase="0"><span class="execution-phase-icon">01</span><span>Intake</span></div>
+          <div class="execution-phase" data-execution-phase="1"><span class="execution-phase-icon">02</span><span>Policy</span></div>
+          <div class="execution-phase" data-execution-phase="2"><span class="execution-phase-icon">03</span><span>CRM sandbox</span></div>
+          <div class="execution-phase" data-execution-phase="3"><span class="execution-phase-icon">04</span><span>Review</span></div>
+        </div>
+      </div>
       <div class="metrics-row">
         <div><small>QUALIFICATION</small><strong id="score-value">—<span>/100</span></strong></div>
         <div><small>ROUTING DECISION</small><strong class="metric-action" id="action-value">Awaiting input</strong></div>
         <div><small>SERVER DURATION</small><strong id="duration-value">— <span>ms</span></strong></div>
       </div>
+      <div class="score-factors" id="score-factors" hidden aria-label="Actual server scoring factors"></div>
       <div class="trace-heading"><span class="caps">EVENT STREAM / SERVER RESPONSES</span><span id="event-count">0 events</span></div>
       <ol id="trace-list" class="trace-list"><li class="empty-trace"><span class="trace-orbit">◎</span><strong>No execution yet</strong><span>Choose a scenario and execute it to generate a real server trace.</span></li></ol>
-      <div class="monitor-foot"><span><span class="status-dot"></span> <span id="api-status">Checking server API…</span></span><button type="button" id="download-button" class="text-button" disabled>Export JSON receipt ↓</button></div>
+      <div class="monitor-foot"><span><span class="status-dot"></span> <span id="api-status">Checking server API…</span></span><div class="monitor-tools"><button type="button" id="replay-visual-button" class="text-button" disabled>Replay visual trace ↻</button><button type="button" id="download-button" class="text-button" disabled>Export JSON receipt ↓</button></div></div>
     </div>
   </div>
   <div class="output-grid">
