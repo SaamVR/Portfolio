@@ -35,3 +35,4 @@ jobs:
           name: leadflow-v2-isolated-pages-build
           path: leadflow-evidence-v2/.output/
           if-no-files-found: error
+          include-hidden-files: true
