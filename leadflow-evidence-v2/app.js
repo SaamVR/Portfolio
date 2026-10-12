@@ -1,4 +1,5 @@
 import { motion } from "./motion.js";
+import { film } from "./storyboard.js";
 
 /* LeadFlow V2 — browser controller. Backend is authoritative for qualification.
    Local CRM is an explicitly labeled portfolio-only persistence adapter. */
@@ -136,7 +137,7 @@ function setBusy(on) {
   $("replay-button").disabled = on || !last;
   $("run-button").textContent = on ? "Running API workflow…" : "Execute workflow  →";
 }
-async function execute(replay = false) {
+async function execute(replay = false, options = {}) {
   if (active) return;
   if (!replay) {
     previous = null;
@@ -145,6 +146,9 @@ async function execute(replay = false) {
   if (!lastCommand) return;
   const command = { ...lastCommand, replay };
   setBusy(true); labelStatus("running"); motion.onStart();
+  if (options.film) film.waiting();
+  $("film-launch").disabled = true;
+  $("film-run").disabled = true;
   setText("score-value","—/100");
   $("download-button").disabled = true;
   setText("run-id","connecting"); setText("duration-value","— ms");
@@ -169,8 +173,15 @@ async function execute(replay = false) {
     const localState = persistSyntheticRecord(data);
     showRun(data,localState);
     motion.onSuccess(data);
+    $("film-from-receipt").disabled = false;
+    if (options.film) {
+      try { film.load(data, { autoplay: true, scroll: true }); }
+      catch (error) { film.fail(); console.warn('Cinematic verification failed:', error.message); }
+    }
   } catch (error) {
     motion.onError();
+    if (options.film) film.fail();
+    $("film-from-receipt").disabled = true;
     last = null;
     $("download-button").disabled = true;
     $("replay-button").disabled = true;
@@ -183,7 +194,12 @@ async function execute(replay = false) {
     list.append(failure);
     setText("event-count","0 verified events");
     $("crm-payload").textContent = "No connector response. The workflow did not complete.";
-  } finally { clearTimeout(timeout); setBusy(false); }
+  } finally {
+    clearTimeout(timeout);
+    setBusy(false);
+    $("film-launch").disabled = false;
+    $("film-run").disabled = false;
+  }
 }
 async function checkAPI() {
   try {
@@ -221,6 +237,7 @@ document.querySelectorAll("[data-scenario]").forEach(button => {
     setText("duration-value","— ms");
     setText("event-count","0 events");
     $("download-button").disabled = true;
+    $("film-from-receipt").disabled = true;
     $("crm-payload").textContent = "Run a sample to see the validated adapter payload.";
     const trace = $("trace-list");
     trace.replaceChildren();
@@ -231,6 +248,14 @@ document.querySelectorAll("[data-scenario]").forEach(button => {
   });
 });
 $("run-button").addEventListener("click",()=>execute(false));
+function startFilmFromAPI() {
+  if (active) return;
+  film.section.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  execute(false, { film: true });
+}
+$("film-launch").addEventListener("click", startFilmFromAPI);
+$("film-run").addEventListener("click", startFilmFromAPI);
+$("film-from-receipt").addEventListener("click", () => { if (last) film.load(last, { autoplay: true, scroll: true }); });
 $("replay-button").addEventListener("click",()=>execute(true));
 $("failure-button").addEventListener("click",()=>{
   selected="timeout"; last=null; lastCommand=null;renderSelection();motion.onScenarioSelected();
@@ -244,4 +269,4 @@ $("show-local-button").addEventListener("click",()=>{
   $("show-local-button").textContent = isLocalExpanded ? "Hide local records ↑" : "Inspect local records →";
 });
 $("download-button").addEventListener("click",downloadReceipt);
-renderSelection();renderLocal();motion.init();checkAPI();
+renderSelection();renderLocal();motion.init();film.init();checkAPI();

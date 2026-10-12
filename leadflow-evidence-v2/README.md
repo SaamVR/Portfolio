@@ -92,3 +92,15 @@ access, allowlisted host, secret management, true durable idempotency, audit con
 rate limiting and provider-verified receipts. Model-driven inference would require
 secured model credentials, structured-output validation, and human-approved tools.
 These are **not claimed as completed**.
+
+## Director's Cut — authored motion narrative
+
+The page now features a **24.4-second five-act cinematic playback** of an actual verified server receipt, launched by the visitor. It is separate from API execution time and expressly labeled that way. The entire story is reproducibly sampled from `storyboard-core.mjs`, and choreography lives in `storyboard.js`/`storyboard.css`.
+
+Narrative: arrival → request verification → explainable decision → sandbox handoff (optional real-trace-confirmed simulated retries) → human review and follow-up draft.
+
+Visitors can pause, seek, replay, skip, change speed, or jump between the five chapters. Browser tab changes pause the film. Reduced-motion visitors see the final confirmed result directly and have a full text transcript. Storyboard core has unit tests for accurate timing, fact gating, fault branching, and endpoint-verification requirements.
+
+See `docs/directors-treatment.md` for choreography and animation principles.
+
+**Truth constraint:** the movie only starts after receiving a server receipt; timed beats are authored *post-result* narration, not a real-time progress representation. CRM remains a sandbox and follow-ups remain unsent drafts.
