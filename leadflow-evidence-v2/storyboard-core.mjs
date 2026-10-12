@@ -45,7 +45,10 @@ export function frameAt(timeMs, receipt) {
   const time = clamp(timeMs, 0, DURATION_MS);
   const actIndex = actAt(time);
   const act = ACTS[actIndex];
-  const hasFailure = receipt.events.some(e => e.stage === 'crm.sandbox.timeout');
+  const injectedFaults = receipt.events.filter(e => e.stage === 'crm.sandbox.timeout').length;
+  // A setback can be staged only when the confirmed sandbox trace contains
+  // both deliberately injected failures and the recorded third attempt.
+  const hasFailure = injectedFaults >= 2 && receipt.crm.attempts >= 3;
   const attempts = receipt.crm.attempts;
 
   // The packet follows a continuous path across the set. Its movement is a
@@ -75,6 +78,13 @@ export function frameAt(timeMs, receipt) {
   // Rack focus: remove the policy card as attention moves into the CRM handoff.
   const scorePanelOpacity = scoreReveal * (1 - range(time, 13500, 14900, smooth));
   const routeReveal = range(time, 11600, 13000, backOut);
+  // The routing lane is revealed only AFTER the factor bars and verified score
+  // resolve; otherwise the story would disclose the verdict before the proof.
+  const routeDecisionReveal = range(time, 12150, 13250, backOut);
+  const validationReveal = range(time, 7160, 7770, backOut) *
+    (1 - range(time, 8720, 9350));
+  const retryReveal = range(time, 14200, 14850, powerOut) *
+    (1 - range(time, 19300, 20400));
   const approvalReveal = range(time, 21100, 22600, backOut);
   const curtain = range(time, 23100, DURATION_MS, smooth);
   const approval = receipt.qualification.action;
@@ -82,6 +92,16 @@ export function frameAt(timeMs, receipt) {
   const hasSecondFault = hasFailure && time >= 17420 && time < 18300;
   const faultSequence = hasFirstFault ? 1 : hasSecondFault ? 2 : 0;
   const connectorAccepted = time >= 18400;
+  // Each attempt state derives from the actual accepted sandbox receipt.
+  // The visual beats describe a retrospective trace, not live provider I/O.
+  const attemptStates = Array.from({length: Math.min(3,Math.max(1,attempts))}, (_, index) => {
+    if (!hasFailure) return time >= 18400 ? 'accepted' : time >= 14300 ? 'processing' : 'waiting';
+    const failAt = index === 0 ? 16400 : index === 1 ? 17420 : Infinity;
+    const startAt = [14400,16700,17800][index];
+    if (index < 2 && time >= failAt) return 'simulated-fault';
+    if (index === 2 && time >= 18400) return 'accepted';
+    return time >= startAt ? 'processing' : 'waiting';
+  });
   const details = receipt.qualification.factors.map((factor, index) => ({
     name: factor.label,
     value: factor.points,
@@ -98,9 +118,25 @@ export function frameAt(timeMs, receipt) {
     actIndex, act, org, recordName,
     route: clamp(route),
     packetOpacity: clamp(range(time,700,1360,powerOut) * (1-range(time,21400,23000,smooth))),
-    packetScale: time < 2900 ? lerp(.55,1,range(time,780,2400,backOut)) : 1 + .075 * Math.sin(Math.PI * range(time,21000,23200)) * (time>21000 ? 1 : 0),
-    cameraX: 22*range(time,3800,8550) + 22*range(time,8550,13700) + 20*range(time,13700,19000) + 15*range(time,19000,23500),
-    cameraY: 8*Math.sin(time/3200),
+    packetScale: time < 2900 ? lerp(.55,1,range(time,780,2400,backOut)) : 1 + .055 * Math.sin(Math.PI * range(time,21000,23200)) * (time>21000 ? 1 : 0),
+    // The information card floats above its exact location on the rail,
+    // leaving the stations unobstructed; its glowing carrier stays on the rail.
+    cardLift: 74 + 13*Math.sin(time/1050) * range(time,750,2200) +
+      7*range(time,8500,14000) -
+      5*range(time,19300,22100),
+    cardYaw: time < 3000 ? lerp(-9,0,range(time,780,2900,powerOut)) :
+      hasFailure && time>=16400 && time<18400 ? -5*Math.sin((time-16400)*.025) : 0,
+    beaconReveal: range(time,760,1570,powerOut) * (1-range(time,22300,23800)),
+    impact: hasFailure && time>=16400 && time<18400 ? Math.sin((time-16400)*.043)*5 : 0,
+    // Shot sizes are intentional: a quiet establishing shot, gentle
+    // inspection push-in, a decision close-up, then a wider resolution.
+    cameraX: 1.2*range(time,4200,7900) + 2.2*range(time,8600,11600) +
+      2.0*range(time,14000,16400) + 1.1*range(time,19500,21700),
+    cameraY: 1.0*range(time,8600,11700) - 1.0*range(time,19600,22500),
+    cameraScale: 1 + .018*range(time,4200,7500) +
+      .027*range(time,8600,11700) -
+      .02*range(time,14200,16900) -
+      .025*range(time,19300,22500),
     arrivalOpacity: intro,
     scan: range(time,4700,7400,powerInOut),
     scanOpacity: clamp(range(time,4300,4860) * (1-range(time,7500,8400))),
@@ -108,8 +144,13 @@ export function frameAt(timeMs, receipt) {
     scorePanelOpacity,
     scoreDisplayed: Math.round(lerp(0, score, scoreReveal)),
     routeReveal,
+    routeDecisionReveal,
+    validationReveal,
+    retryReveal,
+    attemptStates,
     factorRows: details,
     approvalReveal,
+    approvalSealReveal: range(time,21850,22950,backOut),
     faultSequence,
     isFault: Boolean(faultSequence),
     connectorAccepted,
