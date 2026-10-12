@@ -124,6 +124,9 @@ export function frameAt(timeMs, receipt) {
     cardLift: 74 + 13*Math.sin(time/1050) * range(time,750,2200) +
       7*range(time,8500,14000) -
       5*range(time,19300,22100),
+    // Rack focus keeps the illustrated identity card out of the policy UI.
+    cardHorizontalOffset: -34 * range(time,8700,10800,powerOut) *
+      (1-range(time,13500,14850,smooth)),
     cardYaw: time < 3000 ? lerp(-9,0,range(time,780,2900,powerOut)) :
       hasFailure && time>=16400 && time<18400 ? -5*Math.sin((time-16400)*.025) : 0,
     beaconReveal: range(time,760,1570,powerOut) * (1-range(time,22300,23800)),
