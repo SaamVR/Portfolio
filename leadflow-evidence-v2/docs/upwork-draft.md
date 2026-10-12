@@ -53,3 +53,10 @@ and reduced-motion narration make the experience usable as well as visual.
 Recommended Upwork media: `portfolio-media/directors-cut/arrival.png`,
 `decision.png`, `handoff-fault.png`, `resolution.png`, with a genuine screen
 capture of the film if available. The original V1 portfolio item is unchanged.
+
+## Portfolio reel assets — review only, not published
+
+- Qualified five-act journey: media/leadflow-v2-qualified.mp4
+- Synthetic fault and recovery: media/leadflow-v2-timeout.mp4
+- These videos depict provider-neutral sandbox activity, not a production
+  CRM outage. Obtain explicit owner approval before publishing to Upwork.

@@ -14,4 +14,5 @@ await cp(join(root,"storyboard.css"),join(dist,"storyboard.css"));
 await cp(join(root,"app.js"),join(dist,"app.js"));
 await cp(join(root,"assets","icon.svg"),join(dist,"assets","icon.svg"));
 await cp(join(root,"functions"),join(dist,"functions"),{recursive:true});
+await cp(join(root,"media"),join(dist,"media"),{recursive:true});
 console.log("Build complete: " + dist);

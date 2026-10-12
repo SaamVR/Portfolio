@@ -104,3 +104,19 @@ Desktop, network-fault, fault-specific and 390px reduced-motion browser acceptan
 
 See `docs/directors-treatment.md`, `docs/directors-cut-browser-qa.json`,
 `tests/browser-directors-cut.cjs`, and `portfolio-media/directors-cut/` for evidence.
+
+## Recorded film delivery — 2026-10-13
+
+Both encoded films use actual captured frames of the V2 five-act StoryDirector,
+driven by fresh confirmed Cloudflare server API receipts. A deterministic browser
+capture sampled each frame along the authored cinematic timeline; original
+algorithmically synthesized audio was added as a separate soundtrack.
+The cinematic duration is 24.4 seconds plus a 1-second ending hold.
+These films do not represent real-time network latency.
+
+- Qualified journey: media/leadflow-v2-qualified.mp4; 96/100 sales-review route
+- Failure story: media/leadflow-v2-timeout.mp4; two deliberately injected
+  sandbox timeouts and a third-attempt sandbox acceptance
+- 1200x678 at 20fps, H.264/AAC, MP4 faststart
+- Native controls, no autoplay, isolated Pages review only
+- No real external CRM, LLM, or outbound message is presented or claimed.
