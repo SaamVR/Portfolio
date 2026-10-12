@@ -95,12 +95,16 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  await page.waitForFunction(()=>document.querySelector('#run-status')?.textContent==='COMPLETED',{timeout:15000});
  await page.click('#film-from-receipt');
  await page.waitForFunction(()=>document.querySelector('#film-stage')?.dataset.state==='playing',{timeout:12000});
+ // The post-response story smoothly scrolls the chapter into view. Align the
+ // transport before using a real browser pointer click.
+ await page.$eval('#film-pause',el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+ await sleep(250);
  await page.click('#film-pause');
  await page.$eval('#film-progress',el=>{el.value='16700';el.dispatchEvent(new Event('input',{bubbles:true}))});
  await sleep(200);
  yes(await page.$eval('#film-fault',e=>e.dataset.active)==='true','confirmed sandbox faults create the choreographed setback');
  yes((await page.$eval('#film-fault-label',e=>e.textContent)).includes('SIMULATED'),'fault is clearly disclosed');
- yes(await page.$eval('#film-attempt-row .film-attempt',els=>els.length)===3,'fault receipt shows three verified sandbox attempts');
+ yes(await page.$$eval('#film-attempt-row .film-attempt',els=>els.length)===3,'fault receipt shows three verified sandbox attempts');
  yes(await page.$eval('#film-attempt-row [data-attempt="1"]',e=>e.dataset.state)==='simulated-fault','first visible setback is clearly simulated');
  await page.$eval('#film-progress',el=>{el.value='18550';el.dispatchEvent(new Event('input',{bubbles:true}))});
  await sleep(160);
