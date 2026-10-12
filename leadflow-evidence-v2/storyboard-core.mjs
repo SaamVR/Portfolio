@@ -80,7 +80,7 @@ export function frameAt(timeMs, receipt) {
   const routeReveal = range(time, 11600, 13000, backOut);
   // The routing lane is revealed only AFTER the factor bars and verified score
   // resolve; otherwise the story would disclose the verdict before the proof.
-  const routeDecisionReveal = range(time, 12150, 13250, backOut);
+  const routeDecisionReveal = clamp(range(time, 12150, 13250, backOut));
   const validationReveal = clamp(range(time, 7160, 7770, backOut) *
     (1 - range(time, 8720, 9350)));
   const retryReveal = clamp(range(time, 14200, 14850, powerOut) *
