@@ -76,7 +76,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
  const handoff=await seek(16800,'handoff');
  yes(handoff.fault==='false','normal execution does not invent provider failure');
- yes(await page.$eval('#film-attempt-row .film-attempt',els=>els.length)===1,'normal receipt shows precisely one connector attempt');
+ yes(await page.$$eval('#film-attempt-row .film-attempt',els=>els.length)===1,'normal receipt shows precisely one connector attempt');
  yes(await page.$eval('#film-attempt-panel',e=>Number(e.style.opacity))>.6,'connector proof enters the handoff staging');
 
  const final=await seek(22600,'resolution');
