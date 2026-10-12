@@ -26,3 +26,15 @@ They serve different intents: **keep both until owner review of live experiences
 V1: Product Design / Interactive SaaS / Dashboard Workflow Design.
 V2: Automation Engineer / API Integration / Server-Side Lead Qualification.
 Do not imply an LLM was used for V2's scoring or a third-party CRM actually accepted writes.
+
+## Visual-interaction follow-up (October 12)
+
+The newer V2 update restores deliberate motion from the V1 design ethos:
+scroll-aware section reveals, interactive workflow inspection, subtle parallax,
+status-dependent motion, score bar animation and timed execution storytelling.
+Unlike V1, its confirmation sequence is gated behind actual server success.
+
+**Not feature-for-feature parity:** V1 still has distinctive themed lamp and
+guided camera sequences that are not replicated in this evidence-first version.
+For the technical Upwork portfolio, we prioritize accurate execution proof,
+responsive accessibility and smooth interaction over decorative parity.

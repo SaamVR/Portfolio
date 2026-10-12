@@ -31,3 +31,12 @@ Release criteria for moving out of draft:
 - Working embedded media (if video is included)
 - User has compared old published LeadFlow entry against new draft
 - User explicitly approves publishing this additional portfolio entry
+
+## V2 motion refinement, not yet published
+
+Visual strengths verified: interactive stage inspector, scroll-triggered
+storytelling, animated explainable scoring, replay of an already verified server
+trace, and simulated-fault choreography with reduced-motion accessibility.
+The motion is presentation-only and does not create extra CRM actions or LLM calls.
+Use only actual screenshots/video of the new review site for the second Upwork
+project, and **do not replace the existing V1 listing without approval**.

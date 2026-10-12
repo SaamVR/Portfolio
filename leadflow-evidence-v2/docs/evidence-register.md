@@ -45,11 +45,11 @@ Draft PR: https://github.com/SaamVR/Portfolio/pull/35
 - The review URL is a Cloudflare branch alias; no claim of an independent production launch or customer acquisition.
 
 ## Portfolio media order
-1. \`portfolio-media/01-hero.png\` — original V2 product cover screenshot
-2. \`portfolio-media/02-qualified-run.png\` — server-backed qualification and event stream
-3. \`portfolio-media/03-timeout-recovery.png\` — injected failure and retry trace
-4. \`portfolio-media/04-architecture.png\` — disclosed system responsibilities
-5. \`portfolio-media/05-mobile.png\` — actual mobile interaction state
+1. `portfolio-media/01-hero.png` — original V2 product cover screenshot
+2. `portfolio-media/02-qualified-run.png` — server-backed qualification and event stream
+3. `portfolio-media/03-timeout-recovery.png` — injected failure and retry trace
+4. `portfolio-media/04-architecture.png` — disclosed system responsibilities
+5. `portfolio-media/05-mobile.png` — actual mobile interaction state
 
 ## Additional features that would require further development
 - Authenticated and rate-limited public/API accounts
@@ -59,3 +59,30 @@ Draft PR: https://github.com/SaamVR/Portfolio/pull/35
 - Sandbox integration acceptance, observability, and operations alerts
 
 These are **future options** and must not be described as implemented.
+
+
+## Motion enhancement acceptance — 2026-10-12 (BDT)
+
+Revision: `cead360685394d160e707bacbcd469094133fc34`, draft PR #35.
+CI: workflow run `38271145296`, PASS. Original Cloudflare project unchanged.
+
+A Chromium/Puppeteer interaction run tested:
+- Stage explorer selection and purely visual walkthrough without executing API
+- Pointer-sensitive depth and return to neutral
+- Artificial network delay before the real API POST: no completed-stage motion before success
+- Correct score-factor bars rendered from server-returned scoring factors
+- Four post-response timeline stages, animated trace, and no extra POST on visual replay
+- Switching scenarios clears stale API result, scoring factors, and old download availability
+- Two explicitly simulated fault events and sandbox recovery, not real provider outage
+- Reduced motion via OS setting and manual on/off control
+- Successful reduced-motion workflow and 390px mobile with no horizontal overflow
+- Forced network failure: no falsely successful stage, and receipt download disabled
+- Zero uncaught JavaScript errors across the above tests
+
+Receipts: `docs/motion-browser-qa.json`; runnable harness: `tests/browser-motion-qa.cjs`.
+Capture set: `portfolio-media/06-motion-hero.png`, `07-motion-interactive-stage.png`,
+`08-motion-confirmed-workflow.png`, `09-motion-retry-evidence.png`.
+
+The browser implementation intentionally uses WAAPI, transforms, opacity,
+passive scroll events and requestAnimationFrame rather than expensive WebGL
+effects in the operational data console.

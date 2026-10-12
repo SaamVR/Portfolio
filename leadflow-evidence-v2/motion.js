@@ -84,6 +84,7 @@ class LeadFlowMotionDirector {
       this.enabled = !this.enabled && !prefersReduced();
       document.documentElement.dataset.motion = this.enabled ? "on" : "off";
       this.stopAnimations();
+      this.restoreConfirmedState();
       document.querySelectorAll(".reveal").forEach(e => e.classList.add("in-view"));
       this.hero?.style.removeProperty("--scene-x");
       this.hero?.style.removeProperty("--scene-y");
@@ -93,6 +94,7 @@ class LeadFlowMotionDirector {
       this.enabled = !event.matches;
       document.documentElement.dataset.motion = this.enabled ? "on" : "off";
       this.stopAnimations();
+      this.restoreConfirmedState();
       document.querySelectorAll(".reveal").forEach(e => e.classList.add("in-view"));
       this.updateToggle();
     };
@@ -274,6 +276,13 @@ class LeadFlowMotionDirector {
     this.phases?.forEach(node => node.classList.remove("phase-pending", "phase-done", "phase-fault"));
     if (this.phaseLabel) this.phaseLabel.textContent = "AWAITING SERVER";
     document.body.classList.remove("workflow-running", "workflow-success");
+  }
+
+  restoreConfirmedState() {
+    if (!this.lastResult) return;
+    this.nodes?.forEach(node => this.markStage(node, "done"));
+    this.phases?.forEach(node => this.markPhase(node, "done"));
+    if (this.phaseLabel) this.phaseLabel.textContent = "SERVER TRACE COMPLETE";
   }
 
   onStart() {

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-12T15:37:17.736Z",
+  "url": "https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "verifiedVersion": "cead360",
+  "checks": [
+    "stage inspection",
+    "stage exploration not server success",
+    "desktop parallax returns to neutral",
+    "no success before server response",
+    "API-derived score factors",
+    "verified execution choreography",
+    "visual replay without new API request",
+    "fault-injection trace and labels",
+    "reduced-motion support",
+    "mobile motion toggle",
+    "390px overflow",
+    "error path has no false success"
+  ],
+  "widths": {
+    "inner": 390,
+    "body": 390,
+    "document": 390
+  },
+  "mobileWidths": {
+    "inner": 390,
+    "body": 390,
+    "document": 390
+  },
+  "errors": [],
+  "requests": 2,
+  "screenshots": [
+    "motion-02-verified-workflow.png",
+    "motion-03-fault-recovery.png"
+  ]
+}

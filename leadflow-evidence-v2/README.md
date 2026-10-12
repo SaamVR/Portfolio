@@ -54,6 +54,36 @@ Run each of the four scenarios and export one JSON receipt for qualified and tim
 Run replay of a sample lead and verify unique record count does not increase.
 Keep test output + browser console screenshots dated with the commit SHA.
 
+
+## V2 motion experience (implemented and browser-verified)
+
+The motion director `motion.js` and stylesheet `motion.css` are optional
+presentation layers over the same working Cloudflare Pages Function.
+
+- Animated hero arrival, scroll reveals, pointer-responsive pipeline depth
+- Accessible keyboard/click stage explorer and manual stage walkthrough
+- Four-phase execution timeline **only confirmed after server success**
+- API-derived animated score bars and timed trace replay
+- Browser-local upsert feedback and curved confirmation packet
+- Explicit fault/retry animation only for the synthetic timeout scenario
+- Failure path suppresses success choreography and receipt export
+- Visual replay does **not** send another API request
+- Motion ON/OFF and automatic reduced-motion support; zero horizontal overflow at 390px in tested viewports
+
+All original V1 paths and deployment remain unchanged.
+
+The browser QA is in `tests/browser-motion-qa.cjs`. To run it on an
+authorized local/browser testing machine:
+
+    npm install --no-save puppeteer-core@24
+    CHROMIUM_PATH=/usr/bin/chromium LEADFLOW_QA_OUTPUT_DIR=/tmp/leadflow-motion npm run test:browser
+
+You can override `LEADFLOW_QA_URL` for a local or branch preview.
+The existing `npm test` remains independent of external browsers and providers.
+`docs/motion-browser-qa.json` records one accepted browser run.
+Motion screenshots under `portfolio-media/06-*.png` to `09-*.png` are
+actual rendered captures, not generated mockups.
+
 ## Trust notes
 
 This public endpoint is intentionally unauthenticated and therefore cannot perform

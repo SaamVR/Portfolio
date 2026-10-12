@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser-motion-qa.cjs",
     "check": "node --check app.js && node --check motion.js && node --check functions/lib/engine.mjs && node --check functions/api/execute.js",
     "dev": "wrangler pages dev . --port 8788",
     "build": "node scripts/build.mjs"
