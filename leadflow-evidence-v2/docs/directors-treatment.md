@@ -47,3 +47,32 @@
 ## Portfolio proof
 
 Use an actual 24-second recording (not a simulated screenshot) with two sequences: normal route and synthetic timeout/recovery route. Capture desktop and mobile, ensure the timeline can pause and scrub, and show the on-screen disclosure that film time differs from API duration. The original V1 and Upwork listing remain untouched until owner approval.
+
+## Direction refinement — second composition pass (October 13, 2026)
+
+The first recorded edition proved a twenty-four-second five-act timeline was
+possible, but the actual shots remained relatively static and key elements
+competed visually. This pass resolves specific storytelling deficiencies:
+
+| Prior shot problem | Revised staging | Animation principle |
+| --- | --- | --- |
+| The camera appeared almost fixed because its percentage motion was divided by 100 again | The camera now makes tangible staged moves: inspection push-in, closer decision, reframing for handoff, widening for resolution | Staging, camera motivation, leading the eye |
+| The identity card blocked the node it was visiting | A luminous small carrier stays exactly on the physical SVG route; the larger lead information card floats above it on a visible tether | Spatial clarity, silhouette, secondary motion |
+| The scanner swept without a readable consequence | A validation-accepted tag enters after the scanning action and exits before the score decision | Anticipation, action/reaction |
+| The verdict could appear at the same time as the supporting score | An explicit routing verdict is withheld until the factor sequence resolves | Cause precedes effect |
+| Failure looked like a single disconnected popup | A three-attempt strip reports *verified synthetic* timeout and recovery states, while the actor recoils and the environment momentarily warms to amber | Setback, overlapping reaction, recovery |
+| Human approval lacked a decisive final gesture | The approval seal follows the review card, and the final title reads "A decision you can defend" | Follow-through and payoff |
+
+**Important factual constraint:** The stage display is an authored retrospective
+reconstruction of a confirmed Cloudflare API receipt. The stage durations never
+claim to be request, model, provider or webhook latency. Fault graphics are
+present only for a receipt containing the actual injected sandbox timeout
+events and the recorded three attempts. All CRM writes and messages remain
+disabled. The story is not a production AI integration claim.
+
+**Performance and interaction requirements:** The added actor uses
+transform/opacity-based repositioning where possible, the underlying carrier
+moves by the same path coordinates as the path reveal, and static previews
+remain legible when paused or scrubbed. The 390px viewport and reduced-motion
+outcome must be checked on the isolated review deployment. The existing V1
+and Upwork portfolio listing remain untouched.
