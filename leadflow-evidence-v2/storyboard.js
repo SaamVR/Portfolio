@@ -270,7 +270,7 @@ export class StoryDirector {
     this.scan.style.opacity=String(frame.scanOpacity);
     this.scan.style.left=`${(20+frame.scan*65).toFixed(2)}%`;
     setTransform(this.scanBand,`translateX(${(-100+frame.scan*200).toFixed(1)}%)`);
-    this.score.style.opacity=String(frame.scoreReveal);
+    this.score.style.opacity=String(frame.scorePanelOpacity);
     setTransform(this.score,`translate3d(0,${((1-frame.scoreReveal)*27).toFixed(1)}px,0) scale(${(.95+.05*frame.scoreReveal).toFixed(3)})`);
     setText(this.scoreNumber, String(frame.scoreDisplayed).padStart(2,'0'));
     this.factors.querySelectorAll('.film-factor').forEach((row,index) => {
