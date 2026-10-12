@@ -1,0 +1,50 @@
+{
+  "status": "DRAFT_ONLY_DO_NOT_PUBLISH",
+  "title": "LeadFlow V2 — API-Based Lead Qualification & Workflow Automation",
+  "role": "Full-Stack Developer & Workflow Automation Engineer",
+  "description": "Built an API-backed lead qualification and CRM workflow demonstration using Cloudflare Pages Functions. Four synthetic scenarios run through server validation, explainable scoring, routing policy and a timed event trace. I implemented the responsive frontend, endpoint, sandbox CRM contract, browser-local records, draft-only follow-ups and timeout/retry simulations, with automated tests. No external CRM or LLM is represented as connected. Live review: https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "skills": [
+    "API Integration",
+    "Workflow Automation",
+    "JavaScript",
+    "CRM Automation",
+    "Full-Stack Development"
+  ],
+  "live_url": "https://evidence-review.leadflow-evidence-v2.pages.dev/",
+  "original_upwork_url": "https://www.upwork.com/freelancers/shusmoyb?p=2104418123950473216",
+  "gallery": [
+    {
+      "path": "portfolio-media/01-hero.png",
+      "caption": "LeadFlow V2 engineering case study — real Cloudflare edge API with documented sandbox boundaries",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/01-hero.png"
+    },
+    {
+      "path": "portfolio-media/02-qualified-run.png",
+      "caption": "Qualified test lead: server-backed 96/100 score, timed event stream and local record proof",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/02-qualified-run.png"
+    },
+    {
+      "path": "portfolio-media/03-timeout-recovery.png",
+      "caption": "Two injected CRM sandbox timeouts and third-attempt recovery with observable trace",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/03-timeout-recovery.png"
+    },
+    {
+      "path": "portfolio-media/04-architecture.png",
+      "caption": "Explicit system responsibility and trust boundary diagram",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/04-architecture.png"
+    },
+    {
+      "path": "portfolio-media/05-mobile.png",
+      "caption": "Mobile execution view verified at 390px with no horizontal overflow",
+      "source_url": "https://raw.githubusercontent.com/SaamVR/Portfolio/feat/leadflow-v2-evidence-20261012/leadflow-evidence-v2/portfolio-media/05-mobile.png"
+    }
+  ],
+  "verification": {
+    "node_tests": "6/6",
+    "browser_qa": "passed",
+    "cloudflare_http": "GET and POST verified",
+    "external_crm": "not_connected",
+    "llm": "not_connected"
+  },
+  "publication_approval_required": true
+}
